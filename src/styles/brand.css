@@ -1,0 +1,100 @@
+/* ─────────────────────────────────────────────
+   🎨 HabitaLibre Brand System
+   Fintech visual identity – estilo Nubank / Revolut
+────────────────────────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
+
+/* ─────────── COLORES PRINCIPALES ─────────── */
+:root {
+  --brand-primary: #2954FF;
+  --brand-secondary: #1E3EE6;
+  --brand-bg: #F8FAFC;
+  --brand-text: #1E293B;
+  --brand-accent: #10B981;
+  --brand-error: #EF4444;
+  --brand-shadow: rgba(0, 0, 0, 0.08);
+}
+
+/* ─────────── TIPOGRAFÍA ─────────── */
+body {
+  font-family: 'Inter', sans-serif;
+  color: var(--brand-text);
+  background-color: var(--brand-bg);
+  line-height: 1.6;
+  margin: 0;
+  padding: 0;
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  color: var(--brand-text);
+  margin-bottom: 0.5rem;
+}
+
+p {
+  margin-bottom: 1rem;
+}
+
+/* ─────────── BOTONES FINTECH ─────────── */
+.button-primary {
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-weight: 500;
+  font-family: 'Poppins', sans-serif;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 4px 12px var(--brand-shadow);
+  cursor: pointer;
+}
+
+.button-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+}
+
+/* ─────────── TARJETAS / SECCIONES ─────────── */
+.card {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 4px 14px var(--brand-shadow);
+  padding: 24px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* ─────────── HERO / CABECERA ─────────── */
+.hero-gradient {
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+  color: white;
+  padding: 80px 20px;
+  text-align: center;
+  border-radius: 24px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.hero-gradient h1 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  color: white;
+}
+
+/* ─────────── UTILIDADES ─────────── */
+.text-muted {
+  color: #64748B;
+}
+
+.shadow-soft {
+  box-shadow: 0 3px 10px var(--brand-shadow);
+}
+
+.rounded-xl {
+  border-radius: 1rem;
+}
