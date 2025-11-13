@@ -1,6 +1,6 @@
 // src/components/SimulatorForm.jsx
-import { useMemo, useState } from "react";
-import { precalificar } from "../lib/api";
+import { useMemo, useState, useEffect } from "react";
+import { precalificar, crearLead, API_BASE } from "../lib/api";
 
 /** util financiero: cuota (PMT) */
 function pmt(rate, nper, pv) {
@@ -10,11 +10,11 @@ function pmt(rate, nper, pv) {
 
 export default function SimulatorForm({ onResult }) {
   // --- Estados de formulario ---
-  const [ingreso, setIngreso] = useState(1200);
+  const [ingreso, setIngreso] = useState(0);
   const [ingresoPareja, setIngresoPareja] = useState(0);
-  const [deudas, setDeudas] = useState(300);
-  const [valor, setValor] = useState(90000);
-  const [entrada, setEntrada] = useState(15000);
+  const [deudas, setDeudas] = useState(0);
+  const [valor, setValor] = useState(0);
+  const [entrada, setEntrada] = useState(0);
   const [edad, setEdad] = useState(30);
   const [tipoIngreso, setTipoIngreso] = useState("Dependiente");
   const [estabilidad, setEstabilidad] = useState(2);
@@ -26,20 +26,30 @@ export default function SimulatorForm({ onResult }) {
   const [aportesTotales, setAportesTotales] = useState(0);
   const [aportesConsecutivos, setAportesConsecutivos] = useState(0);
 
-  // Estado civil (normalizado)
+  // Estado civil
   const [estadoCivil, setEstadoCivil] = useState("Soltero/a");
 
-  // Permite simular con pareja incluso sin estado civil formal
+  // Permite aplicar con pareja aunque no sea estado civil formal
   const [aplicarConPareja, setAplicarConPareja] = useState(false);
 
-  // --- UI ---
+  // Contacto
+  const [nombre, setNombre] = useState("");
+  const [email, setEmail] = useState("");
+  const [ciudad, setCiudad] = useState("");
+
+  // UI
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Wake-up Render
+  useEffect(() => {
+    fetch(`${API_BASE}/api/health`).catch(() => {});
+  }, []);
 
   const money = (n) =>
     Number(n || 0).toLocaleString("en-US", { maximumFractionDigits: 0 });
 
-  // --- Reglas VIS/VIP (referenciales) ---
+  /** VIS/VIP rules */
   const RULES = {
     VIS_MAX_VALOR: 83660,
     VIP_MAX_VALOR: 107630,
@@ -47,54 +57,65 @@ export default function SimulatorForm({ onResult }) {
     VIP_MAX_INGRESO: 2900,
   };
 
-  // Flags de pareja (normalizado)
+  // Flags de pareja
   const esParejaFormal =
     estadoCivil === "Casado/a" || estadoCivil === "Unión de hecho";
 
-  // Si es pareja formal O marcó aplicarConPareja => se usa SOLO el ingreso de la pareja
   const usarSoloPareja = esParejaFormal || aplicarConPareja;
 
-  // Mostrar campo de ingreso de pareja si aplica
   const mostrarPareja = usarSoloPareja;
 
-  /** Derivados de UI (solo orientativos; la decisión final viene del backend) */
+  /** Derivados */
   const derived = useMemo(() => {
     const v = Number(valor) || 0;
     const e = Number(entrada) || 0;
     const loan = Math.max(0, v - e);
     const ltv = v > 0 ? loan / v : 0;
 
-    // Regla solicitada: si usarSoloPareja => SOLO pareja; si no, solo titular
     const ingresoTotalUsado = usarSoloPareja
-      ? (Number(ingresoPareja) || 0)
-      : (Number(ingreso) || 0);
+      ? Number(ingresoPareja) || 0
+      : Number(ingreso) || 0;
 
-    const dti = afiliadoIESS ? 0.40 : 0.35;
+    const dti = afiliadoIESS ? 0.4 : 0.35;
 
-    // Capacidad: (ingresoTotalUsado - deudas) * dti
     const cap = Math.max(
       0,
       (ingresoTotalUsado - (Number(deudas) || 0)) * dti
     );
 
-    // Tentativo VIS/VIP/Comercial/BIESS (UI)
-    const sinCasa = !tieneVivienda;
     let tentativo = "Banca Privada";
-    if (sinCasa && v <= RULES.VIS_MAX_VALOR && ingresoTotalUsado <= RULES.VIS_MAX_INGRESO) {
+    const sinCasa = !tieneVivienda;
+
+    if (
+      sinCasa &&
+      v <= RULES.VIS_MAX_VALOR &&
+      ingresoTotalUsado <= RULES.VIS_MAX_INGRESO
+    ) {
       tentativo = "VIS";
-    } else if (sinCasa && v <= RULES.VIP_MAX_VALOR && ingresoTotalUsado <= RULES.VIP_MAX_INGRESO) {
+    } else if (
+      sinCasa &&
+      v <= RULES.VIP_MAX_VALOR &&
+      ingresoTotalUsado <= RULES.VIP_MAX_INGRESO
+    ) {
       tentativo = "VIP";
     } else if (afiliadoIESS) {
       tentativo = "BIESS";
     }
 
-    // Preview de cuota según producto tentativo (referencial)
-    let tasaAnual = 0.115; // Comercial ref
+    let tasaAnual = 0.115;
     let nMeses = 240;
-    if (tentativo === "VIP") { tasaAnual = 0.0499; nMeses = 300; }
-    if (tentativo === "VIS") { tasaAnual = 0.0488; nMeses = 240; }
-    const r = tasaAnual / 12;
-    const cuotaPreview = loan > 0 ? pmt(r, nMeses, loan) : 0;
+    if (tentativo === "VIP") {
+      tasaAnual = 0.0499;
+      nMeses = 300;
+    }
+    if (tentativo === "VIS") {
+      tasaAnual = 0.0488;
+      nMeses = 240;
+    }
+
+    const cuotaPreview =
+      loan > 0 ? pmt(tasaAnual / 12, nMeses, loan) : 0;
+
     const subPreview = `${Math.round(nMeses / 12)} años · ${(tasaAnual * 100).toFixed(2)}% anual`;
 
     return {
@@ -119,36 +140,38 @@ export default function SimulatorForm({ onResult }) {
     usarSoloPareja,
   ]);
 
+  /** Validación */
   function validate() {
     if (derived.ingresoTotalUsado < 400)
       return "El ingreso mínimo considerado es cercano a $400/mes.";
     if ((Number(valor) || 0) < 30000)
       return "El valor mínimo de vivienda considerado es $30.000.";
     if (Number(edad) < 21 || Number(edad) > 75)
-      return "La edad debe estar entre 21 y 75 años al momento del desembolso.";
+      return "La edad debe estar entre 21 y 75 años.";
     if (!derived.validaEntrada5)
-      return `Tu entrada es baja. Para 5% mínimo se recomienda al menos $${money(
+      return `Entrada mínima sugerida: $${money(
         derived.entradaMin5
-      )}.`;
+      )}`;
     return null;
   }
 
+  /** Enviar */
   async function handleCalcular(e) {
     e?.preventDefault?.();
+    if (loading) return;
+
     setError("");
     onResult?.(null);
+
     const msg = validate();
-    if (msg) {
-      setError(msg);
-      return;
-    }
+    if (msg) return setError(msg);
 
     setLoading(true);
+
     try {
-      // Regla de envío al backend:
-      // - si usarSoloPareja => ingresoNetoMensual = ingresoPareja; ingresoPareja = ingresoPareja (solo para registro)
-      // - si no => ingresoNetoMensual = ingreso titular; ingresoPareja = 0
-      const ingresoNetoMensualPayload = usarSoloPareja
+      fetch(`${API_BASE}/api/health`).catch(() => {});
+
+      const ingresoNeto = usarSoloPareja
         ? Number(ingresoPareja || 0)
         : Number(ingreso || 0);
 
@@ -157,7 +180,7 @@ export default function SimulatorForm({ onResult }) {
         : 0;
 
       const payload = {
-        ingresoNetoMensual: ingresoNetoMensualPayload,
+        ingresoNetoMensual: ingresoNeto,
         ingresoPareja: ingresoParejaPayload,
         otrasDeudasMensuales: Number(deudas),
         valorVivienda: Number(valor),
@@ -166,24 +189,58 @@ export default function SimulatorForm({ onResult }) {
         tipoIngreso,
         aniosEstabilidad: Number(estabilidad),
         tieneVivienda,
-        afiliadoIess: afiliadoIESS,                    // << nombre que espera backend
-        iessAportesTotales: Number(aportesTotales || 0),        // << nombres alineados
-        iessAportesConsecutivas: Number(aportesConsecutivos || 0),
+        afiliadoIess: afiliadoIESS,
+        iessAportesTotales: Number(aportesTotales || 0),
+        iessAportesConsecutivos: Number(aportesConsecutivos || 0),
         declaracionBuro,
-        estadoCivil,                                   // normalizado
+        estadoCivil,
         aplicarConPareja,
       };
 
       const data = await precalificar(payload);
-      if (!data?.ok) throw new Error(data?.error || "No se pudo calcular");
+
+      if (!data || data.ok === false)
+        throw new Error(data?.error || "No se pudo calcular");
+
+      if (email && /\S+@\S+\.\S+/.test(email)) {
+        const leadPayload = {
+          ...payload,
+          nombre: nombre?.trim() || "Cliente",
+          email: email.trim(),
+          ciudad: ciudad?.trim() || "",
+          origen: "simulador",
+          resultado: {
+            capacidadPago: data?.resultado?.capacidadPago,
+            montoMaximo: data?.resultado?.montoMaximo,
+            precioMaxVivienda: data?.resultado?.precioMaxVivienda,
+            ltv: data?.resultado?.ltv,
+            tasaAnual: data?.resultado?.tasaAnual,
+            plazoMeses: data?.resultado?.plazoMeses,
+            dtiConHipoteca: data?.resultado?.dtiConHipoteca,
+            cuotaEstimada: data?.resultado?.cuotaEstimada,
+            cuotaStress: data?.resultado?.cuotaStress,
+            productoElegido: data?.resultado?.productoElegido,
+          },
+        };
+
+        try {
+          await crearLead(leadPayload);
+        } catch (e) {
+          console.warn("crearLead falló:", e);
+        }
+      }
+
       onResult?.({ ...data, _echo: payload });
     } catch (err) {
-      console.error(err);
       setError(err.message || "Error inesperado");
     } finally {
       setLoading(false);
     }
   }
+
+  // ---------------------------
+  //       RENDER
+  // ---------------------------
 
   return (
     <>
@@ -194,7 +251,7 @@ export default function SimulatorForm({ onResult }) {
         Calcula tu capacidad y descubre tu mejor opción hipotecaria con HabitaLibre.
       </p>
 
-      {/* Ingresos y deudas */}
+      {/* INGRESOS */}
       <Section title="💼 Ingresos y deudas">
         <Field label="Estado civil">
           <select
@@ -208,41 +265,30 @@ export default function SimulatorForm({ onResult }) {
             <option>Divorciado/a</option>
             <option>Viudo/a</option>
           </select>
-          <Hint>
-            Si eres “Casado/a” o en “Unión de hecho”, usaremos solo el ingreso de tu pareja para la evaluación.
-          </Hint>
         </Field>
 
         <Field label="Aplicar con pareja (coconstituyente)">
-          <select
-            className="w-full rounded-xl border px-3 py-2"
-            value={aplicarConPareja ? "Sí" : "No"}
-            onChange={(e) => setAplicarConPareja(e.target.value === "Sí")}
-          >
-            <option>No</option>
-            <option>Sí</option>
-          </select>
-          <Hint>
-            Útil para simular con la pareja aunque no exista estado civil formal.
-          </Hint>
+          <SelectBool
+            value={aplicarConPareja}
+            onChange={setAplicarConPareja}
+          />
         </Field>
 
-        {/* Ingresos */}
         <Field label="Ingreso neto mensual del titular (USD)">
           <InputMoney value={ingreso} onChange={setIngreso} />
-          <Hint>Ingreso del titular después de descuentos.</Hint>
         </Field>
 
         {mostrarPareja && (
           <Field label="Ingreso neto de pareja (USD)">
-            <InputMoney value={ingresoPareja} onChange={setIngresoPareja} />
-            <Hint>Cuando aplica, se usa solo este ingreso.</Hint>
+            <InputMoney
+              value={ingresoPareja}
+              onChange={setIngresoPareja}
+            />
           </Field>
         )}
 
         <Field label="Otras deudas mensuales (USD)">
           <InputMoney value={deudas} onChange={setDeudas} />
-          <Hint>Cuotas de tarjeta, auto, préstamos, etc.</Hint>
         </Field>
 
         <Field label="Tipo de ingreso">
@@ -252,97 +298,118 @@ export default function SimulatorForm({ onResult }) {
             options={["Dependiente", "Independiente", "Mixto"]}
           />
         </Field>
+
         <Field label="Años de estabilidad">
-          <InputNumber value={estabilidad} onChange={setEstabilidad} />
+          <InputNumber
+            value={estabilidad}
+            onChange={setEstabilidad}
+          />
         </Field>
       </Section>
 
-      {/* Vivienda */}
+      {/* VIVIENDA */}
       <Section title="🏠 Datos de la vivienda">
         <Field label="Valor de la vivienda (USD)">
           <InputMoney value={valor} onChange={setValor} />
         </Field>
+
         <Field label="Entrada disponible (USD)">
           <InputMoney value={entrada} onChange={setEntrada} />
           {!derived.validaEntrada5 && (
             <Warn>
-              Entrada recomendada (mín. 5%): <b>${money(derived.entradaMin5)}</b>
+              Entrada sugerida (mín. 5%): ${money(derived.entradaMin5)}
             </Warn>
           )}
         </Field>
+
         <Field label="¿Tienes actualmente una vivienda?">
-          <SelectBool value={tieneVivienda} onChange={setTieneVivienda} />
+          <SelectBool
+            value={tieneVivienda}
+            onChange={setTieneVivienda}
+          />
         </Field>
+
         <Field label="¿Estás afiliado al IESS?">
-          <SelectBool value={afiliadoIESS} onChange={setAfiliadoIESS} />
+          <SelectBool
+            value={afiliadoIESS}
+            onChange={setAfiliadoIESS}
+          />
         </Field>
 
         {afiliadoIESS && (
           <>
             <Field label="Aportes IESS totales (meses)">
-              <InputNumber value={aportesTotales} onChange={setAportesTotales} />
-              <Hint>Para BIESS se requieren al menos 36 totales.</Hint>
+              <InputNumber
+                value={aportesTotales}
+                onChange={setAportesTotales}
+              />
             </Field>
+
             <Field label="Aportes IESS consecutivos (meses)">
-              <InputNumber value={aportesConsecutivos} onChange={setAportesConsecutivos} />
-              <Hint>Para BIESS se requieren al menos 13 consecutivos.</Hint>
+              <InputNumber
+                value={aportesConsecutivos}
+                onChange={setAportesConsecutivos}
+              />
             </Field>
           </>
         )}
       </Section>
 
-      {/* Solicitante */}
-      <Section title="👤 Perfil del solicitante">
-        <Field label="Edad">
-          <InputNumber value={edad} onChange={setEdad} />
-        </Field>
-        <Field label="Historial crediticio">
-          <Select
-            value={declaracionBuro}
-            onChange={setDeclaracionBuro}
-            options={["ninguno", "regularizado", "mora"]}
+      {/* CONTACTO */}
+      <Section title="👤 Datos de contacto (opcional)">
+        <Field label="Nombre">
+          <input
+            type="text"
+            className="w-full rounded-xl border px-3 py-2"
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
           />
-          <Hint>
-            Tu respuesta no afecta tu score, pero mejora la precisión del análisis.
-          </Hint>
         </Field>
 
-        {/* Preclasificación y mini-cards */}
-        <div className="col-span-3 grid grid-cols-3 gap-3">
+        <Field label="Email">
+          <input
+            type="email"
+            className="w-full rounded-xl border px-3 py-2"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </Field>
+
+        <Field label="Ciudad">
+          <input
+            type="text"
+            className="w-full rounded-xl border px-3 py-2"
+            value={ciudad}
+            onChange={(e) => setCiudad(e.target.value)}
+          />
+        </Field>
+      </Section>
+
+      {/* PREVIEW */}
+      <Section title="🔎 Preclasificación rápida">
+        <div className="grid grid-cols-3 gap-3">
           <div className="col-span-3 sm:col-span-2">
-            <Banner tone="indigo" title="Preclasificación tentativo">
-              Con tus datos actuales, tu perfil apunta a: <b>{derived.tentativo}</b>.
+            <Banner tone="indigo" title="Preclasificación">
+              Perfil tentativo: <b>{derived.tentativo}</b>
             </Banner>
           </div>
-          <div className="col-span-3 sm:col-span-1">
-            <MiniCard
-              label="Preview cuota (ref.)"
-              value={`$ ${money(derived.cuotaPreview)}`}
-              sub={derived.subPreview}
-            />
-          </div>
-          <div className="col-span-3 sm:col-span-1">
-            <MiniCard
-              label={`Capacidad de pago (${afiliadoIESS ? "40%" : "35%"})`}
-              value={`$ ${money(derived.cap)}`}
-              sub="(ingreso usado – deudas) × DTI"
-            />
-          </div>
-          <div className="col-span-3 sm:col-span-1">
-            <MiniCard
-              label="LTV estimado"
-              value={`${Math.round((derived.ltv || 0) * 100)} %`}
-              sub={derived.ltv <= 0.8 ? "OK" : derived.ltv <= 0.9 ? "Umbral" : "Alto"}
-              tone={derived.ltv <= 0.8 ? "green" : derived.ltv <= 0.9 ? "amber" : "red"}
-            />
-          </div>
-          <div className="col-span-3 sm:col-span-1">
-            <MiniCard
-              label="Viabilidad rápida"
-              value={derived.cuotaPreview <= derived.cap ? "Viable" : "Ajustar datos"}
-              tone={derived.cuotaPreview <= derived.cap ? "green" : "amber"}
-            />
-          </div>
+
+          <MiniCard
+            label="Preview cuota"
+            value={`$ ${money(derived.cuotaPreview)}`}
+            sub={derived.subPreview}
+          />
+
+          <MiniCard
+            label={`Capacidad de pago (${afiliadoIESS ? "40%" : "35%"})`}
+            value={`$ ${money(derived.cap)}`}
+            sub="(ingreso usado – deudas) × DTI"
+          />
+
+          <MiniCard
+            label="LTV estimado"
+            value={`${Math.round((derived.ltv || 0) * 100)}%`}
+          />
         </div>
       </Section>
 
@@ -351,7 +418,7 @@ export default function SimulatorForm({ onResult }) {
         type="button"
         onClick={handleCalcular}
         disabled={loading}
-        className="mt-2 w-full rounded-xl py-3 bg-indigo-600 text-white font-medium hover:opacity-95 disabled:opacity-50"
+        className="mt-3 w-full rounded-xl py-3 bg-indigo-600 text-white font-medium hover:opacity-95"
       >
         {loading ? "Analizando tu perfil…" : "Calcular"}
       </button>
@@ -361,55 +428,68 @@ export default function SimulatorForm({ onResult }) {
   );
 }
 
-/* ======================= SUBCOMPONENTES ======================= */
+/* ---------------------------------------------------------
+   Helpers visuales / inputs / wrappers
+--------------------------------------------------------- */
+
 function Section({ title, children }) {
   return (
-    <>
-      <h3 className="text-slate-700 font-semibold mt-5 mb-2">{title}</h3>
-      <div className="grid grid-cols-3 gap-3">{children}</div>
-    </>
+    <div className="mb-6 pb-6 border-b">
+      <div className="text-lg font-semibold mb-3">{title}</div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {children}
+      </div>
+    </div>
   );
 }
+
 function Field({ label, children }) {
   return (
-    <div className="col-span-3 sm:col-span-1">
-      <label className="block text-sm text-slate-600 mb-1">{label}</label>
+    <label className="flex flex-col gap-1 text-sm">
+      <span className="font-medium">{label}</span>
       {children}
-    </div>
+    </label>
   );
 }
-function Hint({ children }) {
-  return <div className="text-[11px] text-slate-400 mt-1">{children}</div>;
-}
-function Warn({ children }) {
+
+function InputMoney({ value, onChange }) {
   return (
-    <div className="mt-2 text-xs bg-amber-50 border border-amber-200 text-amber-800 px-2 py-1 rounded">
-      {children}
-    </div>
+    <input
+      type="number"
+      min="0"
+      className="w-full rounded-xl border px-3 py-2"
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value || 0))}
+    />
   );
 }
-function ErrorText({ children }) {
+
+function InputNumber({ value, onChange }) {
   return (
-    <div className="mt-3 text-sm bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded">
-      {children}
-    </div>
+    <input
+      type="number"
+      className="w-full rounded-xl border px-3 py-2"
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value || 0))}
+    />
   );
 }
-function Select({ value, onChange, options = [] }) {
+
+function Select({ value, onChange, options }) {
   return (
     <select
       className="w-full rounded-xl border px-3 py-2"
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
-      {options.map((opt) => (
-        <option key={opt} value={opt}>
-          {opt}
-        </option>
+      {options.map((o) => (
+        <option key={o}>{o}</option>
       ))}
     </select>
   );
 }
+
+/** 🔥 Select booleano corregido */
 function SelectBool({ value, onChange }) {
   return (
     <select
@@ -422,79 +502,34 @@ function SelectBool({ value, onChange }) {
     </select>
   );
 }
-function InputNumber({ value, onChange }) {
+
+function Banner({ title, children }) {
   return (
-    <input
-      type="number"
-      className="w-full rounded-xl border px-3 py-2"
-      value={value}
-      onChange={(e) => onChange(Number(e.target.value))}
-    />
+    <div className="rounded-xl bg-indigo-50 p-3 border border-indigo-100">
+      <div className="text-indigo-700 text-sm font-semibold">{title}</div>
+      <div className="text-xs text-slate-700 mt-1">{children}</div>
+    </div>
   );
 }
-function InputMoney({ value, onChange }) {
-  const [raw, setRaw] = useState(String(value ?? ""));
-  function toNumberLike(str) {
-    if (str === "" || str == null) return "";
-    const clean = String(str).replace(/[^\d.]/g, "");
-    const n = Number(clean);
-    return Number.isFinite(n) ? n : "";
-  }
-  function format(str) {
-    const n = toNumberLike(str);
-    if (n === "") return "";
-    return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
-  }
+
+function MiniCard({ label, value, sub }) {
   return (
-    <input
-      inputMode="numeric"
-      className="w-full rounded-xl border px-3 py-2"
-      value={format(raw)}
-      onChange={(e) => {
-        const txt = e.target.value;
-        const clean = txt.replace(/[^\d.]/g, "");
-        setRaw(clean);
-        const n = Number(clean);
-        if (Number.isFinite(n)) onChange(n);
-        else if (clean === "") onChange(0);
-      }}
-      onBlur={() => {
-        if (raw === "") {
-          setRaw("0");
-          onChange(0);
-        }
-      }}
-    />
-  );
-}
-function MiniCard({ label, value, sub, tone = "indigo" }) {
-  const tones = {
-    indigo: "border-indigo-100",
-    green: "border-emerald-100",
-    amber: "border-amber-200",
-    red: "border-red-200",
-  };
-  return (
-    <div className={`bg-white rounded-xl p-3 border ${tones[tone]}`}>
-      <div className="text-xs uppercase tracking-wide text-slate-500">
-        {label}
-      </div>
+    <div className="rounded-xl border p-3 bg-white shadow-sm">
+      <div className="text-xs text-slate-500">{label}</div>
       <div className="text-lg font-semibold text-slate-800">{value}</div>
-      {sub && <div className="text-[11px] text-slate-400 mt-1">{sub}</div>}
+      {sub && <div className="text-[11px] text-slate-500">{sub}</div>}
     </div>
   );
 }
-function Banner({ tone = "indigo", title, children }) {
-  const styles = {
-    indigo: "bg-indigo-50 border-indigo-100 text-slate-700",
-    green: "bg-emerald-50 border-emerald-100 text-emerald-800",
-    amber: "bg-amber-50 border-amber-200 text-amber-800",
-    gray: "bg-slate-50 border-slate-200 text-slate-700",
-  };
+
+function Warn({ children }) {
   return (
-    <div className={`rounded-xl p-3 border ${styles[tone]}`}>
-      {title && <div className="font-medium mb-0.5">{title}</div>}
-      <div className="text-sm">{children}</div>
-    </div>
+    <div className="text-xs text-amber-600 mt-1">{children}</div>
+  );
+}
+
+function ErrorText({ children }) {
+  return (
+    <div className="mt-3 text-sm text-red-600">{children}</div>
   );
 }

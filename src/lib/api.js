@@ -1,78 +1,58 @@
 // src/lib/api.js
-// Punto base de la API (usa .env en prod; localhost en dev)
-const BASE = (import.meta.env.VITE_API_URL || "http://localhost:4000").replace(/\/+$/, "");
+const VITE_URL = (import.meta?.env?.VITE_API_URL || "").replace(/\/$/, "");
+export const API_BASE = VITE_URL || "https://habitalibre-backend.onrender.com";
 
-/* Utilidad para requests JSON con buen manejo de errores */
-async function jsonFetch(url, options = {}) {
-  const res = await fetch(url, {
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-    ...options,
-  });
+// Pequeño helper de fetch con timeout y logs
+async function request(path, { method = "GET", body, headers } = {}, timeoutMs = 45000) {
+  const url = `${API_BASE}${path}`;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
 
-  // Intentar parsear JSON si corresponde
-  const contentType = res.headers.get("content-type") || "";
-  const isJSON = contentType.includes("application/json");
-  const text = await res.text();
-  const data = isJSON && text ? JSON.parse(text) : null;
+  console.log(`[API] ${method} ${url}`, body ? { body } : "(sin body)");
 
-  if (!res.ok) {
-    const msg =
-      data?.error ||
-      data?.message ||
-      (text?.startsWith("<") ? "Endpoint no encontrado o método incorrecto" : text) ||
-      `HTTP ${res.status}`;
-    throw new Error(msg);
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json", ...(headers || {}) },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: ctrl.signal,
+      // mode: "cors", // generalmente no hace falta ponerlo; descomenta si ves error CORS
+    });
+
+    const ct = res.headers.get("content-type") || "";
+    const isJson = ct.includes("application/json");
+    const data = isJson ? await res.json() : null;
+
+    if (!res.ok) {
+      console.error(`[API] HTTP ${res.status} en ${path}`, data);
+      throw new Error(data?.error || `HTTP ${res.status} en ${path}`);
+    }
+
+    console.log(`[API] OK ${method} ${url}`, data);
+    return data;
+  } catch (err) {
+    console.error(`[API] ERROR ${method} ${url}:`, err);
+    throw err;
+  } finally {
+    clearTimeout(t);
   }
-
-  return isJSON ? data : text;
 }
 
-/* ===================== PRECALIFICAR ===================== */
+// (Opcional) “despertar” Render free antes de la petición pesada
+async function wake() {
+  try {
+    await fetch(`${API_BASE}/health`, { method: "GET" }); // ajusta si tu backend tiene /health
+  } catch {
+    // ignorar
+  }
+}
+
 export async function precalificar(payload) {
-  return jsonFetch(`${BASE}/api/precalificar`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  await wake();
+  return request("/api/precalificar", { method: "POST", body: payload }, 45000);
 }
 
-/* ===================== LEADS ===================== */
-// Crear lead (desde ModalLead / ResultCard)
 export async function crearLead(payload) {
-  return jsonFetch(`${BASE}/api/leads`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
-
-// Listar leads (AdminDashboard)
-export async function listarLeads() {
-  return jsonFetch(`${BASE}/api/leads`);
-}
-
-/* ===================== HEALTH / DIAG ===================== */
-export async function health() {
-  return jsonFetch(`${BASE}/api/health`);
-}
-
-export async function pingDiag() {
-  return jsonFetch(`${BASE}/api/diag`);
-}
-
-/* ===================== UTILIDADES OPCIONALES ===================== */
-/**
- * Helper para anexar query params a una URL (por si lo necesitas luego)
- */
-export function withQuery(url, params = {}) {
-  const u = new URL(url, BASE);
-  Object.entries(params).forEach(([k, v]) => {
-    if (v !== undefined && v !== null && v !== "") u.searchParams.set(k, v);
-  });
-  return u.toString();
-}
-
-export async function updateLead(id, payload) {
-  return jsonFetch(`${BASE}/api/leads/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(payload),
-  });
+  await wake();
+  return request("/api/leads", { method: "POST", body: payload }, 45000);
 }

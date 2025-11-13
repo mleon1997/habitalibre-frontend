@@ -1,129 +1,83 @@
 // src/App.jsx
-import { useEffect, useState } from "react";
-import { Home, ShieldCheck, Calculator } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import LeadModalBare from "./components/LeadModalBare.jsx";
 
-import Landing from "./pages/Landing.jsx";
-import Gracias from "./pages/Gracias.jsx";
-import AdminDashboard from "./pages/AdminDashboard.jsx";
-import Leads from "./pages/Leads.jsx";
-
-import Hero from "./components/Hero.jsx";
-import SimulatorWizard from "./components/SimulatorWizard.jsx";
-import ResultCard from "./components/ResultCard.jsx";
-
-import { usePersistUTM } from "./lib/useUTM.js";
-import "./index.css";
+// ===== Escudo de clicks (global muy simple) =====
+let __HL_SUPPRESS_UNTIL = 0;
+export function armClickShield(ms = 450) {
+  __HL_SUPPRESS_UNTIL = Date.now() + ms;
+}
+function isShieldActive() {
+  return Date.now() < __HL_SUPPRESS_UNTIL;
+}
 
 export default function App() {
-  // --- routing simple por hash ---
-  const [route, setRoute] = useState(window.location.hash || "#/");
+  const [open, setOpen] = useState(false);
 
+  // Captura clicks a nivel de documento y los anula si el escudo está activo
   useEffect(() => {
-    const onHash = () => setRoute(window.location.hash || "#/");
-    window.addEventListener("hashchange", onHash);
-    if (!window.location.hash) window.location.hash = "#/"; // normaliza vacío
-    return () => window.removeEventListener("hashchange", onHash);
+    const handler = (e) => {
+      if (isShieldActive()) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+    };
+    // useCapture = true para interceptar ANTES de que llegue a abajo
+    document.addEventListener("click", handler, true);
+    return () => document.removeEventListener("click", handler, true);
   }, []);
 
-  // --- persistir UTM al cargar cualquier ruta ---
-  usePersistUTM();
+  // Bloquear scroll cuando el modal está abierto
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = open ? "hidden" : prev || "";
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
 
-  // --- estado global del simulador ---
-  const [resultado, setResultado] = useState(null);
-  const [score, setScore] = useState(0);
-
-  // ============ RUTAS ============
-
-  // 1) Gracias
-  if (route.startsWith("#/gracias")) return <Gracias />;
-
-  // 2) Admin
-  if (route.startsWith("#/admin")) {
-    // Soporta #/admin y #/admin/dashboard
-    if (route === "#/admin" || route.startsWith("#/admin/dashboard")) {
-      return <AdminDashboard />;
-    }
-    // #/admin/leads
-    if (route.startsWith("#/admin/leads")) {
-      return <Leads />;
-    }
-  }
-
-  // 3) Simulador
-  if (route.startsWith("#/simular")) {
-    return (
-      <div className="min-h-screen" style={{ background: "var(--brand-bg)" }}>
-        {/* Header */}
-        <header className="max-w-6xl mx-auto px-4 py-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div
-              className="h-10 w-10 rounded-xl flex items-center justify-center text-white shadow-soft"
-              style={{
-                background:
-                  "linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))",
-              }}
-            >
-              <Home size={20} />
-            </div>
-            <div>
-              <h1 className="text-xl font-semibold" style={{ color: "var(--brand-text)" }}>
-                HabitaLibre
-              </h1>
-              <p className="text-xs text-muted">
-                Descubre cuánto puedes comprar en 2 minutos
-              </p>
-            </div>
-          </div>
-          <div className="hidden md:flex gap-3 text-xs text-muted">
-            <div className="flex items-center gap-2">
-              <ShieldCheck size={16} /> Datos protegidos
-            </div>
-            <div className="flex items-center gap-2">
-              <Calculator size={16} /> Progreso: {Math.max(0, Math.min(100, score))}%
-            </div>
-          </div>
-        </header>
-
-        {/* Hero */}
-        <Hero />
-
-        {/* Simulador + Resultado */}
-        <main className="max-w-6xl mx-auto px-4 pb-24 grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <section className="card">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold" style={{ color: "var(--brand-text)" }}>
-                Simulador de crédito
-              </h2>
-              <p className="text-sm text-muted">
-                Completa tus datos y calcula tu capacidad
-              </p>
-            </div>
-            <SimulatorWizard onResult={setResultado} onScoreChange={setScore} />
-          </section>
-
-          <aside className="card">
-            <ResultCard data={resultado} />
-          </aside>
-        </main>
-
-        {/* Footer */}
-        <footer className="max-w-6xl mx-auto px-4 pb-10 text-center text-xs text-muted">
-          <a className="underline hover:text-slate-700" href="#/privacidad">
-            Privacidad
-          </a>
-          <span className="mx-2">•</span>
-          <a className="underline hover:text-slate-700" href="#/terminos">
-            Términos
-          </a>
-          <span className="mx-2">•</span>
-          <a className="underline hover:text-slate-700" href="#/admin">
-            Admin
-          </a>
-        </footer>
+  return (
+    <div style={{
+      minHeight: "100vh",
+      display: "grid",
+      placeItems: "center",
+      background: "#f8fafc",
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+    }}>
+      <div style={{ textAlign: "center", maxWidth: 520 }}>
+        <h1 style={{ fontSize: 28, marginBottom: 12, color: "#0f172a" }}>
+          HabitaLibre Portal Reset 🧪
+        </h1>
+        <p style={{ marginBottom: 20, color: "#475569" }}>
+          Prueba con portal aislado y escudo anti click-through.
+        </p>
+        <button
+          onClick={() => setOpen(true)}
+          style={{
+            padding: "10px 18px",
+            borderRadius: 10,
+            border: "none",
+            background: "#4f46e5",
+            color: "white",
+            fontWeight: 600,
+            cursor: "pointer",
+            boxShadow: "0 2px 6px rgba(0,0,0,.12)",
+          }}
+        >
+          Ver mi resultado
+        </button>
       </div>
-    );
-  }
 
-  // 4) Landing por defecto
-  return <Landing />;
+      <LeadModalBare
+        open={open}
+        onClose={() => {
+          // arma el escudo ANTES de cerrar para evitar que el mouseup dispare nada abajo
+          armClickShield(500);
+          // cerramos un poco después para asegurar que el escudo ya está activo
+          setTimeout(() => setOpen(false), 60);
+        }}
+      />
+    </div>
+  );
 }
+
+export { isShieldActive }; // si luego lo quieres reutilizar en otros sitios
+

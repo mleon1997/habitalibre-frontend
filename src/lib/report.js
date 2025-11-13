@@ -3,10 +3,6 @@ import { jsPDF } from "jspdf";
 
 /**
  * Genera y descarga el PDF con el resumen de precalificación HabitaLibre.
- * - Badge con tipo de crédito (VIS/VIP/BIESS/Privada)
- * - Advertencias VIS/VIP
- * - Motivos de no elegibilidad por banco (cuando aplique)
- * - CTA con QR opcional (opts.qrDataUrl)
  *
  * @param {object} data    Respuesta de /precalificar (puede incluir data._echo con el payload enviado)
  * @param {object} cliente { nombre?: string }
@@ -68,7 +64,16 @@ export function generarPDFResumen(data = {}, cliente = {}, opts = {}) {
   };
   const fmtUSD = (n, d = 0) =>
     "$ " + (Number(n || 0)).toLocaleString("en-US", { maximumFractionDigits: d });
-  const fmtPct = (n, d = 1) => (Number(n || 0) * 100).toFixed(d) + " %";
+  const fmtPct = (n, d = 1) => {
+    const v = Number(n);
+    if (!Number.isFinite(v)) return "—";
+    return (v * 100).toFixed(d) + " %";
+  };
+
+  const num = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : undefined;
+  };
 
   // === HEADER con marca + logo + sello de tipo de crédito ===
   doc.setFillColor(brand.primary);
@@ -88,10 +93,7 @@ export function generarPDFResumen(data = {}, cliente = {}, opts = {}) {
   // Datos robustos
   const echo = data?._echo || {};
   const perfil = data?.perfil || {};
-  const num = (v) => {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : undefined;
-  };
+
   const ingreso =
     num(echo.ingresoNetoMensual) ??
     num(data.ingresoNetoMensual) ??
@@ -106,19 +108,24 @@ export function generarPDFResumen(data = {}, cliente = {}, opts = {}) {
   const tieneVivienda =
     typeof echo.tieneVivienda === "boolean"
       ? echo.tieneVivienda
-      : Boolean(perfil.tieneVivienda);
+      : (typeof perfil.tieneVivienda === "boolean" ? perfil.tieneVivienda : false);
 
-  // Badge tipo de crédito
-  const tipoCredito = String(data?.tipoCredito || "—");
+  // Badge tipo de crédito (usa productoElegido del backend)
+  const productoElegido = String(data?.productoElegido || "").toUpperCase();
+  const tipoCredito =
+    productoElegido.includes("VIS") ? "VIS" :
+    productoElegido.includes("VIP") ? "VIP" :
+    productoElegido.includes("BIESS") ? "BIESS" :
+    "Banca Privada";
+
   const badge = (() => {
     const map = {
       VIS: { text: "Crédito VIS", color: brand.vis },
       VIP: { text: "Crédito VIP", color: brand.vip },
       BIESS: { text: "Crédito BIESS", color: brand.biess },
       "Banca Privada": { text: "Banca Privada", color: brand.privada },
-      "—": { text: "Pendiente", color: brand.muted },
     };
-    return map[tipoCredito] || map["—"];
+    return map[tipoCredito] || map["Banca Privada"];
   })();
 
   const badgeX = p.x + 160 + 220;
@@ -133,7 +140,7 @@ export function generarPDFResumen(data = {}, cliente = {}, opts = {}) {
 
   let y = 112;
 
-  // === Límites VIS/VIP (para advertencias) ===
+  // === Límites VIS/VIP (para advertencias) — sincronizado con backend
   const CONSTS = {
     VIS_MAX_VALOR: 83660,
     VIP_MAX_VALOR: 107630,
@@ -145,7 +152,7 @@ export function generarPDFResumen(data = {}, cliente = {}, opts = {}) {
   const overVISIncome = ingreso > CONSTS.VIS_MAX_INGRESO;
   const overVIPIncome = ingreso > CONSTS.VIP_MAX_INGRESO;
 
-  // === Recomendación principal ===
+  // === Recomendación principal
   const recColors =
     tipoCredito === "VIS" || tipoCredito === "VIP"
       ? { fill: brand.successBg, stroke: brand.successStroke }
@@ -157,11 +164,11 @@ export function generarPDFResumen(data = {}, cliente = {}, opts = {}) {
 
   let recText = "Info: completa tus datos para obtener una recomendación precisa.";
   if (tipoCredito === "VIS")
-    recText = "Aprobable: crédito VIS al 4.99% y entrada mínima 5%. Requiere primera vivienda y proyecto aprobado por MIDUVI.";
+    recText = "Aprobable: crédito VIS (~4.88%–4.99%) y entrada mínima ~5%. Requiere primera vivienda y proyecto VIS aprobado por MIDUVI.";
   if (tipoCredito === "VIP")
-    recText = "Aprobable: crédito VIP al 4.99%. Solo para primera vivienda en proyectos VIP (MIDUVI).";
+    recText = "Aprobable: crédito VIP (~4.99%). Solo para primera vivienda en proyectos VIP (MIDUVI).";
   if (tipoCredito === "BIESS")
-    recText = "Aprobable: crédito hipotecario BIESS (desde 5.99% según segmento), sujeto a aportes y capacidad de pago.";
+    recText = "Aprobable: crédito hipotecario BIESS (tasa referencial según segmento), sujeto a aportes y capacidad de pago.";
   if (tipoCredito === "Banca Privada")
     recText = "Sugerido: banca privada (tasas típicas 8%–11%, entrada 10%–20%). Podemos ayudarte a comparar ofertas.";
 
@@ -169,7 +176,7 @@ export function generarPDFResumen(data = {}, cliente = {}, opts = {}) {
   T(recLines, p.x + 16, y + 48, 11, brand.text);
   y += recH + 12;
 
-  // === Resumen del solicitante ===
+  // === Resumen del solicitante
   const resumen = [
     `Ingreso neto: ${fmtUSD(ingreso, 0)}`,
     `Edad: ${perfil.edad ?? echo.edad ?? "—"} años`,
@@ -186,7 +193,7 @@ export function generarPDFResumen(data = {}, cliente = {}, opts = {}) {
   T(resumeLines, p.x + 16, y + 40, 10, brand.slate);
   y += resumeH + 12;
 
-  // === Advertencias VIS/VIP ===
+  // === Advertencias VIS/VIP
   const warnings = [];
   if (!tieneVivienda && inVISPrice && overVISIncome) {
     warnings.push(`Ingreso (~${fmtUSD(ingreso)}/mes) supera el máximo VIS (~${fmtUSD(CONSTS.VIS_MAX_INGRESO)}/mes). No aplica tasa 4.99% VIS.`);
@@ -214,7 +221,7 @@ export function generarPDFResumen(data = {}, cliente = {}, opts = {}) {
     y += alertH + 12;
   }
 
-  // === KPIs financieros ===
+  // === KPIs financieros (usa nombres del backend)
   const kpis = [
     ["Capacidad de pago", fmtUSD(data.capacidadPago, 0)],
     ["Monto préstamo máx.", fmtUSD(data.montoMaximo, 0)],
@@ -223,7 +230,7 @@ export function generarPDFResumen(data = {}, cliente = {}, opts = {}) {
     ["DTI con hipoteca", fmtPct(data.dtiConHipoteca, 1)],
     ["Cuota estimada", fmtUSD(data.cuotaEstimada, 0)],
     ["Stress (+2% tasa)", fmtUSD(data.cuotaStress, 0)],
-    ["Down p/80% LTV", fmtUSD(data?.requeridos?.downTo80 || 0, 0)],
+    ["Plazo (años)", String(Math.round((data.plazoMeses || 0) / 12) || "—")],
   ];
 
   const colW = (p.w - 16) / 2;
@@ -236,56 +243,69 @@ export function generarPDFResumen(data = {}, cliente = {}, opts = {}) {
     const row = Math.floor(i / 2);
     const x = p.x + col * (colW + gap);
     const yBox = y + row * (rowH + gap);
+    // salto de página si se pasa
+    if (yBox + rowH > page.h - page.margin - 80) {
+      doc.addPage();
+      y = page.margin;
+    }
     Box(x, yBox, colW, rowH, { fill: "#FFFFFF", stroke: brand.line });
     LabelValue(kpis[i][0], kpis[i][1], x + 14, yBox + 22);
     paintedRows = row + 1;
   }
   y += paintedRows * (rowH + gap) + 8;
 
-  // === Indicador visual de Riesgo HabitaLibre ===
-if (data.riesgoHabitaLibre) {
-  const riesgo = data.riesgoHabitaLibre.toLowerCase();
-  const colores = {
-    bajo: { fill: "#DCFCE7", stroke: "#22C55E", texto: "Bajo", colorTexto: "#166534" },
-    medio: { fill: "#FEF9C3", stroke: "#FACC15", texto: "Medio", colorTexto: "#92400E" },
-    alto: { fill: "#FEE2E2", stroke: "#EF4444", texto: "Alto", colorTexto: "#7F1D1D" },
-  };
+  // === Indicador visual de puntaje/riesgo (opcional)
+  const phl = data?.puntajeHabitaLibre;
+  if (phl && Number.isFinite(Number(phl.score))) {
+    const categoria = String(phl.categoria || "").toLowerCase();
+    const colores = {
+      alto: { fill: "#DCFCE7", stroke: "#22C55E", texto: "Alto", colorTexto: "#166534" },
+      medio: { fill: "#FEF9C3", stroke: "#FACC15", texto: "Medio", colorTexto: "#92400E" },
+      bajo: { fill: "#FEE2E2", stroke: "#EF4444", texto: "Bajo", colorTexto: "#7F1D1D" },
+    };
+    const tone = colores[categoria] || colores.medio;
+    const boxH = 60;
 
-  const c = colores[riesgo] || colores.medio;
-  const boxH = 60;
-  Box(p.x, y, p.w, boxH, { fill: c.fill, stroke: c.stroke });
+    if (y + boxH > page.h - page.margin - 60) {
+      doc.addPage();
+      y = page.margin;
+    }
+    Box(p.x, y, p.w, boxH, { fill: tone.fill, stroke: tone.stroke });
 
-  H("Riesgo HabitaLibre", p.x + 16, y + 22, 12, "bold", c.colorTexto);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(11);
-  doc.setTextColor("#1E293B");
-  doc.text("Estimación de riesgo crediticio referencial (sin consulta a buró).", p.x + 16, y + 40);
+    H("Puntaje HabitaLibre", p.x + 16, y + 22, 12, "bold", tone.colorTexto);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.setTextColor("#1E293B");
+    doc.text("Estimación referencial basada en LTV y DTI simulados.", p.x + 16, y + 40);
 
-  // Barra visual
-  const barX = p.x + p.w - 200;
-  const barY = y + 20;
-  const barW = 160;
-  const barH = 14;
+    // Barra visual
+    const barX = p.x + p.w - 200;
+    const barY = y + 20;
+    const barW = 160;
+    const barH = 14;
+    const score = Math.max(0, Math.min(100, Number(phl.score)));
 
-  doc.setDrawColor("#CBD5E1");
-  doc.setFillColor("#E2E8F0");
-  doc.roundedRect(barX, barY, barW, barH, 7, 7, "F");
-  doc.setFillColor(c.stroke);
-  const pct = riesgo === "bajo" ? 0.33 : riesgo === "medio" ? 0.66 : 1.0;
-  doc.roundedRect(barX, barY, barW * pct, barH, 7, 7, "F");
+    doc.setDrawColor("#CBD5E1");
+    doc.setFillColor("#E2E8F0");
+    doc.roundedRect(barX, barY, barW, barH, 7, 7, "F");
+    doc.setFillColor(tone.stroke);
+    doc.roundedRect(barX, barY, (barW * score) / 100, barH, 7, 7, "F");
 
-  // Etiqueta de nivel
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.setTextColor(c.colorTexto);
-  doc.text(c.texto.toUpperCase(), barX + barW + 10, barY + 10);
+    // Etiqueta
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(tone.colorTexto);
+    doc.text(`${tone.texto.toUpperCase()} · ${Math.round(score)}/100`, barX + barW + 10, barY + 10);
 
-  y += boxH + 12;
-}
+    y += boxH + 12;
+  }
 
-
-  // === Opciones bancarias (con motivos si no elegible) ===
+  // === Opciones bancarias (si existieran en data.opciones)
   if (Array.isArray(data.opciones) && data.opciones.length) {
+    if (y + 90 > page.h - page.margin) {
+      doc.addPage();
+      y = page.margin;
+    }
     H("Opciones bancarias referenciales", p.x, y + 4, 12, "bold");
     y += 18;
 
@@ -298,7 +318,6 @@ if (data.riesgoHabitaLibre) {
       // Motivos de no elegibilidad (si aplica)
       if (!o.elegible) {
         const razones = [];
-        // reglas esperadas desde scoring.mapearBancos: { ltvMax, dtiMax, minIngreso }
         const ltvMax = o?.reglas?.ltvMax;
         const dtiMax = o?.reglas?.dtiMax;
         const minIngreso = o?.reglas?.minIngreso;
@@ -309,12 +328,11 @@ if (data.riesgoHabitaLibre) {
         if (typeof dtiMax === "number" && typeof o.dti === "number" && o.dti > dtiMax + 1e-6) {
           razones.push(`• DTI supera ${Math.round(dtiMax * 100)}%`);
         }
-        // capacidad: cuando la cuota del banco no cabe en la capacidad calculada
         if (o.dentroDeCapacidad === false) {
           razones.push("• La cuota excede tu capacidad de pago");
         }
-        // ingreso mínimo del banco vs ingreso del perfil
-        if (typeof minIngreso === "number" && Number(perfil?.ingreso || 0) < minIngreso) {
+        const ingresoPerfil = num(perfil?.ingreso || echo?.ingresoNetoMensual || ingreso);
+        if (typeof minIngreso === "number" && Number(ingresoPerfil || 0) < minIngreso) {
           razones.push(`• Ingreso mínimo requerido: ${fmtUSD(minIngreso, 0)}/mes`);
         }
 
@@ -325,12 +343,20 @@ if (data.riesgoHabitaLibre) {
           y += lines.length * 11 + 6;
         }
       }
+
+      if (y > page.h - page.margin - 80) {
+        doc.addPage();
+        y = page.margin;
+      }
     });
   }
 
-  // === CTA + QR opcional ===
-  y += 18;
-  const ctaH = opts?.qrDataUrl ? 100 : 64; // más alto si hay QR
+  // === CTA + QR opcional
+  const ctaH = opts?.qrDataUrl ? 100 : 64;
+  if (y + ctaH + 100 > page.h - page.margin) {
+    doc.addPage();
+    y = page.margin;
+  }
   Box(p.x, y, p.w, ctaH, { fill: "#F1F5F9", stroke: brand.line });
   H("¿Quieres que gestionemos tu crédito por ti?", p.x + 16, y + 24, 12, "bold");
   T(
@@ -341,22 +367,24 @@ if (data.riesgoHabitaLibre) {
     brand.slate
   );
 
-  // QR a la derecha (si viene)
   if (opts?.qrDataUrl) {
-    const qrSize = 80; // px
+    const qrSize = 80;
     const qrX = p.x + p.w - qrSize - 16;
     const qrY = y + 10;
     try {
       doc.addImage(opts.qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
       T("Escanéame", qrX + 10, qrY + qrSize + 12, 9, brand.muted);
     } catch {
-      // si falla el QR, no rompemos el render
+      // ignore
     }
   }
-
   y += ctaH + 12;
 
-  // === Footer / Legal ===
+  // === Footer / Legal
+  if (y + 60 > page.h - page.margin) {
+    doc.addPage();
+    y = page.margin;
+  }
   doc.setDrawColor(brand.line);
   doc.line(p.x, y, p.x + p.w, y);
   y += 14;
@@ -374,9 +402,16 @@ if (data.riesgoHabitaLibre) {
   T("www.habitalibre.com", p.x, 828, 9, brand.muted);
 
   const filename = `HL_Resumen_${(cliente?.nombre || "cliente").replace(/\s+/g, "_")}.pdf`;
-  doc.save(filename);
+  try {
+    doc.save(filename);
+  } catch (e) {
+    // Fallback para navegadores raros
+    const blob = doc.output("blob");
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 }
-
-
-  
-

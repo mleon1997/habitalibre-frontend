@@ -1,8 +1,39 @@
 // src/components/LeadDrawer.jsx
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
+/** Detecta si estamos en contexto de administración.
+ *  - /admin, /leads, /admindashboard (ruta)
+ *  - hash routing (#/admin, etc.)
+ *  - query ?admin=1 como “llave de paso” opcional
+ */
+function isAdminContext() {
+  if (typeof window === "undefined") return false;
+  try {
+    const href = String(window.location.href || "").toLowerCase();
+    const path = String(window.location.pathname || "").toLowerCase();
+    const hash = String(window.location.hash || "").toLowerCase();
+
+    if (
+      path.startsWith("/admin") ||
+      path.startsWith("/leads") ||
+      path.includes("admindashboard") ||
+      hash.includes("#/admin") ||
+      hash.includes("#/leads") ||
+      href.includes("admin=1")
+    ) {
+      return true;
+    }
+  } catch {
+    /* noop */
+  }
+  return false;
+}
+
 export default function LeadDrawer({ open, lead, onClose, onSave }) {
+  // 🔒 Nunca renderizar en la parte pública
+  if (!isAdminContext()) return null;
+
   const [localLead, setLocalLead] = useState(lead || {});
   const [saving, setSaving] = useState(false);
 
@@ -10,6 +41,7 @@ export default function LeadDrawer({ open, lead, onClose, onSave }) {
     setLocalLead(lead || {});
   }, [lead]);
 
+  // Si no está open o no hay lead válido, no mostrar
   if (!open || !lead) return null;
 
   const handleChange = (field, value) => {
@@ -19,11 +51,11 @@ export default function LeadDrawer({ open, lead, onClose, onSave }) {
   const handleSave = async () => {
     try {
       setSaving(true);
-      await onSave(localLead);
-      onClose();
+      await onSave?.(localLead);
+      onClose?.();
     } catch (e) {
+      console.error("❌ Error guardando lead:", e);
       alert("❌ Error guardando cambios");
-      console.error(e);
     } finally {
       setSaving(false);
     }
@@ -32,12 +64,12 @@ export default function LeadDrawer({ open, lead, onClose, onSave }) {
   return (
     <AnimatePresence>
       <motion.div
-        key="drawer"
+        key="hl-admin-drawer"
         initial={{ x: "100%" }}
         animate={{ x: 0 }}
         exit={{ x: "100%" }}
-        transition={{ duration: 0.3 }}
-        className="fixed top-0 right-0 h-full w-full sm:w-[400px] bg-white shadow-2xl z-[200] flex flex-col"
+        transition={{ duration: 0.28 }}
+        className="fixed top-0 right-0 h-full w-full sm:w-[420px] bg-white shadow-2xl z-[200] flex flex-col"
       >
         {/* Header */}
         <div className="px-5 py-4 border-b flex justify-between items-center">
@@ -48,6 +80,7 @@ export default function LeadDrawer({ open, lead, onClose, onSave }) {
             className="text-slate-500 hover:text-slate-700"
             onClick={onClose}
             disabled={saving}
+            aria-label="Cerrar"
           >
             ✕
           </button>
@@ -55,18 +88,18 @@ export default function LeadDrawer({ open, lead, onClose, onSave }) {
 
         {/* Content */}
         <div className="p-5 flex-1 overflow-y-auto space-y-4 text-sm">
-          <Field label="Correo">{localLead.email || "—"}</Field>
-          <Field label="Teléfono">{localLead.telefono || "—"}</Field>
-          <Field label="Ciudad">{localLead.ciudad || "—"}</Field>
-          <Field label="Canal">{localLead.canal || "—"}</Field>
-          <Field label="Afinidad">{localLead.afinidad || "—"}</Field>
+          <Field label="Correo">{localLead?.email || "—"}</Field>
+          <Field label="Teléfono">{localLead?.telefono || "—"}</Field>
+          <Field label="Ciudad">{localLead?.ciudad || "—"}</Field>
+          <Field label="Canal">{localLead?.canal || "—"}</Field>
+          <Field label="Afinidad">{localLead?.afinidad || "—"}</Field>
 
           {/* Etapa */}
           <div>
             <label className="block text-xs text-slate-500 mb-1">Etapa</label>
             <select
               className="w-full rounded-lg border px-3 py-2"
-              value={localLead.etapa || ""}
+              value={localLead?.etapa || "Nuevo"}
               onChange={(e) => handleChange("etapa", e.target.value)}
             >
               <option>Nuevo</option>
@@ -82,8 +115,8 @@ export default function LeadDrawer({ open, lead, onClose, onSave }) {
             <textarea
               rows={5}
               className="w-full rounded-lg border px-3 py-2"
-              placeholder="Ej. Cliente interesado, enviar simulación por email..."
-              value={localLead.notas || ""}
+              placeholder="Ej. Cliente interesado, enviar simulación por email…"
+              value={localLead?.notas || ""}
               onChange={(e) => handleChange("notas", e.target.value)}
             />
           </div>
