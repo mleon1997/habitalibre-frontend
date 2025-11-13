@@ -8,20 +8,24 @@ export default function SimulatorWizard({ onResult }) {
 
   const [step, setStep] = useState(1);
 
-  // --- Estados de formulario ---
+  // Paso 1
   const [nacionalidad, setNacionalidad] = useState("ecuatoriana");
   const [estadoCivil, setEstadoCivil] = useState("soltero");
+
+  // Paso 2
   const [ingreso, setIngreso] = useState(1200);
   const [ingresoPareja, setIngresoPareja] = useState(0);
   const [deudas, setDeudas] = useState(300);
+
+  // Paso 3
   const [valor, setValor] = useState(90000);
   const [entrada, setEntrada] = useState(15000);
+
+  // Paso 4
   const [edad, setEdad] = useState(30);
   const [afiliadoIESS, setAfiliadoIESS] = useState(false);
-
-  // NUEVOS CAMPOS IESS
-  const [aportesTotales, setAportesTotales] = useState(0);
-  const [aportesConsecutivos, setAportesConsecutivos] = useState(0);
+  const [iessAportesTotales, setIessAportesTotales] = useState(0);
+  const [iessAportesConsecutivos, setIessAportesConsecutivos] = useState(0);
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
@@ -39,13 +43,21 @@ export default function SimulatorWizard({ onResult }) {
     return { loan };
   }, [valor, entrada]);
 
+  // ---------- Validaciones por paso ----------
   function validate(s) {
-    if (s === 2 && ingresoUsado < 400)
+    if (s === 2 && (Number(ingreso) || 0) < 400)
       return "El ingreso debe ser ≥ $400.";
     if (s === 3 && (Number(valor) || 0) < 30000)
       return "El valor mínimo de vivienda es $30.000.";
     if (s === 4 && (Number(edad) < 21 || Number(edad) > 75))
-      return "Edad fuera de rango.";
+      return "La edad debe estar entre 21 y 75 años.";
+    if (
+      s === 4 &&
+      afiliadoIESS &&
+      (Number(iessAportesTotales) <= 0 || Number(iessAportesConsecutivos) <= 0)
+    ) {
+      return "Si estás afiliado al IESS, indica tus meses de aportes totales y consecutivos.";
+    }
     return null;
   }
 
@@ -55,21 +67,23 @@ export default function SimulatorWizard({ onResult }) {
     setErr("");
     setStep((s) => s + 1);
   };
+
   const back = () => setStep((s) => Math.max(1, s - 1));
 
+  // ---------- Payload hacia backend ----------
   function buildEntrada() {
     return {
       nacionalidad,
       estadoCivil,
       edad,
       afiliadoIESS,
-      iessAportesTotales: Number(aportesTotales || 0),
-      iessAportesConsecutivos: Number(aportesConsecutivos || 0),
-      ingresoNetoMensual: Number(ingreso || 0),
-      ingresoPareja: Number(ingresoPareja || 0),
-      otrasDeudasMensuales: Number(deudas || 0),
-      valorVivienda: Number(valor || 0),
-      entradaDisponible: Number(entrada || 0),
+      ingresoNetoMensual: ingresoUsado,
+      ingresoPareja: esParejaFormal ? Number(ingresoPareja || 0) : 0,
+      otrasDeudasMensuales: deudas,
+      valorVivienda: valor,
+      entradaDisponible: entrada,
+      iessAportesTotales: Number(iessAportesTotales || 0),
+      iessAportesConsecutivos: Number(iessAportesConsecutivos || 0),
       origen: "simulador",
     };
   }
@@ -77,12 +91,15 @@ export default function SimulatorWizard({ onResult }) {
   async function handleCalcular() {
     const e = validate(4);
     if (e) return setErr(e);
+
     setLoading(true);
     try {
       const entradaPayload = buildEntrada();
       const res = await precalificar(entradaPayload);
+
       onResult?.(res);
-      openLead(res); // abre el único modal global
+      // abre el modal de lead con el resultado
+      openLead(res);
     } catch (ex) {
       console.error(ex);
       setErr("No se pudo calcular tu resultado ahora.");
@@ -99,7 +116,13 @@ export default function SimulatorWizard({ onResult }) {
       {children}
     </div>
   );
-  const Input = (p) => <input {...p} className="input w-full rounded-lg border px-3 py-2" />;
+
+  const Input = (props) => (
+    <input
+      {...props}
+      className="input w-full rounded-xl border px-3 py-2 text-sm"
+    />
+  );
 
   return (
     <div>
@@ -120,7 +143,7 @@ export default function SimulatorWizard({ onResult }) {
         <div>
           <Field label="Nacionalidad">
             <select
-              className="input w-full rounded-lg border px-3 py-2"
+              className="input w-full rounded-xl border px-3 py-2 text-sm"
               value={nacionalidad}
               onChange={(e) => setNacionalidad(e.target.value)}
             >
@@ -130,7 +153,7 @@ export default function SimulatorWizard({ onResult }) {
           </Field>
           <Field label="Estado civil">
             <select
-              className="input w-full rounded-lg border px-3 py-2"
+              className="input w-full rounded-xl border px-3 py-2 text-sm"
               value={estadoCivil}
               onChange={(e) => setEstadoCivil(e.target.value)}
             >
@@ -155,18 +178,14 @@ export default function SimulatorWizard({ onResult }) {
             <Input
               type="number"
               value={ingreso}
-              onChange={(e) =>
-                setIngreso(Number(e.target.value || 0))
-              }
+              onChange={(e) => setIngreso(Number(e.target.value || 0))}
             />
           </Field>
           <Field label="Deudas mensuales (USD)">
             <Input
               type="number"
               value={deudas}
-              onChange={(e) =>
-                setDeudas(Number(e.target.value || 0))
-              }
+              onChange={(e) => setDeudas(Number(e.target.value || 0))}
             />
           </Field>
           {esParejaFormal && (
@@ -199,18 +218,14 @@ export default function SimulatorWizard({ onResult }) {
             <Input
               type="number"
               value={valor}
-              onChange={(e) =>
-                setValor(Number(e.target.value || 0))
-              }
+              onChange={(e) => setValor(Number(e.target.value || 0))}
             />
           </Field>
           <Field label="Entrada disponible (USD)">
             <Input
               type="number"
               value={entrada}
-              onChange={(e) =>
-                setEntrada(Number(e.target.value || 0))
-              }
+              onChange={(e) => setEntrada(Number(e.target.value || 0))}
             />
           </Field>
           <div className="mt-4 flex justify-between">
@@ -232,50 +247,39 @@ export default function SimulatorWizard({ onResult }) {
             <Input
               type="number"
               value={edad}
-              onChange={(e) =>
-                setEdad(Number(e.target.value || 0))
-              }
+              onChange={(e) => setEdad(Number(e.target.value || 0))}
             />
           </Field>
           <Field label="Afiliado al IESS">
             <select
-              className="input w-full rounded-lg border px-3 py-2"
+              className="input w-full rounded-xl border px-3 py-2 text-sm"
               value={afiliadoIESS ? "sí" : "no"}
-              onChange={(e) =>
-                setAfiliadoIESS(e.target.value === "sí")
-              }
+              onChange={(e) => setAfiliadoIESS(e.target.value === "sí")}
             >
               <option value="no">No</option>
               <option value="sí">Sí</option>
             </select>
           </Field>
 
-          {/* 🔹 SOLO si es afiliado mostramos los campos de aportes */}
           {afiliadoIESS && (
             <>
               <Field label="Aportes IESS totales (meses)">
                 <Input
                   type="number"
-                  value={aportesTotales}
+                  value={iessAportesTotales}
                   onChange={(e) =>
-                    setAportesTotales(e.target.value)
+                    setIessAportesTotales(Number(e.target.value || 0))
                   }
                 />
-                <div className="text-xs text-slate-500 mt-1">
-                  Para BIESS se suelen pedir al menos 36 meses totales.
-                </div>
               </Field>
               <Field label="Aportes IESS consecutivos (meses)">
                 <Input
                   type="number"
-                  value={aportesConsecutivos}
+                  value={iessAportesConsecutivos}
                   onChange={(e) =>
-                    setAportesConsecutivos(e.target.value)
+                    setIessAportesConsecutivos(Number(e.target.value || 0))
                   }
                 />
-                <div className="text-xs text-slate-500 mt-1">
-                  Para BIESS se suelen pedir al menos 13 consecutivos.
-                </div>
               </Field>
             </>
           )}
@@ -308,3 +312,4 @@ export default function SimulatorWizard({ onResult }) {
     </div>
   );
 }
+
