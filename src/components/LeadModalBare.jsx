@@ -3,9 +3,8 @@ import React, { useState } from "react";
 import { useLeadCapture } from "../context/LeadCaptureContext.jsx";
 
 export default function LeadModalBare() {
-  const { modalOpen, closeLead, lastResult } = useLeadCapture?.() || {};
+  const { modalOpen, closeLead, lastResult } = useLeadCapture();
 
-  // Si el modal no debe estar abierto, no renderizamos nada
   if (!modalOpen) return null;
 
   const [nombre, setNombre] = useState("");
@@ -21,11 +20,11 @@ export default function LeadModalBare() {
     e.preventDefault();
     setErr("");
 
-    // Validaciones mínimas
     if (!nombre.trim() || !email.trim()) {
       setErr("Por favor completa tu nombre y email.");
       return;
     }
+
     if (!aceptaTerminos) {
       setErr("Debes aceptar los términos y privacidad para continuar.");
       return;
@@ -34,8 +33,7 @@ export default function LeadModalBare() {
     try {
       setLoading(true);
 
-      // 👉 Aquí podrías llamar a tu backend real para guardar el lead.
-      // Ejemplo (solo demo por ahora):
+      // ⬇️ Aquí luego conectamos a tu backend real
       console.log("Lead capturado (demo):", {
         nombre,
         email,
@@ -46,10 +44,9 @@ export default function LeadModalBare() {
         lastResult,
       });
 
-      // Cerrar modal
-      closeLead?.();
+      closeLead();
 
-      // Navegar a la página de gracias (HashRouter)
+      // HashRouter → navegamos manualmente
       window.location.hash = "#/gracias";
     } catch (ex) {
       console.error(ex);
@@ -62,7 +59,7 @@ export default function LeadModalBare() {
   return (
     <div className="hl-modal-overlay">
       <div className="hl-modal-panel relative">
-        {/* Botón cerrar */}
+        {/* Cerrar */}
         <button
           type="button"
           onClick={closeLead}
@@ -77,8 +74,8 @@ export default function LeadModalBare() {
               ESTÁS A 1 PASO DE VER TU RESULTADO
             </p>
             <h2 className="text-2xl md:text-[28px] font-semibold text-slate-900 leading-snug">
-              Déjanos tus datos y te mostramos tu mejor opción de
-              crédito al instante
+              Déjanos tus datos y te mostramos tu mejor opción de crédito al
+              instante
             </h2>
           </div>
 
@@ -106,11 +103,12 @@ export default function LeadModalBare() {
             </div>
           </div>
 
-          {/* Teléfono + Ciudad */}
+          {/* Teléfono + ciudad */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="label">
-                Teléfono <span className="text-xs text-slate-400">(opcional)</span>
+                Teléfono{" "}
+                <span className="text-xs text-slate-400">(opcional)</span>
               </label>
               <input
                 type="tel"
@@ -122,7 +120,8 @@ export default function LeadModalBare() {
             </div>
             <div>
               <label className="label">
-                Ciudad <span className="text-xs text-slate-400">(opcional)</span>
+                Ciudad{" "}
+                <span className="text-xs text-slate-400">(opcional)</span>
               </label>
               <input
                 type="text"
@@ -134,7 +133,7 @@ export default function LeadModalBare() {
             </div>
           </div>
 
-          {/* Checkboxes */}
+          {/* Checks */}
           <div className="space-y-2 text-[13px] text-slate-700">
             <label className="flex items-start gap-2">
               <input
@@ -183,7 +182,6 @@ export default function LeadModalBare() {
             >
               Ver más tarde
             </button>
-
             <button
               type="submit"
               className="btn-primary w-full md:w-auto"
@@ -197,3 +195,4 @@ export default function LeadModalBare() {
     </div>
   );
 }
+

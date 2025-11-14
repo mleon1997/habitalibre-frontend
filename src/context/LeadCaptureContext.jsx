@@ -1,47 +1,36 @@
 // src/context/LeadCaptureContext.jsx
 import React, {
   createContext,
+  useCallback,
   useContext,
   useState,
-  useCallback,
 } from "react";
-import ReactDOM from "react-dom";
-import LeadModalBare from "../components/LeadModalBare.jsx";
 
 const LeadCaptureContext = createContext(null);
 
 export function LeadCaptureProvider({ children }) {
-  const [open, setOpen] = useState(false);
-  const [resultado, setResultado] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [lastResult, setLastResult] = useState(null);
 
-  const openLead = useCallback((dataResultado) => {
-    setResultado(dataResultado || null);
-    setOpen(true);
+  const openLead = useCallback((result) => {
+    setLastResult(result || null);
+    setModalOpen(true);
   }, []);
 
   const closeLead = useCallback(() => {
-    setOpen(false);
+    setModalOpen(false);
   }, []);
 
-  const modal = open
-    ? ReactDOM.createPortal(
-        <div className="hl-modal-overlay">
-          <div className="hl-modal-panel">
-            <LeadModalBare
-              open={open}
-              onClose={closeLead}
-              dataResultado={resultado}
-            />
-          </div>
-        </div>,
-        document.body
-      )
-    : null;
+  const value = {
+    modalOpen,
+    lastResult,
+    openLead,
+    closeLead,
+  };
 
   return (
-    <LeadCaptureContext.Provider value={{ openLead, closeLead }}>
+    <LeadCaptureContext.Provider value={value}>
       {children}
-      {modal}
     </LeadCaptureContext.Provider>
   );
 }
