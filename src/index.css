@@ -1,21 +1,40 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* ===========================================================
+   1) IMPORTS — SIEMPRE PRIMERO
+=========================================================== */
 
-/* Fuente oficial */
 @import "@fontsource/plus-jakarta-sans/400.css";
 @import "@fontsource/plus-jakarta-sans/600.css";
 @import "@fontsource/plus-jakarta-sans/700.css";
 
+/* ===========================================================
+   2) TAILWIND
+=========================================================== */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===========================================================
+   3) VARIABLES GLOBALES
+=========================================================== */
+
 :root {
-  --ring-brand: rgba(41,84,255,.35);
+  --ring-brand: rgba(41, 84, 255, 0.35);
 }
 
-html, body {
+/* ===========================================================
+   4) BASE TYPOGRAPHY
+=========================================================== */
+
+html,
+body {
   @apply bg-white text-slate-900 font-sans;
 }
 
-/* ====== Componentes reutilizables ====== */
+/* ===========================================================
+   5) COMPONENTES PERSONALIZADOS
+=========================================================== */
+
 @layer components {
   .card {
     @apply bg-white rounded-2xl shadow-soft border border-white;
@@ -27,19 +46,19 @@ html, body {
 
   .btn-primary {
     @apply inline-flex items-center justify-center rounded-xl bg-brand-600 text-white
-           px-5 py-3 font-semibold shadow-soft transition-transform
-           hover:scale-[1.02] hover:bg-brand-700 active:scale-[.98] focus:outline-none;
+      px-5 py-3 font-semibold shadow-soft transition-transform
+      hover:scale-[1.02] hover:bg-brand-700 active:scale-[.98] focus:outline-none;
   }
 
   .btn-secondary {
     @apply inline-flex items-center justify-center rounded-xl border border-brand-600 text-brand-700
-           px-5 py-3 font-semibold bg-white hover:bg-brand-50 transition focus:outline-none;
+      px-5 py-3 font-semibold bg-white hover:bg-brand-50 transition focus:outline-none;
   }
 
   .input {
     @apply w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5
-           text-slate-900 placeholder:text-slate-400
-           focus:outline-none focus:ring-4 focus:ring-brand-100 focus:border-brand-600;
+      text-slate-900 placeholder:text-slate-400
+      focus:outline-none focus:ring-4 focus:ring-brand-100 focus:border-brand-600;
   }
 
   .label {
@@ -47,20 +66,35 @@ html, body {
   }
 }
 
-/* Foco accesible */
+/* ===========================================================
+   6) FOCUS ACCESIBLE
+=========================================================== */
+
 *:focus-visible {
   box-shadow: 0 0 0 3px var(--ring-brand);
   outline: none;
 }
 
-/* ===== Modal (portal) animations & stability ===== */
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.animate-fadeInUp { animation: fadeInUp .25s ease-out; }
+/* ===========================================================
+   7) MODAL (PORTAL) — EFECTO PRO
+=========================================================== */
 
-/* Overlay robusto: evita clics al fondo, bloquea scroll y glitches */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.25s ease-out;
+}
+
+/* Overlay del modal */
 .hl-modal-overlay {
   position: fixed;
   inset: 0;
@@ -68,25 +102,43 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0,0,0,.5);
-  overscroll-behavior: contain; /* evita rebotes que re-renderizan */
+  background: rgba(0, 0, 0, 0.5);
+  overscroll-behavior: contain;
 }
 
 /* Panel del modal */
 .hl-modal-panel {
   width: 100%;
-  max-width: 40rem; /* 640px */
+  max-width: 40rem;
   background: #fff;
   border-radius: 1rem;
-  border: 1px solid rgba(15,23,42,.08);
+  border: 1px solid rgba(15, 23, 42, 0.08);
   box-shadow:
-    0 10px 15px -3px rgba(0,0,0,.1),
-    0 4px 6px -2px rgba(0,0,0,.05);
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
   padding: 1.5rem;
-  animation: fadeInUp .25s ease-out both;
+  animation: fadeInUp 0.25s ease-out both;
+
+  /* 👇 Corrección del contraste */
+  color: #0f172a;
 }
 
-/* En móviles, el modal sube desde abajo */
+/* Texto completo dentro del modal: visibles todos */
+.hl-modal-panel label,
+.hl-modal-panel p,
+.hl-modal-panel span,
+.hl-modal-panel input,
+.hl-modal-panel textarea {
+  color: #0f172a;
+}
+
+/* Placeholders */
+.hl-modal-panel input::placeholder,
+.hl-modal-panel textarea::placeholder {
+  color: #9ca3af;
+}
+
+/* Mobile: modal desliza desde abajo */
 @media (max-width: 640px) {
   .hl-modal-overlay {
     align-items: flex-end;

@@ -1,298 +1,199 @@
 // src/components/LeadModalBare.jsx
-// src/components/LeadModalBare.jsx
-import React, { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { crearLead } from "../lib/api"; // <- usa tu helper actual
+import React, { useState } from "react";
+import { useLeadCapture } from "../context/LeadCaptureContext.jsx";
 
-const overlayRootId = "hl-portal-root";
+export default function LeadModalBare() {
+  const { modalOpen, closeLead, lastResult } = useLeadCapture?.() || {};
 
-export default function LeadModalBare({ open, onClose }) {
-  const [mounted, setMounted] = useState(false);
+  // Si el modal no debe estar abierto, no renderizamos nada
+  if (!modalOpen) return null;
 
-  // form state
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [telefono, setTelefono] = useState("");
   const [ciudad, setCiudad] = useState("");
-
+  const [aceptaTerminos, setAceptaTerminos] = useState(false);
+  const [aceptaCompartir, setAceptaCompartir] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [ok, setOk] = useState(false);
-  const [error, setError] = useState("");
-
-  // evita doble submit accidental
-  const sentRef = useRef(false);
-
-  // montar/asegurar único portal
-  useEffect(() => {
-    let host = document.getElementById(overlayRootId);
-    if (!host) {
-      host = document.createElement("div");
-      host.id = overlayRootId;
-      document.body.appendChild(host);
-    }
-    setMounted(true);
-
-    // limpiar formulario cuando se cierra
-    if (!open) {
-      setNombre("");
-      setEmail("");
-      setTelefono("");
-      setCiudad("");
-      setLoading(false);
-      setOk(false);
-      setError("");
-      sentRef.current = false;
-    }
-  }, [open]);
-
-  // bloquear scroll de fondo cuando está abierto
-  useEffect(() => {
-    if (!open) return;
-    const { overflow } = document.body.style;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = overflow || "";
-    };
-  }, [open]);
-
-  if (!open || !mounted) return null;
-
-  const host = document.getElementById(overlayRootId);
-  if (!host) return null;
-
-  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((email || "").trim());
-  const nombreOk = (nombre || "").trim().length >= 2;
+  const [err, setErr] = useState("");
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setError("");
+    setErr("");
 
-    if (!nombreOk) return setError("Ingresa tu nombre (2+ caracteres).");
-    if (!emailOk) return setError("Correo inválido.");
-    if (sentRef.current) return;
+    // Validaciones mínimas
+    if (!nombre.trim() || !email.trim()) {
+      setErr("Por favor completa tu nombre y email.");
+      return;
+    }
+    if (!aceptaTerminos) {
+      setErr("Debes aceptar los términos y privacidad para continuar.");
+      return;
+    }
 
     try {
       setLoading(true);
 
-      const payload = {
-        nombre: nombre.trim(),
-        email: email.trim(),
-        telefono: (telefono || "").trim(),
-        ciudad: (ciudad || "").trim(),
-        canal: "WhatsApp",
-        aceptaTerminos: true,
-        aceptaCompartir: true,
-        aceptaMarketing: false,
-        origen: "portal-reset",
-        // puedes adjuntar resultado si lo tienes:
-        resultado: null,
-      };
+      // 👉 Aquí podrías llamar a tu backend real para guardar el lead.
+      // Ejemplo (solo demo por ahora):
+      console.log("Lead capturado (demo):", {
+        nombre,
+        email,
+        telefono,
+        ciudad,
+        aceptaTerminos,
+        aceptaCompartir,
+        lastResult,
+      });
 
-      console.log("[LeadModal] Enviando payload:", payload);
-      const resp = await crearLead(payload);
-      console.log("[LeadModal] Respuesta crearLead:", resp);
+      // Cerrar modal
+      closeLead?.();
 
-      if (!resp?.ok) {
-        throw new Error(resp?.error || "No se pudo guardar el lead.");
-      }
-
-      sentRef.current = true;
-      setOk(true); // no cerramos automáticamente
-    } catch (err) {
-      console.error("❌ Error crearLead:", err);
-      setError(err?.message || "No se pudo enviar tu información. Inténtalo nuevamente.");
+      // Navegar a la página de gracias (HashRouter)
+      window.location.hash = "#/gracias";
+    } catch (ex) {
+      console.error(ex);
+      setErr("No pudimos guardar tus datos. Intenta nuevamente.");
     } finally {
       setLoading(false);
     }
   }
 
-  function handleOverlayClick(e) {
-    // anti click-through: solo cierra si haces click DIRECTO en el overlay
-    if (e.target === e.currentTarget) onClose?.();
-  }
+  return (
+    <div className="hl-modal-overlay">
+      <div className="hl-modal-panel relative">
+        {/* Botón cerrar */}
+        <button
+          type="button"
+          onClick={closeLead}
+          className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+        >
+          ✕
+        </button>
 
-  return createPortal(
-    <div
-      onClick={handleOverlayClick}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(15, 23, 42, 0.55)",
-        display: "grid",
-        placeItems: "center",
-        zIndex: 9999,
-      }}
-      aria-modal="true"
-      role="dialog"
-    >
-      <div
-        style={{
-          width: "min(720px, 92vw)",
-          background: "#fff",
-          borderRadius: 16,
-          boxShadow: "0 20px 60px rgba(0,0,0,.25)",
-          padding: 24,
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-          <h2 style={{ margin: 0, fontSize: 28, lineHeight: "32px" }}>
-            🎉 ¡Estás a 1 paso de ver tu resultado!
-          </h2>
-          <button
-            onClick={onClose}
-            aria-label="Cerrar"
-            style={{
-              border: 0,
-              background: "transparent",
-              fontSize: 20,
-              cursor: "pointer",
-              color: "#334155",
-            }}
-          >
-            ×
-          </button>
-        </div>
-
-        {!ok ? (
-          <>
-            <p style={{ marginTop: 6, color: "#475569" }}>
-              Déjanos tus datos y te mostramos tu mejor opción al instante.
+        <form onSubmit={handleSubmit} className="space-y-5 pt-4">
+          <div className="space-y-1">
+            <p className="text-[11px] font-semibold tracking-[.25em] text-slate-400">
+              ESTÁS A 1 PASO DE VER TU RESULTADO
             </p>
+            <h2 className="text-2xl md:text-[28px] font-semibold text-slate-900 leading-snug">
+              Déjanos tus datos y te mostramos tu mejor opción de
+              crédito al instante
+            </h2>
+          </div>
 
-            <form onSubmit={handleSubmit} style={{ marginTop: 12 }}>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: 12,
-                }}
-              >
-                <input
-                  placeholder="Nombre y apellido"
-                  className="hl-input"
-                  value={nombre}
-                  onChange={(e) => setNombre(e.target.value)}
-                />
-                <input
-                  placeholder="Correo electrónico"
-                  className="hl-input"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  type="email"
-                />
-                <input
-                  placeholder="WhatsApp / Teléfono"
-                  className="hl-input"
-                  value={telefono}
-                  onChange={(e) => setTelefono(e.target.value)}
-                />
-                <input
-                  placeholder="Ciudad"
-                  className="hl-input"
-                  value={ciudad}
-                  onChange={(e) => setCiudad(e.target.value)}
-                />
-              </div>
-
-              {error && (
-                <div
-                  style={{
-                    marginTop: 12,
-                    padding: "10px 12px",
-                    borderRadius: 10,
-                    background: "#fef2f2",
-                    color: "#991b1b",
-                    border: "1px solid #fecaca",
-                    fontSize: 14,
-                  }}
-                >
-                  {error}
-                </div>
-              )}
-
-              <div style={{ marginTop: 18, display: "flex", justifyContent: "flex-end", gap: 12 }}>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="hl-btn-secondary"
-                  disabled={loading}
-                >
-                  Cancelar
-                </button>
-                <button type="submit" className="hl-btn-primary" disabled={loading}>
-                  {loading ? "Enviando…" : "Ver mi resultado"}
-                </button>
-              </div>
-            </form>
-          </>
-        ) : (
-          <div style={{ textAlign: "center", padding: "18px 6px 6px" }}>
-            <div
-              style={{
-                width: 56,
-                height: 56,
-                margin: "0 auto 8px",
-                borderRadius: "50%",
-                background: "#ecfeff",
-                display: "grid",
-                placeItems: "center",
-                fontSize: 28,
-                color: "#06b6d4",
-              }}
-            >
-              ✅
+          {/* Nombre + Email */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="label">Nombre completo</label>
+              <input
+                type="text"
+                className="input"
+                placeholder="Ej. Juan Pérez"
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+              />
             </div>
-            <h3 style={{ margin: "4px 0 6px" }}>¡Listo! Guardamos tus datos.</h3>
-            <p style={{ color: "#475569", marginBottom: 14 }}>
-              Te enviaremos tu resumen por correo. Puedes cerrar este mensaje para continuar.
+            <div>
+              <label className="label">Email</label>
+              <input
+                type="email"
+                className="input"
+                placeholder="tucorreo@dominio.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Teléfono + Ciudad */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="label">
+                Teléfono <span className="text-xs text-slate-400">(opcional)</span>
+              </label>
+              <input
+                type="tel"
+                className="input"
+                placeholder="+593 ..."
+                value={telefono}
+                onChange={(e) => setTelefono(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="label">
+                Ciudad <span className="text-xs text-slate-400">(opcional)</span>
+              </label>
+              <input
+                type="text"
+                className="input"
+                placeholder="Quito, Guayaquil, etc."
+                value={ciudad}
+                onChange={(e) => setCiudad(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Checkboxes */}
+          <div className="space-y-2 text-[13px] text-slate-700">
+            <label className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                checked={aceptaTerminos}
+                onChange={(e) => setAceptaTerminos(e.target.checked)}
+              />
+              <span>
+                Acepto términos y privacidad de HabitaLibre para contactarme y
+                continuar el proceso.
+              </span>
+            </label>
+
+            <label className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                checked={aceptaCompartir}
+                onChange={(e) => setAceptaCompartir(e.target.checked)}
+              />
+              <span>
+                Autorizo compartir mis datos con entidades aliadas solo para
+                evaluación de crédito (opcional).
+              </span>
+            </label>
+
+            <p className="text-[11px] text-slate-400 mt-1">
+              Nunca vendemos tus datos. Puedes pedir que los eliminemos en
+              cualquier momento.
             </p>
-            <button onClick={onClose} className="hl-btn-primary">
-              Cerrar y ver resultado
+          </div>
+
+          {err && (
+            <div className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700">
+              {err}
+            </div>
+          )}
+
+          {/* Botones */}
+          <div className="mt-3 flex flex-col md:flex-row justify-between gap-3">
+            <button
+              type="button"
+              onClick={closeLead}
+              className="btn-secondary w-full md:w-auto"
+            >
+              Ver más tarde
+            </button>
+
+            <button
+              type="submit"
+              className="btn-primary w-full md:w-auto"
+              disabled={loading}
+            >
+              {loading ? "Enviando..." : "Ver mi resultado completo"}
             </button>
           </div>
-        )}
+        </form>
       </div>
-
-      {/* estilos mínimos para inputs/botones */}
-      <style>{`
-        .hl-input {
-          width: 100%;
-          padding: 12px 14px;
-          border-radius: 12px;
-          border: 1px solid #e2e8f0;
-          outline: none;
-          font-size: 14px;
-        }
-        .hl-input:focus {
-          border-color: #6366f1;
-          box-shadow: 0 0 0 4px rgba(99,102,241,.15);
-        }
-        .hl-btn-primary {
-          background: #4f46e5;
-          color: white;
-          border: 0;
-          border-radius: 12px;
-          padding: 12px 18px;
-          font-weight: 600;
-          cursor: pointer;
-        }
-        .hl-btn-primary:disabled {
-          opacity: .7;
-          cursor: not-allowed;
-        }
-        .hl-btn-secondary {
-          background: white;
-          color: #334155;
-          border: 1px solid #cbd5e1;
-          border-radius: 12px;
-          padding: 12px 18px;
-          font-weight: 600;
-          cursor: pointer;
-        }
-      `}</style>
-    </div>,
-    host
+    </div>
   );
 }
