@@ -1,6 +1,11 @@
 // src/App.jsx
 import React from "react";
-import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import {
+  HashRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 
 import Landing from "./pages/Landing.jsx";
 import Leads from "./pages/Leads.jsx";
@@ -13,7 +18,6 @@ import LeadModalBare from "./components/LeadModalBare.jsx";
 import { LeadCaptureProvider } from "./context/LeadCaptureContext.jsx";
 
 import "./App.css";
-import { Routes, Route } from "react-router-dom";
 import AdminLeads from "./pages/AdminLeads.jsx";
 
 function SimuladorPage() {
@@ -46,21 +50,24 @@ export default function App() {
           {/* Simulador */}
           <Route path="/simular" element={<SimuladorPage />} />
 
-          {/* Rutas admin */}
+          {/* Rutas admin generales */}
           <Route path="/admin" element={<Admin />} />
-          <Route path="/leads" element={<Leads />} />
-          <Route path="/gracias" element={<Gracias />} />
-          <Route path="/" element={<Home />} />
-          <Route path="/gracias" element={<Gracias />} />
-          {/* 🔐 Ruta interna de dashboard */}
+
+          {/* Dashboard interno de leads (solo tú) */}
           <Route path="/admin/leads" element={<AdminLeads />} />
 
-          {/* fallback */}
+          {/* Ruta antigua /leads (si la quieres conservar para algo) */}
+          <Route path="/leads" element={<Leads />} />
+
+          {/* Página de gracias */}
+          <Route path="/gracias" element={<Gracias />} />
+
+          {/* Fallback: cualquier otra cosa redirige a "/" */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
 
-      {/* 🔹 Modal global de captura de lead */}
+      {/* Modal global de captura de lead */}
       <LeadModalBare />
     </LeadCaptureProvider>
   );
