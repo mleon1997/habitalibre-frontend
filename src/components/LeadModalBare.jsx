@@ -2,11 +2,15 @@
 import React, { useState } from "react";
 import { useLeadCapture } from "../context/LeadCaptureContext.jsx";
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  "https://habitalibre-backend.onrender.com"; // ← backend en Render
+
 export default function LeadModalBare() {
+  // Hook de contexto SIEMPRE se ejecuta
   const { modalOpen, closeLead, lastResult } = useLeadCapture();
 
-  if (!modalOpen) return null;
-
+  // Hooks de estado SIEMPRE se ejecutan (para evitar error de React)
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [telefono, setTelefono] = useState("");
@@ -16,10 +20,14 @@ export default function LeadModalBare() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
+  // Ahora SÍ podemos cortar el render
+  if (!modalOpen) return null;
+
   async function handleSubmit(e) {
     e.preventDefault();
     setErr("");
 
+    // Validaciones simples
     if (!nombre.trim() || !email.trim()) {
       setErr("Por favor completa tu nombre y email.");
       return;
@@ -33,23 +41,43 @@ export default function LeadModalBare() {
     try {
       setLoading(true);
 
-      // ⬇️ Aquí luego conectamos a tu backend real
-      console.log("Lead capturado (demo):", {
+      const payload = {
         nombre,
         email,
         telefono,
         ciudad,
         aceptaTerminos,
         aceptaCompartir,
-        lastResult,
+        resultado: lastResult, // ← incluye resultado de precalificación
+      };
+
+      console.log("[API] POST /api/leads Payload:", payload);
+
+      const resp = await fetch(`${API_BASE_URL}/api/leads`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
       });
 
-      closeLead();
+      const data = await resp.json().catch(() => ({}));
 
-      // HashRouter → navegamos manualmente
+      console.log("[API] Respuesta:", data);
+
+      if (!resp.ok) {
+        setErr(
+          data?.msg ||
+            "No pudimos guardar tus datos. Intenta nuevamente en unos minutos."
+        );
+        return;
+      }
+
+      // Éxito total 👌
+      closeLead();
       window.location.hash = "#/gracias";
     } catch (ex) {
-      console.error(ex);
+      console.error("❌ Error llamando al backend:", ex);
       setErr("No pudimos guardar tus datos. Intenta nuevamente.");
     } finally {
       setLoading(false);
@@ -59,7 +87,7 @@ export default function LeadModalBare() {
   return (
     <div className="hl-modal-overlay">
       <div className="hl-modal-panel relative">
-        {/* Cerrar */}
+        {/* Botón cerrar */}
         <button
           type="button"
           onClick={closeLead}
@@ -69,6 +97,7 @@ export default function LeadModalBare() {
         </button>
 
         <form onSubmit={handleSubmit} className="space-y-5 pt-4">
+          {/* Encabezado */}
           <div className="space-y-1">
             <p className="text-[11px] font-semibold tracking-[.25em] text-slate-400">
               ESTÁS A 1 PASO DE VER TU RESULTADO
@@ -96,14 +125,14 @@ export default function LeadModalBare() {
               <input
                 type="email"
                 className="input"
-                placeholder="tucorreo@dominio.com"
+                placeholder="email@dominio.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
           </div>
 
-          {/* Teléfono + ciudad */}
+          {/* Teléfono + Ciudad */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="label">
@@ -167,6 +196,7 @@ export default function LeadModalBare() {
             </p>
           </div>
 
+          {/* Mensaje de error */}
           {err && (
             <div className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700">
               {err}
@@ -182,6 +212,7 @@ export default function LeadModalBare() {
             >
               Ver más tarde
             </button>
+
             <button
               type="submit"
               className="btn-primary w-full md:w-auto"
@@ -195,4 +226,3 @@ export default function LeadModalBare() {
     </div>
   );
 }
-
