@@ -1,7 +1,9 @@
 // src/components/SimulatorWizard.jsx
 import React, { useMemo, useState } from "react";
 import { precalificar } from "../lib/api";
-import { useLeadCapture } from "../lead/LeadCaptureContext.jsx";
+import { useLeadCapture } from "../context/LeadCaptureContext.jsx";
+
+
 
 export default function SimulatorWizard({ onResult }) {
   const { openLead } = useLeadCapture();

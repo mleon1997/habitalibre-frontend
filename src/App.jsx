@@ -1,83 +1,62 @@
 // src/App.jsx
-import React, { useEffect, useState } from "react";
-import LeadModalBare from "./components/LeadModalBare.jsx";
+import React from "react";
 
-// ===== Escudo de clicks (global muy simple) =====
-let __HL_SUPPRESS_UNTIL = 0;
-export function armClickShield(ms = 450) {
-  __HL_SUPPRESS_UNTIL = Date.now() + ms;
-}
-function isShieldActive() {
-  return Date.now() < __HL_SUPPRESS_UNTIL;
+import Landing from "./pages/Landing.jsx";
+import Gracias from "./pages/Gracias.jsx";
+import Admin from "./pages/Admin.jsx";
+import AdminDashboard from "./pages/AdminDashboard.jsx";
+import Leads from "./pages/Leads.jsx";
+
+import SimulatorWizard from "./components/SimulatorWizard.jsx";
+import { LeadCaptureProvider } from "./context/LeadCaptureContext.jsx";
+
+// Router muy simple basado en el hash (#/)
+function useHashRoute() {
+  const [hash, setHash] = React.useState(() => window.location.hash || "#/");
+
+  React.useEffect(() => {
+    const onHashChange = () => {
+      setHash(window.location.hash || "#/");
+    };
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+
+  return hash || "#/";
 }
 
 export default function App() {
-  const [open, setOpen] = useState(false);
+  const route = useHashRoute();
 
-  // Captura clicks a nivel de documento y los anula si el escudo está activo
-  useEffect(() => {
-    const handler = (e) => {
-      if (isShieldActive()) {
-        e.stopPropagation();
-        e.preventDefault();
-      }
-    };
-    // useCapture = true para interceptar ANTES de que llegue a abajo
-    document.addEventListener("click", handler, true);
-    return () => document.removeEventListener("click", handler, true);
-  }, []);
+  let content;
 
-  // Bloquear scroll cuando el modal está abierto
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = open ? "hidden" : prev || "";
-    return () => { document.body.style.overflow = prev; };
-  }, [open]);
+  // Rutas admin
+  if (route.startsWith("#/admin/leads")) {
+    content = <Leads />;
+  } else if (route.startsWith("#/admin/dashboard")) {
+    content = <AdminDashboard />;
+  } else if (route.startsWith("#/admin")) {
+    content = <Admin />;
 
-  return (
-    <div style={{
-      minHeight: "100vh",
-      display: "grid",
-      placeItems: "center",
-      background: "#f8fafc",
-      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
-    }}>
-      <div style={{ textAlign: "center", maxWidth: 520 }}>
-        <h1 style={{ fontSize: 28, marginBottom: 12, color: "#0f172a" }}>
-          HabitaLibre Portal Reset 🧪
-        </h1>
-        <p style={{ marginBottom: 20, color: "#475569" }}>
-          Prueba con portal aislado y escudo anti click-through.
-        </p>
-        <button
-          onClick={() => setOpen(true)}
-          style={{
-            padding: "10px 18px",
-            borderRadius: 10,
-            border: "none",
-            background: "#4f46e5",
-            color: "white",
-            fontWeight: 600,
-            cursor: "pointer",
-            boxShadow: "0 2px 6px rgba(0,0,0,.12)",
-          }}
-        >
-          Ver mi resultado
-        </button>
+    // Rutas públicas
+  } else if (route.startsWith("#/gracias")) {
+    content = <Gracias />;
+  } else if (route.startsWith("#/simular")) {
+    content = (
+      <div className="min-h-screen bg-[#f6f7fb] flex flex-col items-center px-4 py-10">
+        <div className="w-full max-w-3xl bg-white rounded-3xl shadow-lg p-6 md:p-8">
+          <SimulatorWizard />
+        </div>
       </div>
+    );
+  } else {
+    // Landing principal
+    content = (
+      <div className="min-h-screen bg-[#f6f7fb]">
+        <Landing />
+      </div>
+    );
+  }
 
-      <LeadModalBare
-        open={open}
-        onClose={() => {
-          // arma el escudo ANTES de cerrar para evitar que el mouseup dispare nada abajo
-          armClickShield(500);
-          // cerramos un poco después para asegurar que el escudo ya está activo
-          setTimeout(() => setOpen(false), 60);
-        }}
-      />
-    </div>
-  );
+  return <LeadCaptureProvider>{content}</LeadCaptureProvider>;
 }
-
-export { isShieldActive }; // si luego lo quieres reutilizar en otros sitios
-
