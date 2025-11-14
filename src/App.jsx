@@ -1,62 +1,54 @@
 // src/App.jsx
 import React from "react";
+import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
 import Landing from "./pages/Landing.jsx";
-import Gracias from "./pages/Gracias.jsx";
+import Leads from "./pages/Leads.jsx";
 import Admin from "./pages/Admin.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
-import Leads from "./pages/Leads.jsx";
+import Gracias from "./pages/Gracias.jsx";
 
 import SimulatorWizard from "./components/SimulatorWizard.jsx";
 import { LeadCaptureProvider } from "./context/LeadCaptureContext.jsx";
 
-// Router muy simple basado en el hash (#/)
-function useHashRoute() {
-  const [hash, setHash] = React.useState(() => window.location.hash || "#/");
+import "./App.css"; // 👈 solo para margin:0 del body
 
-  React.useEffect(() => {
-    const onHashChange = () => {
-      setHash(window.location.hash || "#/");
-    };
-    window.addEventListener("hashchange", onHashChange);
-    return () => window.removeEventListener("hashchange", onHashChange);
-  }, []);
-
-  return hash || "#/";
+function SimuladorPage() {
+  return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-xl bg-slate-950/70 backdrop-blur-xl border border-violet-500/30 rounded-3xl shadow-[0_24px_80px_rgba(15,23,42,0.9)] px-5 py-6 md:px-8 md:py-8">
+        <SimulatorWizard />
+      </div>
+    </div>
+  );
 }
 
 export default function App() {
-  const route = useHashRoute();
+  return (
+    <LeadCaptureProvider>
+      <Router>
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <Landing
+                onStart={() => {
+                  window.location.hash = "#/simular";
+                }}
+              />
+            }
+          />
 
-  let content;
+          <Route path="/simular" element={<SimuladorPage />} />
 
-  // Rutas admin
-  if (route.startsWith("#/admin/leads")) {
-    content = <Leads />;
-  } else if (route.startsWith("#/admin/dashboard")) {
-    content = <AdminDashboard />;
-  } else if (route.startsWith("#/admin")) {
-    content = <Admin />;
+          <Route path="/admin" element={<Admin />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/leads" element={<Leads />} />
+          <Route path="/gracias" element={<Gracias />} />
 
-    // Rutas públicas
-  } else if (route.startsWith("#/gracias")) {
-    content = <Gracias />;
-  } else if (route.startsWith("#/simular")) {
-    content = (
-      <div className="min-h-screen bg-[#f6f7fb] flex flex-col items-center px-4 py-10">
-        <div className="w-full max-w-3xl bg-white rounded-3xl shadow-lg p-6 md:p-8">
-          <SimulatorWizard />
-        </div>
-      </div>
-    );
-  } else {
-    // Landing principal
-    content = (
-      <div className="min-h-screen bg-[#f6f7fb]">
-        <Landing />
-      </div>
-    );
-  }
-
-  return <LeadCaptureProvider>{content}</LeadCaptureProvider>;
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
+    </LeadCaptureProvider>
+  );
 }

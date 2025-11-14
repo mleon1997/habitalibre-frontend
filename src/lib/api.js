@@ -56,3 +56,46 @@ export async function crearLead(payload) {
   await wake();
   return request("/api/leads", { method: "POST", body: payload }, 45000);
 }
+
+ // ======================================================================
+// 🧾 LEADS (admin)
+// ======================================================================
+
+/**
+ * Lista todos los leads guardados en el backend.
+ * Usado en: src/pages/Leads.jsx y AdminDashboard.jsx
+ */
+export async function listarLeads() {
+  const res = await fetch(`${API_BASE}/api/leads`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error("No se pudieron cargar los leads");
+  }
+
+  return await res.json();
+}
+
+/**
+ * Actualiza un lead (por ejemplo, marcar como contactado, cambiar estado, etc.).
+ * Usado en: src/pages/AdminDashboard.jsx
+ */
+export async function updateLead(id, payload) {
+  const res = await fetch(`${API_BASE}/api/leads/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
+  if (!res.ok) {
+    throw new Error("No se pudo actualizar el lead");
+  }
+
+  return await res.json();
+}
