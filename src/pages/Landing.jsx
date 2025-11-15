@@ -1,269 +1,282 @@
-// src/pages/Landing.jsx
+// src/components/HeroHabitaLibre.jsx
 import React from "react";
-import { ChevronRight, ShieldCheck, Home, Sparkles } from "lucide-react";
-import logoHL from "../assets/logo-hl.png";
 
-export default function Landing({ onStart }) {
+export default function HeroHabitaLibre() {
+  // Datos de ejemplo para la card de resultado
+  const preview = {
+    capacidad: 98500,
+    cuota: 480,
+    producto: "VIS / VIP",
+    plazo: "20 años",
+    tiempo: "< 2 min",
+    seguridad: "Alta",
+    probAprob: 0.78, // 0 - 1
+  };
+
+  const formatMoney = (n) =>
+    new Intl.NumberFormat("es-EC", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(n);
+
+  const probWidth = Math.round(Math.min(1, Math.max(0, preview.probAprob)) * 100);
+
+  const handleSimularClick = () => {
+    // Navega a tu simulador actual
+    window.location.hash = "#/simulacion";
+  };
+
+  const handleEjemploClick = () => {
+    // Si tienes un ancla a la sección de ejemplo, cámbialo
+    window.location.hash = "#/ejemplo-resultado";
+  };
+
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-50 flex flex-col">
-      {/* NAVBAR */}
-      <header className="w-full border-b border-slate-800/70 bg-[#020617]/95 backdrop-blur-sm">
-        <nav className="max-w-6xl mx-auto px-5 md:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center rounded-2xl bg-slate-900/70 border border-slate-800 p-2">
-              <img
-                src={logoHL}
-                alt="HabitaLibre"
-                className="h-7 w-auto object-contain"
-              />
+    <div className="min-h-screen bg-slate-950 text-slate-50">
+      {/* Fondo degradado */}
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900" />
+        <div className="absolute -left-40 top-20 h-72 w-72 rounded-full bg-indigo-500/20 blur-3xl" />
+        <div className="absolute right-[-120px] top-40 h-80 w-80 rounded-full bg-sky-500/15 blur-3xl" />
+      </div>
+
+      {/* Header sticky */}
+      <header className="sticky top-0 z-20 border-b border-white/5 bg-slate-950/80 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 md:px-6 lg:px-8">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-500/90 text-xs font-semibold">
+              HL
             </div>
-            <div className="flex flex-col leading-tight">
-              <span className="text-sm font-semibold tracking-tight">
+            <div>
+              <p className="text-sm font-semibold tracking-tight">
                 HabitaLibre
-              </span>
-              <span className="text-[11px] text-slate-400">
+              </p>
+              <p className="text-[11px] text-slate-400">
                 Hipoteca exprés · VIS · VIP · BIESS
-              </span>
+              </p>
             </div>
           </div>
 
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden items-center gap-5 text-sm text-slate-300 md:flex">
             <button
-              className="nav-link"
-              onClick={() =>
-                document
-                  .getElementById("como-funciona")
-                  ?.scrollIntoView({ behavior: "smooth" })
-              }
+              type="button"
+              onClick={() => {
+                const el = document.getElementById("como-funciona");
+                if (el) el.scrollIntoView({ behavior: "smooth" });
+              }}
+              className="hover:text-white"
             >
               Cómo funciona
             </button>
             <button
-              className="nav-link"
-              onClick={() =>
-                document
-                  .getElementById("beneficios")
-                  ?.scrollIntoView({ behavior: "smooth" })
-              }
+              type="button"
+              onClick={() => {
+                const el = document.getElementById("beneficios");
+                if (el) el.scrollIntoView({ behavior: "smooth" });
+              }}
+              className="hover:text-white"
             >
               Beneficios
             </button>
-            <button className="btn-ghost btn-sm" onClick={onStart}>
+            <button
+              type="button"
+              onClick={handleSimularClick}
+              className="inline-flex items-center gap-2 rounded-full bg-indigo-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-indigo-500/40 transition hover:bg-indigo-400"
+            >
               Iniciar simulación
+              <span className="text-base">⚡</span>
             </button>
           </div>
-        </nav>
+        </div>
       </header>
 
-      {/* CONTENIDO PRINCIPAL */}
-      <main className="flex-1">
-        {/* HERO */}
-        <section className="max-w-6xl mx-auto px-5 md:px-8 pt-10 pb-16 grid gap-10 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] items-center">
-          {/* Columna texto */}
-          <div>
-            <p className="inline-flex items-center gap-2 text-[11px] font-medium tracking-[0.18em] uppercase text-violet-300 mb-3">
-              <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
-              Precalificación sin afectar tu buró
-            </p>
+      {/* HERO */}
+      <main className="mx-auto flex max-w-6xl flex-col gap-12 px-4 pb-16 pt-10 md:px-6 md:pt-16 lg:flex-row lg:items-center lg:gap-14 lg:px-8">
+        {/* Columna izquierda: texto + CTAs */}
+        <section className="flex-1 space-y-6">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-indigo-300">
+            Precalificación sin afectar tu buró
+          </p>
 
-            <h1 className="text-3xl md:text-5xl font-semibold leading-tight text-slate-50 mb-4">
-              Tu camino fácil a la vivienda propia{" "}
-              <span className="inline-block align-middle">🏡</span>
-            </h1>
+          <h1 className="text-balance text-3xl font-semibold tracking-tight text-slate-50 sm:text-4xl lg:text-[44px]">
+            Tu camino fácil a la vivienda propia{" "}
+            <span className="inline-block align-middle">🏡</span>
+          </h1>
 
-            <p className="text-slate-300 text-sm md:text-base max-w-xl mb-6">
-              Descubre en menos de 2 minutos cuánto puedes comprar hoy y con qué
-              tipo de crédito: VIS, VIP, BIESS o banca privada. Sin filas, sin
-              papeles y sin afectar tu historial crediticio.
-            </p>
+          <p className="max-w-xl text-sm leading-relaxed text-slate-300 sm:text-base">
+            Descubre en menos de <strong>2 minutos</strong> cuánto puedes
+            comprar hoy, con qué tipo de crédito{" "}
+            <span className="whitespace-nowrap">VIS / VIP / BIESS</span> o
+            banca privada, sin filas, sin papeles y{" "}
+            <strong>sin afectar tu historial crediticio.</strong>
+          </p>
 
-            <div className="flex flex-wrap items-center gap-3 mb-5">
-              <button
-                onClick={onStart}
-                className="btn-primary inline-flex items-center gap-2"
-              >
-                Simular ahora
-                <ChevronRight size={18} />
-              </button>
-              <button
-                className="btn-outline"
-                onClick={() =>
-                  document
-                    .getElementById("como-funciona")
-                    ?.scrollIntoView({ behavior: "smooth" })
-                }
-              >
-                Ver ejemplo de resultado
-              </button>
-            </div>
+          {/* CTAs */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <button
+              type="button"
+              onClick={handleSimularClick}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-indigo-500 px-6 py-3 text-sm font-semibold text-slate-950 shadow-[0_18px_45px_rgba(79,70,229,0.55)] transition hover:-translate-y-[1px] hover:bg-indigo-400"
+            >
+              Simular ahora
+              <span className="text-base">→</span>
+            </button>
 
-            <div className="flex flex-wrap gap-4 text-[11px] text-slate-400">
-              <span className="inline-flex items-center gap-1">
-                <ShieldCheck size={12} /> Datos cifrados
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <Home size={12} /> Enfoque VIS / VIP / BIESS
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <Sparkles size={12} /> Asesoría sin costo
-              </span>
-            </div>
+            <button
+              type="button"
+              onClick={handleEjemploClick}
+              className="inline-flex items-center justify-center gap-2 text-sm font-medium text-slate-300 underline-offset-4 hover:text-slate-50 hover:underline"
+            >
+              Ver ejemplo de resultado
+              <span className="text-lg">📄</span>
+            </button>
           </div>
 
-          {/* Columna tarjeta preview */}
-          <div className="relative">
-            <div className="absolute -top-6 -right-4 w-32 h-32 bg-violet-500/30 blur-3xl rounded-full pointer-events-none" />
-            <div className="absolute -bottom-10 -left-8 w-40 h-40 bg-fuchsia-500/20 blur-3xl rounded-full pointer-events-none" />
+          {/* Microcopy anti-miedo */}
+          <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-400">
+            <span className="inline-flex items-center gap-1">
+              <span className="text-xs">⏱</span> Toma menos de 2 minutos
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span className="text-xs">🔒</span> No pedimos claves bancarias
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span className="text-xs">🧮</span> Enfoque VIS / VIP / BIESS
+            </span>
+          </div>
+        </section>
 
-            <div className="relative bg-slate-900/80 border border-slate-700/70 rounded-3xl p-6 md:p-7 shadow-[0_20px_60px_rgba(15,23,42,0.9)]">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <p className="text-[11px] text-slate-400 mb-1">
+        {/* Columna derecha: Card de resultado */}
+        <section className="flex-1">
+          <div className="relative mx-auto max-w-md">
+            {/* Glow detrás */}
+            <div className="absolute inset-0 -z-10 translate-y-4 scale-110 rounded-[32px] bg-indigo-500/40 blur-3xl" />
+
+            <div className="rounded-[28px] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-950 px-5 py-6 shadow-[0_20px_80px_rgba(15,23,42,0.85)] md:px-7 md:py-7">
+              {/* Header chip */}
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                     Vista previa de un resultado
                   </p>
-                  <p className="text-xs text-emerald-300 font-medium">
+                  <p className="text-xs text-slate-400">
                     Perfil VIS / VIP simulado
                   </p>
                 </div>
-                <span className="text-[10px] px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
+                <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-3 py-1 text-[11px] font-medium text-emerald-300">
                   No afecta tu buró
                 </span>
               </div>
 
+              {/* Capacidad estimada */}
               <div className="mb-4">
-                <p className="text-[11px] text-slate-400 mb-1">
-                  Capacidad estimada
+                <p className="text-xs text-slate-400">Capacidad estimada</p>
+                <p className="mt-1 text-3xl font-semibold tracking-tight md:text-[32px]">
+                  {formatMoney(preview.capacidad)}
                 </p>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl md:text-4xl font-bold text-slate-50">
-                    $98,500
+                <p className="mt-1 text-[11px] text-slate-400">
+                  según tus ingresos y deudas declarados.
+                </p>
+              </div>
+
+              {/* Chips principales */}
+              <div className="mb-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                <div className="rounded-2xl border border-white/10 bg-slate-900/80 px-3 py-3">
+                  <p className="text-[11px] text-slate-400">Cuota estimada</p>
+                  <p className="mt-1 text-sm font-semibold">
+                    {formatMoney(preview.cuota)}{" "}
+                    <span className="text-xs font-normal text-slate-400">
+                      / mes
+                    </span>
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Plazo {preview.plazo} · tasa ref. simulada
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-slate-900/80 px-3 py-3">
+                  <p className="text-[11px] text-slate-400">Producto tentativo</p>
+                  <p className="mt-1 text-sm font-semibold">
+                    {preview.producto}
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Ajustable según tu perfil final.
+                  </p>
+                </div>
+              </div>
+
+              {/* Métricas rápidas */}
+              <div className="mb-4 grid grid-cols-3 gap-2 text-[11px] text-slate-300">
+                <div className="rounded-xl bg-slate-900/60 px-3 py-2">
+                  <p className="text-[10px] text-slate-400">Familias simuladas</p>
+                  <p className="mt-0.5 font-semibold">+1.000</p>
+                </div>
+                <div className="rounded-xl bg-slate-900/60 px-3 py-2">
+                  <p className="text-[10px] text-slate-400">Tiempo estimado</p>
+                  <p className="mt-0.5 font-semibold">{preview.tiempo}</p>
+                </div>
+                <div className="rounded-xl bg-slate-900/60 px-3 py-2">
+                  <p className="text-[10px] text-slate-400">Seguridad</p>
+                  <p className="mt-0.5 font-semibold">AES-256</p>
+                </div>
+              </div>
+
+              {/* Barra de probabilidad de aprobación */}
+              <div className="mb-5">
+                <div className="mb-1 flex items-center justify-between text-[11px] text-slate-300">
+                  <span>Probabilidad de aprobación estimada</span>
+                  <span className="font-semibold">
+                    {Math.round(preview.probAprob * 100)}%
                   </span>
-                  <span className="text-[11px] text-slate-500">
-                    según tus ingresos y deudas
-                  </span>
                 </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
+                  <div
+                    className="h-2 rounded-full bg-emerald-400"
+                    style={{ width: `${probWidth}%` }}
+                  />
+                </div>
+                <p className="mt-1 text-[10px] text-slate-400">
+                  Basado en LTV, DTI y nivel de entrada declarados. Solo
+                  referencial.
+                </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 mb-4 text-xs">
-                <div className="bg-slate-900 rounded-2xl px-3 py-2.5 border border-slate-800">
-                  <p className="text-[11px] text-slate-400 mb-1">
-                    Cuota estimada
-                  </p>
-                  <p className="text-base font-semibold text-slate-50">
-                    $480 / mes
-                  </p>
-                  <p className="text-[11px] text-slate-500">
-                    Plazo 20 años · tasa ref.
-                  </p>
-                </div>
-                <div className="bg-slate-900 rounded-2xl px-3 py-2.5 border border-slate-800">
-                  <p className="text-[11px] text-slate-400 mb-1">
-                    Producto tentativo
-                  </p>
-                  <p className="text-base font-semibold text-violet-300">
-                    VIS / VIP
-                  </p>
-                  <p className="text-[11px] text-slate-500">
-                    Ajustable según tu perfil real.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between mb-4 text-[11px] text-slate-400">
-                <div>
-                  <p>Familias simuladas</p>
-                  <p className="text-slate-100 font-semibold">+1,000</p>
-                </div>
-                <div>
-                  <p>Tiempo estimado</p>
-                  <p className="text-slate-100 font-semibold">&lt; 2 min</p>
-                </div>
-                <div>
-                  <p>Seguridad</p>
-                  <p className="text-slate-100 font-semibold">AES-256</p>
-                </div>
-              </div>
-
+              {/* CTA dentro de la card */}
               <button
-                onClick={onStart}
-                className="btn-primary w-full justify-center"
+                type="button"
+                onClick={handleSimularClick}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-indigo-500 px-4 py-3 text-sm font-semibold text-slate-950 shadow-[0_12px_35px_rgba(79,70,229,0.7)] transition hover:bg-indigo-400 hover:shadow-[0_16px_45px_rgba(79,70,229,0.9)]"
               >
                 Ver mi capacidad real
+                <span className="text-base">➡️</span>
               </button>
 
-              <p className="mt-3 text-[11px] text-slate-500">
+              <p className="mt-3 text-center text-[10px] text-slate-500">
                 Este es un ejemplo ilustrativo. Al simular, calculamos tu
-                resultado real con tus datos y diferentes escenarios de tasa /
+                resultado real con tus datos y distintos escenarios de tasa /
                 plazo.
               </p>
             </div>
           </div>
         </section>
-
-        {/* CÓMO FUNCIONA */}
-        <section
-          id="como-funciona"
-          className="max-w-6xl mx-auto px-5 md:px-8 pb-16 border-t border-slate-800/70 pt-10"
-        >
-          <h2 className="text-xl md:text-2xl font-semibold text-slate-50 mb-4">
-            ¿Cómo funciona HabitaLibre?
-          </h2>
-          <ol className="space-y-3 text-sm text-slate-300 list-decimal list-inside">
-            <li>
-              Completa nuestra simulación en 4 pasos. No pedimos papeles ni
-              claves bancarias.
-            </li>
-            <li>
-              Te mostramos cuánto podrías comprar, tu cuota estimada y el tipo
-              de producto más alineado con tu perfil (VIS, VIP, BIESS o banca
-              privada).
-            </li>
-            <li>
-              Si quieres avanzar, un asesor HabitaLibre te contacta y te
-              acompaña sin costo hasta concretar tu crédito.
-            </li>
-          </ol>
-        </section>
-
-        {/* BENEFICIOS */}
-        <section
-          id="beneficios"
-          className="max-w-6xl mx-auto px-5 md:px-8 pb-20 text-sm text-slate-300"
-        >
-          <h2 className="text-xl md:text-2xl font-semibold text-slate-50 mb-4">
-            Beneficios de simular con HabitaLibre
-          </h2>
-          <div className="grid md:grid-cols-3 gap-4">
-            <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-4">
-              <p className="text-sm font-semibold text-slate-50 mb-1">
-                Comparación inteligente
-              </p>
-              <p className="text-xs text-slate-400">
-                No eres un formulario más. Analizamos tu perfil y te
-                orientamos a la alternativa que realmente tiene sentido para ti.
-              </p>
-            </div>
-            <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-4">
-              <p className="text-sm font-semibold text-slate-50 mb-1">
-                Sin afectar tu buró
-              </p>
-              <p className="text-xs text-slate-400">
-                Trabajamos con datos declarativos para darte una primera
-                lectura sin dejar huella en tu historial crediticio.
-              </p>
-            </div>
-            <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-4">
-              <p className="text-sm font-semibold text-slate-50 mb-1">
-                Acompañamiento humano
-              </p>
-              <p className="text-xs text-slate-400">
-                Detrás del simulador hay un equipo que te acompaña en el
-                proceso con lenguaje claro, sin letras pequeñas.
-              </p>
-            </div>
-          </div>
-        </section>
       </main>
+
+      {/* Anclas para scroll suave (solo estructuras, puedes rediseñarlas luego) */}
+      <section
+        id="como-funciona"
+        className="mx-auto max-w-6xl px-4 pb-16 md:px-6 lg:px-8"
+      >
+        {/* Aquí luego puedes pegar tu sección real de “Cómo funciona” */}
+      </section>
+
+      <section
+        id="beneficios"
+        className="mx-auto max-w-6xl px-4 pb-16 md:px-6 lg:px-8"
+      >
+        {/* Aquí luego tus tarjetas de beneficios */}
+      </section>
     </div>
   );
 }

@@ -7,7 +7,6 @@ import {
   Navigate,
 } from "react-router-dom";
 
-import Landing from "./pages/Landing.jsx";
 import Leads from "./pages/Leads.jsx";
 import Admin from "./pages/Admin.jsx";
 import Gracias from "./pages/Gracias.jsx";
@@ -20,6 +19,10 @@ import { LeadCaptureProvider } from "./context/LeadCaptureContext.jsx";
 import "./App.css";
 import AdminLeads from "./pages/AdminLeads.jsx";
 
+// 👉 Nuevo hero world-class
+import HeroHabitaLibre from "./components/HeroHabitaLibre.jsx";
+
+
 function SimuladorPage() {
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4 py-10">
@@ -30,44 +33,40 @@ function SimuladorPage() {
   );
 }
 
+
 export default function App() {
   return (
     <LeadCaptureProvider>
       <Router>
         <Routes>
-          {/* Landing pública */}
-          <Route
-            path="/"
-            element={
-              <Landing
-                onStart={() => {
-                  window.location.hash = "#/simular";
-                }}
-              />
-            }
-          />
+
+          {/* ============================ */}
+          {/*  LANDING PRINCIPAL (NUEVA)  */}
+          {/* ============================ */}
+          <Route path="/" element={<HeroHabitaLibre />} />
+
 
           {/* Simulador */}
           <Route path="/simular" element={<SimuladorPage />} />
 
-          {/* Rutas admin generales */}
+          {/* Admin general */}
           <Route path="/admin" element={<Admin />} />
 
-          {/* Dashboard interno de leads (solo tú) */}
+          {/* Dashboard interno de leads */}
           <Route path="/admin/leads" element={<AdminLeads />} />
 
-          {/* Ruta antigua /leads (si la quieres conservar para algo) */}
+          {/* Ruta antigua /leads (opcional) */}
           <Route path="/leads" element={<Leads />} />
 
-          {/* Página de gracias */}
+          {/* Página de agradecimiento */}
           <Route path="/gracias" element={<Gracias />} />
 
-          {/* Fallback: cualquier otra cosa redirige a "/" */}
+          {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
 
-      {/* Modal global de captura de lead */}
+      {/* Modal global */}
       <LeadModalBare />
     </LeadCaptureProvider>
   );
