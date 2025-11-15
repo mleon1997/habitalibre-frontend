@@ -1,280 +1,318 @@
 // src/pages/AdminLeads.jsx
-// src/pages/AdminLeads.jsx
 import React, { useEffect, useState } from "react";
 
+// =====================================================
+// BASE URL del backend
+// - En localhost: usa http://localhost:4000
+// - En producción: cambia "https://tu-backend.onrender.com"
+//   por la URL REAL de tu backend en Render.
+// =====================================================
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL ||
-  "https://habitalibre-backend.onrender.com";
+  window.location.hostname === "localhost"
+    ? "http://localhost:4000"
+    : "https://tu-backend.onrender.com"; // ⬅️ REEMPLAZA ESTO por tu URL real de Render
 
-function formatFecha(fechaStr) {
-  if (!fechaStr) return "-";
-  const d = new Date(fechaStr);
-  if (Number.isNaN(d.getTime())) return "-";
-  return d.toLocaleString("es-EC", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+const AdminLeads = () => {
+  const [email, setEmail] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [ciudad, setCiudad] = useState("");
 
-export default function AdminLeads() {
   const [leads, setLeads] = useState([]);
+  const [totalLeads, setTotalLeads] = useState(0);
   const [pagina, setPagina] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [limit] = useState(20);
-
-  const [emailFiltro, setEmailFiltro] = useState("");
-  const [telefonoFiltro, setTelefonoFiltro] = useState("");
-  const [ciudadFiltro, setCiudadFiltro] = useState("");
-
   const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState("");
+  const [error, setError] = useState("");
 
-  async function fetchLeads(page = 1) {
+  const pageSize = 10; // leads por página
+
+  const fetchLeads = async (paginaNueva = 1) => {
     try {
       setLoading(true);
-      setErr("");
+      setError("");
 
       const params = new URLSearchParams();
-      params.set("pagina", String(page));
-      params.set("limit", String(limit));
-      if (emailFiltro.trim()) params.set("email", emailFiltro.trim());
-      if (telefonoFiltro.trim()) params.set("telefono", telefonoFiltro.trim());
-      if (ciudadFiltro.trim()) params.set("ciudad", ciudadFiltro.trim());
+
+      if (email.trim()) params.append("email", email.trim());
+      if (telefono.trim()) params.append("telefono", telefono.trim());
+      if (ciudad.trim()) params.append("ciudad", ciudad.trim());
+
+      params.append("pagina", paginaNueva);
+      params.append("limit", pageSize);
 
       const url = `${API_BASE_URL}/api/leads?${params.toString()}`;
+      console.log("🌐 Fetch leads:", url);
 
-      const resp = await fetch(url);
-      const data = await resp.json().catch(() => ({}));
+      const res = await fetch(url);
 
-      if (!resp.ok || !data.ok) {
-        throw new Error(data?.error || "No se pudieron cargar los leads");
+      if (!res.ok) {
+        throw new Error(`No se pudo cargar los leads (status ${res.status})`);
       }
 
-      setLeads(data.items || []);
-      setPagina(data.pagina || 1);
+      const data = await res.json();
+      console.log("✅ Respuesta leads:", data);
+
+      setLeads(data.leads || []);
+      setTotalLeads(data.total || 0);
       setTotalPaginas(data.totalPaginas || 1);
-      setTotal(data.total || 0);
-    } catch (e) {
-      console.error("❌ Error cargando leads:", e);
-      setErr(e.message || "Error cargando leads");
+      setPagina(data.pagina || paginaNueva);
+    } catch (err) {
+      console.error("❌ Error en fetchLeads:", err);
+      setError(err.message || "Error al cargar leads");
+      setLeads([]);
+      setTotalLeads(0);
+      setTotalPaginas(1);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  // Cargar al inicio
   useEffect(() => {
     fetchLeads(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Handler de aplicar filtros
-  function handleBuscar(e) {
-    e.preventDefault();
+  const handleBuscar = () => {
     fetchLeads(1);
-  }
+  };
 
-  function handleLimpiar() {
-    setEmailFiltro("");
-    setTelefonoFiltro("");
-    setCiudadFiltro("");
+  const handleLimpiar = () => {
+    setEmail("");
+    setTelefono("");
+    setCiudad("");
     fetchLeads(1);
-  }
+  };
+
+  const handleAnterior = () => {
+    if (pagina > 1) fetchLeads(pagina - 1);
+  };
+
+  const handleSiguiente = () => {
+    if (pagina < totalPaginas) fetchLeads(pagina + 1);
+  };
+
+  const mostrarDesde =
+    totalLeads === 0 ? 0 : (pagina - 1) * pageSize + 1;
+  const mostrarHasta =
+    totalLeads === 0 ? 0 : Math.min(pagina * pageSize, totalLeads);
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-6 md:px-8">
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-900">
-              Dashboard de Leads
-            </h1>
-            <p className="text-sm text-slate-500">
-              Vista interna. Solo para uso del equipo HabitaLibre.
-            </p>
-          </div>
-          <div className="flex flex-col items-start gap-1 text-sm text-slate-500 md:items-end">
-            <span>
-              Total leads:{" "}
-              <span className="font-semibold text-slate-900">{total}</span>
-            </span>
-            <span>
-              Página {pagina} de {totalPaginas}
-            </span>
-          </div>
-        </header>
+    <div className="min-h-screen bg-slate-50 px-4 py-8 md:px-10">
+      {/* Header */}
+      <div className="max-w-6xl mx-auto mb-6">
+        <h1 className="text-2xl font-semibold text-slate-900">
+          Dashboard de Leads
+        </h1>
+        <p className="text-sm text-slate-500">
+          Vista interna. Solo para uso del equipo HabitaLibre.
+        </p>
 
+        <div className="mt-2 flex items-center justify-between text-sm text-slate-500">
+          <span>
+            Total leads:{" "}
+            <span className="font-semibold text-slate-900">
+              {totalLeads}
+            </span>
+          </span>
+          <span>
+            Página {pagina} de {totalPaginas}
+          </span>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto space-y-6">
         {/* Filtros */}
-        <form
-          onSubmit={handleBuscar}
-          className="mb-4 grid gap-3 rounded-2xl bg-white p-4 shadow-sm md:grid-cols-4"
-        >
-          <div>
-            <label className="label">Email</label>
-            <input
-              className="input"
-              value={emailFiltro}
-              onChange={(e) => setEmailFiltro(e.target.value)}
-              placeholder="Ej: gmail.com"
-            />
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 px-5 py-4 md:px-6 md:py-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex flex-col">
+              <label className="text-xs font-medium text-slate-500 mb-1">
+                Email
+              </label>
+              <input
+                type="text"
+                placeholder="Ej: gmail.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white"
+              />
+            </div>
+
+            <div className="flex flex-col">
+              <label className="text-xs font-medium text-slate-500 mb-1">
+                Teléfono
+              </label>
+              <input
+                type="text"
+                placeholder="Contiene…"
+                value={telefono}
+                onChange={(e) => setTelefono(e.target.value)}
+                className="h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white"
+              />
+            </div>
+
+            <div className="flex flex-col">
+              <label className="text-xs font-medium text-slate-500 mb-1">
+                Ciudad
+              </label>
+              <input
+                type="text"
+                placeholder="Quito, Guayaquil…"
+                value={ciudad}
+                onChange={(e) => setCiudad(e.target.value)}
+                className="h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white"
+              />
+            </div>
           </div>
-          <div>
-            <label className="label">Teléfono</label>
-            <input
-              className="input"
-              value={telefonoFiltro}
-              onChange={(e) => setTelefonoFiltro(e.target.value)}
-              placeholder="Contiene..."
-            />
-          </div>
-          <div>
-            <label className="label">Ciudad</label>
-            <input
-              className="input"
-              value={ciudadFiltro}
-              onChange={(e) => setCiudadFiltro(e.target.value)}
-              placeholder="Quito, Guayaquil..."
-            />
-          </div>
-          <div className="flex items-end gap-2">
+
+          <div className="mt-4 flex justify-end gap-3">
             <button
-              type="submit"
-              className="btn-primary w-full md:w-auto"
+              type="button"
+              onClick={handleLimpiar}
+              className="h-10 px-4 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50"
+              disabled={loading}
+            >
+              Limpiar
+            </button>
+            <button
+              type="button"
+              onClick={handleBuscar}
+              className="h-10 px-5 rounded-xl bg-sky-600 text-sm font-semibold text-white shadow-sm hover:bg-sky-700 disabled:opacity-60"
               disabled={loading}
             >
               {loading ? "Buscando..." : "Aplicar filtros"}
             </button>
-            <button
-              type="button"
-              onClick={handleLimpiar}
-              className="btn-secondary w-full md:w-auto"
-            >
-              Limpiar
-            </button>
           </div>
-        </form>
 
-        {/* Errores */}
-        {err && (
-          <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {err}
-          </div>
-        )}
+          {error && (
+            <div className="mt-3 text-sm text-red-500">{error}</div>
+          )}
+        </div>
 
         {/* Tabla */}
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50">
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-4 py-2 text-left font-semibold text-slate-600">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
                     Fecha
                   </th>
-                  <th className="px-4 py-2 text-left font-semibold text-slate-600">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
                     Nombre
                   </th>
-                  <th className="px-4 py-2 text-left font-semibold text-slate-600">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
                     Email
                   </th>
-                  <th className="px-4 py-2 text-left font-semibold text-slate-600">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
                     Teléfono
                   </th>
-                  <th className="px-4 py-2 text-left font-semibold text-slate-600">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
                     Ciudad
                   </th>
-                  <th className="px-4 py-2 text-left font-semibold text-slate-600">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
                     Producto
                   </th>
-                  <th className="px-4 py-2 text-left font-semibold text-slate-600">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
                     Score HL
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
-                {leads.length === 0 && !loading && (
+              <tbody>
+                {!loading && leads.length === 0 && (
                   <tr>
                     <td
                       colSpan={7}
-                      className="px-4 py-6 text-center text-slate-400"
+                      className="px-4 py-6 text-center text-sm text-slate-400"
                     >
-                      No hay leads registrados con los filtros actuales.
+                      No hay leads para los filtros seleccionados.
                     </td>
                   </tr>
                 )}
 
-                {leads.map((lead) => {
-                  const resultado = lead.resultado || {};
-                  const producto =
-                    resultado.productoElegido ||
-                    resultado.producto ||
-                    "-";
-                  const score =
-                    resultado?.puntajeHabitaLibre?.score ??
-                    resultado?.score ??
-                    "-";
-                  const label =
-                    resultado?.puntajeHabitaLibre?.label || "";
+                {leads.map((lead) => (
+                  <tr
+                    key={lead._id}
+                    className="border-t border-slate-100 hover:bg-slate-50/80"
+                  >
+                    <td className="px-4 py-3 text-xs text-slate-500">
+                      {lead.createdAt
+                        ? new Date(lead.createdAt).toLocaleString("es-EC", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-900">
+                      {lead.nombre || lead.nombreCompleto || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-700">
+                      {lead.email || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-700">
+                      {lead.telefono || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-700">
+                      {lead.ciudad || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-700">
+                      {lead.producto || lead.tipoProducto || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm font-semibold text-slate-900">
+                      {lead.scoreHL != null ? lead.scoreHL : "-"}
+                    </td>
+                  </tr>
+                ))}
 
-                  return (
-                    <tr key={lead._id}>
-                      <td className="px-4 py-2 whitespace-nowrap text-slate-700">
-                        {formatFecha(lead.createdAt)}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap">
-                        {lead.nombre || "-"}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap">
-                          {lead.email || "-"}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap">
-                        {lead.telefono || "-"}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap">
-                        {lead.ciudad || "-"}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap">
-                        {producto}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap">
-                        {score !== "-" ? (
-                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
-                            {score}
-                            {label ? ` · ${label}` : ""}
-                          </span>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {loading && (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="px-4 py-6 text-center text-sm text-slate-400"
+                    >
+                      Cargando leads…
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
 
-          {/* Paginación */}
-          <div className="flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
-            <span>
-              Mostrando página {pagina} de {totalPaginas} · {total} leads
-            </span>
+          {/* Footer tabla */}
+          <div className="flex flex-col md:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-100 text-xs text-slate-500">
+            <div>
+              Mostrando{" "}
+              <span className="font-semibold text-slate-900">
+                {mostrarDesde}
+              </span>{" "}
+              –
+              <span className="font-semibold text-slate-900">
+                {" "}
+                {mostrarHasta}
+              </span>{" "}
+              de{" "}
+              <span className="font-semibold text-slate-900">
+                {totalLeads}
+              </span>{" "}
+              leads
+            </div>
+
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="btn-secondary px-3 py-1 text-xs"
-                disabled={pagina <= 1 || loading}
-                onClick={() => fetchLeads(pagina - 1)}
+                onClick={handleAnterior}
+                disabled={pagina === 1 || loading}
+                className="h-8 px-3 rounded-full border border-slate-200 bg-white text-xs font-medium text-slate-700 disabled:opacity-40"
               >
                 Anterior
               </button>
               <button
                 type="button"
-                className="btn-secondary px-3 py-1 text-xs"
-                disabled={pagina >= totalPaginas || loading}
-                onClick={() => fetchLeads(pagina + 1)}
+                onClick={handleSiguiente}
+                disabled={pagina === totalPaginas || loading}
+                className="h-8 px-3 rounded-full border border-slate-200 bg-white text-xs font-medium text-slate-700 disabled:opacity-40"
               >
                 Siguiente
               </button>
@@ -284,4 +322,7 @@ export default function AdminLeads() {
       </div>
     </div>
   );
-}
+};
+
+export default AdminLeads;
+
