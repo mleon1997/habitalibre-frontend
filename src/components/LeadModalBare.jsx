@@ -39,18 +39,46 @@ export default function LeadModalBare() {
     }
 
     try {
-      setLoading(true);
+  setLoading(true);
 
-      const payload = {
-        nombre,
-        email,
-        telefono,
-        ciudad,
-        aceptaTerminos,
-        aceptaCompartir,
-        resultado: lastResult, // ← incluye resultado de precalificación
-      };
+  // Intentamos derivar producto y score desde lastResult
+  let producto = null;
+  let scoreHL = null;
 
+  if (lastResult && typeof lastResult === "object") {
+    producto =
+      lastResult.productoPrincipal ||
+      lastResult.producto ||
+      lastResult.mejorProducto ||
+      lastResult.mejorOpcion?.nombre ||
+      null;
+
+    scoreHL =
+      lastResult.scoreHL ??
+      lastResult.scoreHl ??
+      lastResult.scoreHabitaLibre ??
+      lastResult.score ??
+      null;
+  }
+
+  const payload = {
+    nombre,
+    email,
+    telefono,
+    ciudad,
+    aceptaTerminos,
+    aceptaCompartir,
+    resultado: lastResult, // objeto completo
+
+    // 👇 Campos que el backend y el dashboard van a usar
+    producto,
+    scoreHL,
+  };
+
+  
+
+
+      
       console.log("[API] POST /api/leads Payload:", payload);
 
       const resp = await fetch(`${API_BASE_URL}/api/leads`, {
