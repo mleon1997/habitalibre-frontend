@@ -7,10 +7,11 @@ import React, { useEffect, useState } from "react";
 // - En producción: cambia "https://tu-backend.onrender.com"
 //   por la URL REAL de tu backend en Render.
 // =====================================================
-const API_BASE_URL =
+
+    const API_BASE_URL =
   window.location.hostname === "localhost"
     ? "http://localhost:4000"
-    : "https://tu-backend.onrender.com"; // ⬅️ REEMPLAZA ESTO por tu URL real de Render
+    : "https://habitalibre-backend.onrender.com";
 
 const AdminLeads = () => {
   const [email, setEmail] = useState("");
