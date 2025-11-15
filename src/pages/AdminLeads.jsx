@@ -2,16 +2,9 @@
 import React, { useEffect, useState } from "react";
 
 // =====================================================
-// BASE URL del backend
-// - En localhost: usa http://localhost:4000
-// - En producción: cambia "https://tu-backend.onrender.com"
-//   por la URL REAL de tu backend en Render.
+// BACKEND HabitaLibre (Render)
 // =====================================================
-
-    const API_BASE_URL =
-  window.location.hostname === "localhost"
-    ? "http://localhost:4000"
-    : "https://habitalibre-backend.onrender.com";
+const API_BASE_URL = "https://habitalibre-backend.onrender.com";
 
 const AdminLeads = () => {
   const [email, setEmail] = useState("");
@@ -42,7 +35,7 @@ const AdminLeads = () => {
       params.append("limit", pageSize);
 
       const url = `${API_BASE_URL}/api/leads?${params.toString()}`;
-      console.log("🌐 Fetch leads:", url);
+      console.log("🌐 Fetch leads a:", url);
 
       const res = await fetch(url);
 
@@ -51,7 +44,6 @@ const AdminLeads = () => {
       }
 
       const data = await res.json();
-      console.log("✅ Respuesta leads:", data);
 
       setLeads(data.leads || []);
       setTotalLeads(data.total || 0);
@@ -326,4 +318,3 @@ const AdminLeads = () => {
 };
 
 export default AdminLeads;
-
