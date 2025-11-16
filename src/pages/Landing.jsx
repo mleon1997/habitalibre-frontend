@@ -1,5 +1,13 @@
 // src/pages/Landing.jsx
 import React from "react";
+import {
+  SparklesIcon,
+  ClipboardDocumentListIcon,
+  BanknotesIcon,
+  ShieldCheckIcon,
+  UserGroupIcon,
+  ChatBubbleLeftRightIcon,
+} from "@heroicons/react/24/outline";
 
 export default function Landing({ onStart }) {
   const handleStart = () => {
@@ -243,95 +251,214 @@ export default function Landing({ onStart }) {
         </div>
       </section>
 
-      {/* CÓMO FUNCIONA */}
-      <section
-        id="como-funciona"
-        className="border-t border-slate-800 bg-slate-950"
-      >
-        <div className="mx-auto max-w-5xl px-4 py-10 md:py-14">
-          <h2 className="text-xl md:text-2xl font-semibold mb-4">
-            ¿Cómo funciona HabitaLibre?
-          </h2>
+     {/* CÓMO FUNCIONA – versión pro */}
+<section
+  id="como-funciona"
+  className="border-t border-slate-800 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-950"
+>
+  <div className="mx-auto max-w-6xl px-4 py-12 md:py-16">
+    <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
+      <div>
+        <div className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-[11px] text-slate-300 mb-3">
+          <SparklesIcon className="h-3.5 w-3.5 text-emerald-400" />
+          <span>Proceso guiado en menos de 2 minutos</span>
+        </div>
+        <h2 className="text-xl md:text-2xl font-semibold text-slate-50">
+          ¿Cómo funciona HabitaLibre?
+        </h2>
+        <p className="mt-2 text-sm text-slate-400 max-w-xl">
+          No es solo un simulador. Es una primera lectura realista de cuánto
+          podrías comprar y con qué tipo de crédito tiene más sentido avanzar.
+        </p>
+      </div>
 
-          <div className="grid gap-6 md:grid-cols-3 text-sm">
-            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
-              <p className="text-slate-400 text-xs mb-1">Paso 1</p>
-              <p className="font-semibold mb-2">
-                Simulas sin papeles ni claves bancarias
-              </p>
-              <p className="text-slate-400 text-xs">
-                Completa una simulación guiada en 4 pasos con tus ingresos y
-                deudas declaradas. No pedimos buró ni clave de banco.
-              </p>
-            </div>
-
-            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
-              <p className="text-slate-400 text-xs mb-1">Paso 2</p>
-              <p className="font-semibold mb-2">
-                Te mostramos tu rango de compra realista
-              </p>
-              <p className="text-slate-400 text-xs">
-                Calculamos capacidad de pago, cuota estimada y qué tipo de
-                crédito (VIS, VIP, BIESS o banca privada) tiene más sentido para
-                ti.
-              </p>
-            </div>
-
-            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
-              <p className="text-slate-400 text-xs mb-1">Paso 3</p>
-              <p className="font-semibold mb-2">
-                Si quieres, te acompañamos hasta el crédito
-              </p>
-              <p className="text-slate-400 text-xs">
-                Un asesor HabitaLibre revisa tu caso y te ayuda, sin costo, a
-                preparar documentos, comparar ofertas y avanzar con el banco que
-                mejor encaje.
-              </p>
-            </div>
+      <div className="flex gap-4 text-xs text-slate-400">
+        <div className="rounded-2xl bg-slate-900/60 border border-slate-800 px-4 py-3">
+          <div className="text-[11px] text-slate-500 mb-1">
+            Tiempo promedio
+          </div>
+          <div className="text-sm font-semibold text-slate-50">1–2 min</div>
+        </div>
+        <div className="rounded-2xl bg-slate-900/60 border border-slate-800 px-4 py-3">
+          <div className="text-[11px] text-slate-500 mb-1">
+            Información requerida
+          </div>
+          <div className="text-sm font-semibold text-slate-50">
+            Solo ingresos y deudas
           </div>
         </div>
-      </section>
+      </div>
+    </div>
 
-      {/* BENEFICIOS */}
-      <section
-        id="beneficios"
-        className="border-t border-slate-800 bg-slate-950 pb-14"
-      >
-        <div className="mx-auto max-w-5xl px-4 pt-8">
-          <h2 className="text-xl md:text-2xl font-semibold mb-4">
-            Beneficios de simular con HabitaLibre
-          </h2>
-
-          <div className="grid gap-5 md:grid-cols-3 text-sm">
-            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
-              <p className="font-semibold mb-1">Comparación inteligente</p>
-              <p className="text-slate-400 text-xs">
-                No eres un formulario más. Analizamos tu perfil y comparamos
-                escenarios para VIS, VIP, BIESS y banca privada para mostrarte
-                lo que realmente tiene sentido.
-              </p>
-            </div>
-
-            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
-              <p className="font-semibold mb-1">Sin afectar tu buró</p>
-              <p className="text-slate-400 text-xs">
-                Trabajamos con datos declarativos para que tengas una primera
-                lectura clara sin dejar huella en tu historial crediticio ni
-                comprometerte con ningún banco.
-              </p>
-            </div>
-
-            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
-              <p className="font-semibold mb-1">Acompañamiento humano</p>
-              <p className="text-slate-400 text-xs">
-                Detrás del simulador hay un equipo que te acompaña en el
-                proceso, revisa tu caso y te ayuda a negociar mejores
-                condiciones cuando estés listo para avanzar.
-              </p>
-            </div>
+    <div className="grid gap-5 md:grid-cols-3 text-sm">
+      {/* Paso 1 */}
+      <div className="group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/70 p-5 transition hover:border-emerald-400/60 hover:bg-slate-900">
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition pointer-events-none bg-[radial-gradient(circle_at_top,_rgba(52,211,153,0.16),transparent_55%)]" />
+        <div className="relative flex items-center gap-3 mb-2">
+          <div className="h-9 w-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
+            <ClipboardDocumentListIcon className="h-5 w-5 text-emerald-400" />
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
+              Paso 1
+            </p>
+            <p className="font-semibold text-slate-50">
+              Simulas sin papeles ni claves bancarias
+            </p>
           </div>
         </div>
-      </section>
+        <p className="relative text-xs text-slate-400">
+          Completa una simulación guiada en 4 pasos con tus ingresos,
+          deudas y si aportas o no al IESS. No pedimos buró ni claves
+          bancarias, solo datos declarativos.
+        </p>
+      </div>
+
+      {/* Paso 2 */}
+      <div className="group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/70 p-5 transition hover:border-emerald-400/60 hover:bg-slate-900">
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition pointer-events-none bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.16),transparent_55%)]" />
+        <div className="relative flex items-center gap-3 mb-2">
+          <div className="h-9 w-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
+            <BanknotesIcon className="h-5 w-5 text-sky-400" />
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
+              Paso 2
+            </p>
+            <p className="font-semibold text-slate-50">
+              Ves tu rango de compra y tipo de crédito
+            </p>
+          </div>
+        </div>
+        <p className="relative text-xs text-slate-400">
+          Calculamos tu capacidad de pago, cuota estimada y te
+          mostramos qué producto encaja mejor contigo: VIS, VIP,
+          BIESS o banca privada, con un score hipotecario claro.
+        </p>
+      </div>
+
+      {/* Paso 3 */}
+      <div className="group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/70 p-5 transition hover:border-emerald-400/60 hover:bg-slate-900">
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition pointer-events-none bg-[radial-gradient(circle_at_top,_rgba(236,72,153,0.16),transparent_55%)]" />
+        <div className="relative flex items-center gap-3 mb-2">
+          <div className="h-9 w-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
+            <UserGroupIcon className="h-5 w-5 text-fuchsia-400" />
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
+              Paso 3
+            </p>
+            <p className="font-semibold text-slate-50">
+              Si quieres, te acompañamos hasta el crédito
+            </p>
+          </div>
+        </div>
+        <p className="relative text-xs text-slate-400">
+          Un asesor HabitaLibre revisa tu caso y te ayuda a preparar
+          documentos, comparar bancos y avanzar con la opción que
+          mejor combine cuota, plazo y seguridad para ti.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+     {/* BENEFICIOS – versión pro */}
+<section
+  id="beneficios"
+  className="border-t border-slate-800 bg-slate-950 pb-14"
+>
+  <div className="mx-auto max-w-6xl px-4 pt-10 md:pt-12">
+    <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
+      <div>
+        <h2 className="text-xl md:text-2xl font-semibold text-slate-50">
+          Beneficios de simular con HabitaLibre
+        </h2>
+        <p className="mt-2 text-sm text-slate-400 max-w-xl">
+          En lugar de darte un número suelto, conectamos tu realidad con
+          el tipo de crédito, el rango de vivienda y los pasos concretos
+          para llegar a tu hipoteca.
+        </p>
+      </div>
+
+      <div className="flex gap-3 text-[11px] text-slate-400">
+        <div className="rounded-full bg-slate-900/70 border border-slate-800 px-3 py-1.5 flex items-center gap-2">
+          <ShieldCheckIcon className="h-4 w-4 text-emerald-400" />
+          Sin afectar tu buró
+        </div>
+        <div className="rounded-full bg-slate-900/70 border border-slate-800 px-3 py-1.5 flex items-center gap-2">
+          <SparklesIcon className="h-4 w-4 text-sky-400" />
+          Enfoque VIS / VIP / BIESS
+        </div>
+      </div>
+    </div>
+
+    <div className="grid gap-5 md:grid-cols-3 text-sm">
+      {/* Beneficio 1 */}
+      <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-5">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="h-9 w-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
+            <SparklesIcon className="h-5 w-5 text-emerald-400" />
+          </div>
+          <p className="font-semibold text-slate-50">
+            Comparación realmente inteligente
+          </p>
+        </div>
+        <p className="text-xs text-slate-400 mb-2">
+          No eres un formulario más. Tomamos tu ingreso, deudas y
+          aporte al IESS para comparar escenarios VIS, VIP, BIESS y
+          banca privada, y te mostramos lo que tiene sentido para ti
+          hoy.
+        </p>
+        <ul className="text-[11px] text-slate-400 space-y-1.5">
+          <li>• Rango de precio sugerido en vez de un valor aislado.</li>
+          <li>• Score hipotecario para entender qué tan cerca estás.</li>
+        </ul>
+      </div>
+
+      {/* Beneficio 2 */}
+      <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-5">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="h-9 w-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
+            <ShieldCheckIcon className="h-5 w-5 text-sky-400" />
+          </div>
+        <p className="font-semibold text-slate-50">Sin riesgo para tu historial</p>
+        </div>
+        <p className="text-xs text-slate-400 mb-2">
+          Trabajamos con datos declarativos. No hacemos consultas de
+          buró ni movimientos bancarios, así que puedes explorar tu
+          capacidad sin dejar huella.
+        </p>
+        <ul className="text-[11px] text-slate-400 space-y-1.5">
+          <li>• Ideal si aún no estás listo para ir directo al banco.</li>
+          <li>• Puedes simular distintos escenarios antes de decidir.</li>
+        </ul>
+      </div>
+
+      {/* Beneficio 3 */}
+      <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-5">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="h-9 w-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
+            <ChatBubbleLeftRightIcon className="h-5 w-5 text-fuchsia-400" />
+          </div>
+          <p className="font-semibold text-slate-50">
+            Acompañamiento humano cuando tú quieras
+          </p>
+        </div>
+        <p className="text-xs text-slate-400 mb-2">
+          Detrás del simulador hay personas. Si tu resultado te
+          convence, un asesor puede ayudarte sin costo a ordenar tus
+          documentos y preparar tu mejor versión para el banco.
+        </p>
+        <ul className="text-[11px] text-slate-400 space-y-1.5">
+          <li>• Explicamos tu reporte en lenguaje simple.</li>
+          <li>• Te ayudamos a ver qué mejorar para subir tu score.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
     </main>
   );
 }
