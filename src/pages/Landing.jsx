@@ -99,61 +99,112 @@ export default function Landing({ onStart }) {
             </div>
           </div>
 
-          {/* Right Result Card */}
+                   {/* Right Result Card mejorada */}
           <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 shadow-[0_24px_60px_rgba(15,23,42,0.9)] backdrop-blur-sm">
+            {/* Header */}
             <div className="flex items-center justify-between text-xs mb-4">
               <div>
                 <p className="text-teal-300 font-medium">
-                  Vista previa de un resultado
+                  Vista previa de tu resultado
                 </p>
-                <p className="text-slate-400 mt-0.5">Perfil VIS / VIP simulado</p>
+                <p className="text-slate-400 mt-0.5">
+                  Ejemplo con ingresos de $1.600 y deudas moderadas
+                </p>
               </div>
               <span className="px-3 py-1 rounded-full bg-emerald-900/40 text-emerald-300 border border-emerald-500/40 text-[11px]">
                 No afecta tu buró
               </span>
             </div>
 
+            {/* Capacidad + cuota */}
             <div className="mb-5">
-              <p className="text-slate-400 text-xs">Capacidad estimada</p>
-              <p className="text-3xl md:text-4xl font-bold">$98,500</p>
-              <p className="text-[11px] text-slate-500 mt-0.5">
-                según tus ingresos y deudas declaradas
+              <p className="text-slate-400 text-xs mb-1">
+                Capacidad estimada de compra
+              </p>
+              <p className="text-3xl md:text-4xl font-bold tracking-tight">
+                $ 98.500
+              </p>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Monto referencial de vivienda según tus datos declarados.
               </p>
             </div>
 
+            {/* Bloques clave */}
             <div className="grid grid-cols-2 gap-4 text-sm mb-4">
               <div className="bg-slate-900 border border-slate-700/70 rounded-2xl p-4">
-                <p className="text-slate-400 text-xs mb-1">Cuota estimada</p>
-                <p className="font-semibold">$480 / mes</p>
-                <p className="text-[11px] text-slate-500">
-                  Plazo 20 años · tasa ref.
+                <p className="text-slate-400 text-[11px] mb-1">
+                  Cuota estimada
+                </p>
+                <p className="font-semibold text-[17px]">$ 480 / mes</p>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Incluye capital + intereses · Plazo 20 años.
                 </p>
               </div>
 
               <div className="bg-slate-900 border border-slate-700/70 rounded-2xl p-4">
-                <p className="text-slate-400 text-xs mb-1">Producto tentativo</p>
-                <p className="font-semibold">VIS / VIP</p>
-                <p className="text-[11px] text-slate-500">
-                  Ajustable según tu perfil real.
+                <p className="text-slate-400 text-[11px] mb-1">
+                  Producto tentativo
+                </p>
+                <p className="font-semibold text-[15px]">VIS / VIP</p>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Ajustamos según si calificas a subsidio o BIESS.
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 text-[11px] text-slate-400 mb-5">
-              <div>
-                <p className="font-semibold text-slate-200">+1,000</p>
-                <p>Familias simuladas</p>
+            {/* Tasa, plazo y score */}
+            <div className="grid grid-cols-3 gap-3 text-[11px] mb-5">
+              <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
+                <p className="text-slate-400 text-[10px] mb-0.5">
+                  Tasa referencial
+                </p>
+                <p className="text-slate-100 font-semibold text-sm">8,75%*</p>
+                <p className="text-slate-500 text-[9px] mt-0.5">
+                  Varía por banco y producto.
+                </p>
               </div>
-              <div>
-                <p className="font-semibold text-slate-200">&lt; 2 min</p>
-                <p>Tiempo estimado</p>
+              <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
+                <p className="text-slate-400 text-[10px] mb-0.5">
+                  Plazo estimado
+                </p>
+                <p className="text-slate-100 font-semibold text-sm">
+                  20 años
+                </p>
+                <p className="text-slate-500 text-[9px] mt-0.5">
+                  Buscamos balance entre cuota y costo total.
+                </p>
               </div>
-              <div>
-                <p className="font-semibold text-slate-200">AES-256</p>
-                <p>Seguridad</p>
+              <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
+                <p className="text-slate-400 text-[10px] mb-0.5">
+                  Score HabitaLibre
+                </p>
+                <p className="text-slate-100 font-semibold text-sm">
+                  82 / 100
+                </p>
+                <p className="text-emerald-400 text-[9px] mt-0.5">
+                  Perfil sólido para iniciar tu proceso.
+                </p>
               </div>
             </div>
 
+            {/* Tip de valor */}
+            <div className="mb-5 bg-slate-900 border border-slate-700/70 rounded-2xl p-3 flex gap-2 items-start">
+              <div className="mt-0.5 h-6 w-6 rounded-full bg-emerald-500/10 border border-emerald-500/50 flex items-center justify-center text-[13px] text-emerald-300">
+                i
+              </div>
+              <div className="text-[11px] leading-snug text-slate-200">
+                <span className="font-semibold text-emerald-300">
+                  Ejemplo:
+                </span>{" "}
+                si reduces tus otras deudas en{" "}
+                <span className="font-semibold">$ 150/mes</span>, tu capacidad
+                podría subir hasta aprox.{" "}
+                <span className="font-semibold">$ 112.000</span>. En el reporte
+                real te mostramos estos escenarios con tus propios datos.
+              </div>
+            </div>
+
+            {/* CTA */}
             <button
               onClick={handleStart}
               className="w-full py-3 rounded-xl bg-blue-500 hover:bg-blue-400 text-slate-950 font-semibold text-sm transition"
@@ -161,14 +212,12 @@ export default function Landing({ onStart }) {
               Ver mi capacidad real
             </button>
 
-            <p className="text-[10px] text-slate-500 mt-3 leading-snug">
-              Este es un ejemplo ilustrativo. Al simular, calculamos tu
-              resultado real con tus datos y diferentes escenarios de tasa y
-              plazo.
+            <p className="text-[9px] text-slate-500 mt-3 leading-snug">
+              *Tasa y condiciones referenciales. Tu resultado real se calcula
+              con tus datos y puede variar según entidad financiera, producto y
+              regulación vigente en Ecuador.
             </p>
           </div>
-        </div>
-      </section>
 
       {/* ================= ¿CÓMO FUNCIONA? – WORLD CLASS ================= */}
       <section
