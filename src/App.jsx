@@ -7,6 +7,7 @@ import {
   Navigate,
 } from "react-router-dom";
 
+import Landing from "./pages/Landing.jsx";
 import Leads from "./pages/Leads.jsx";
 import Admin from "./pages/Admin.jsx";
 import Gracias from "./pages/Gracias.jsx";
@@ -19,10 +20,6 @@ import { LeadCaptureProvider } from "./context/LeadCaptureContext.jsx";
 import "./App.css";
 import AdminLeads from "./pages/AdminLeads.jsx";
 
-// 👉 Nuevo hero world-class
-import HeroHabitaLibre from "./components/HeroHabitaLibre.jsx";
-
-
 function SimuladorPage() {
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4 py-10">
@@ -33,18 +30,13 @@ function SimuladorPage() {
   );
 }
 
-
 export default function App() {
   return (
     <LeadCaptureProvider>
       <Router>
         <Routes>
-
-          {/* ============================ */}
-          {/*  LANDING PRINCIPAL (NUEVA)  */}
-          {/* ============================ */}
-          <Route path="/" element={<HeroHabitaLibre />} />
-
+          {/* Landing principal */}
+          <Route path="/" element={<Landing />} />
 
           {/* Simulador */}
           <Route path="/simular" element={<SimuladorPage />} />
