@@ -5,9 +5,9 @@ import {
   BoltIcon,
   ShieldCheckIcon,
   SparklesIcon,
-  UserGroupIcon,
-  DocumentChartBarIcon,
+  BanknotesIcon,
   ChartBarIcon,
+  ChatBubbleLeftRightIcon,
 } from "@heroicons/react/24/outline";
 
 const fadeUp = {
@@ -16,406 +16,363 @@ const fadeUp = {
     opacity: 1,
     y: 0,
     transition: {
-      duration: 0.5,
-      ease: "easeOut",
-      delay: i * 0.08,
+      duration: 0.45,
+      delay: 0.08 * i,
+      ease: [0.21, 0.8, 0.26, 0.99],
     },
   }),
 };
 
-const fadeIn = {
-  hidden: { opacity: 0, scale: 0.96 },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    transition: {
-      duration: 0.5,
-      ease: "easeOut",
-    },
-  },
-};
-
-export default function Landing({ onStart }) {
-  const scrollToHow = () => {
-    const el = document.getElementById("como-funciona");
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
-  const scrollToBenefits = () => {
-    const el = document.getElementById("beneficios");
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
+function Hero({ onStart }) {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50">
-      {/* Nav */}
-      <header className="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur">
-        <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-indigo-500 via-sky-500 to-emerald-400 shadow-lg shadow-indigo-500/40 flex items-center justify-center text-xs font-semibold">
-              HL
-            </div>
-            <div className="flex flex-col leading-tight">
-              <span className="text-sm font-semibold tracking-tight">
-                HabitaLibre
-              </span>
-              <span className="text-[11px] text-slate-400">
-                Hipoteca exprés · VIS · VIP · BIESS
-              </span>
-            </div>
-          </div>
+    <div className="relative isolate overflow-hidden bg-gradient-to-b from-slate-950 via-slate-950 to-slate-950/95 text-slate-50">
+      {/* Glow de fondo */}
+      <div className="pointer-events-none absolute -left-40 top-[-10rem] h-80 w-80 rounded-full bg-violet-600/30 blur-3xl" />
+      <div className="pointer-events-none absolute -right-40 top-24 h-80 w-80 rounded-full bg-sky-500/25 blur-3xl" />
 
-          <nav className="hidden md:flex items-center gap-6 text-sm">
-            <button
-              onClick={scrollToHow}
-              className="text-slate-300 hover:text-white transition"
-            >
-              Cómo funciona
-            </button>
-            <button
-              onClick={scrollToBenefits}
-              className="text-slate-300 hover:text-white transition"
-            >
-              Beneficios
-            </button>
-            <button
-              onClick={onStart}
-              className="inline-flex items-center gap-2 rounded-full bg-indigo-500 px-4 py-1.5 text-xs font-semibold text-white shadow-lg shadow-indigo-500/40 hover:bg-indigo-400 transition"
-            >
-              Iniciar simulación
-              <BoltIcon className="h-4 w-4" />
-            </button>
-          </nav>
+      {/* Contenido */}
+      <header className="mx-auto flex h-20 max-w-6xl items-center justify-between px-5 md:px-6 lg:px-4">
+        <div className="flex items-center gap-2">
+          <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-900/80 ring-1 ring-slate-700/70">
+            <span className="text-sm font-semibold text-indigo-400">HL</span>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-50">HabitaLibre</p>
+            <p className="text-[11px] text-slate-400">
+              Hipoteca exprés · VIS · VIP · BIESS
+            </p>
+          </div>
         </div>
+
+        <nav className="hidden items-center gap-6 text-sm text-slate-300 md:flex">
+          <button
+            type="button"
+            className="hover:text-slate-50"
+            onClick={() =>
+              document
+                .getElementById("como-funciona")
+                ?.scrollIntoView({ behavior: "smooth" })
+            }
+          >
+            Cómo funciona
+          </button>
+          <button
+            type="button"
+            className="hover:text-slate-50"
+            onClick={() =>
+              document
+                .getElementById("beneficios")
+                ?.scrollIntoView({ behavior: "smooth" })
+            }
+          >
+            Beneficios
+          </button>
+          <button
+            type="button"
+            onClick={onStart}
+            className="rounded-full bg-indigo-500 px-4 py-1.5 text-sm font-semibold text-white shadow-[0_0_0_1px_rgba(129,140,248,0.6)] shadow-indigo-500/40 hover:bg-indigo-400"
+          >
+            Iniciar simulación
+          </button>
+        </nav>
       </header>
 
-      {/* HERO */}
-      <main className="mx-auto max-w-6xl px-4 pt-10 pb-16">
-        <section className="grid gap-10 lg:grid-cols-2 lg:items-center">
-          {/* Left - copy emocional */}
-          <div>
-            <motion.p
-              className="text-[11px] font-semibold uppercase tracking-[0.25em] text-indigo-300 mb-3"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              Precalificación sin afectar tu buró
-            </motion.p>
+      {/* Hero principal */}
+      <main className="mx-auto flex max-w-6xl flex-col gap-12 px-5 pb-20 pt-6 md:flex-row md:items-center md:px-6 lg:px-4 lg:pt-10">
+        {/* Columna izquierda */}
+        <motion.div
+          className="flex-1"
+          initial="hidden"
+          animate="visible"
+          variants={fadeUp}
+        >
+          <p className="mb-4 text-[11px] font-semibold tracking-[0.25em] text-slate-400">
+            PRECALIFICACIÓN SIN AFECTAR TU BURÓ
+          </p>
+          <h1 className="text-balance text-3xl font-semibold leading-tight text-slate-50 sm:text-4xl md:text-5xl">
+            Tu camino fácil a la
+            <br />
+            vivienda propia 🏡
+          </h1>
 
-            <motion.h1
-              className="text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight text-slate-50"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.05 }}
-            >
-              Tu camino claro y fácil <br className="hidden sm:block" />
-              a la vivienda propia 🏡
-            </motion.h1>
+          <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-300 md:text-[15px]">
+            Descubre en menos de 2 minutos cuánto puedes comprar hoy y con qué
+            tipo de crédito: VIS, VIP, BIESS o banca privada. Sin filas, sin
+            papeles y sin afectar tu historial crediticio.
+          </p>
 
-            <motion.p
-              className="mt-4 text-sm sm:text-base text-slate-300 max-w-xl"
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.12 }}
+          {/* Botones */}
+          <div className="mt-7 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={onStart}
+              className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-6 py-2.5 text-sm font-semibold text-emerald-950 shadow-[0_18px_55px_rgba(16,185,129,0.45)] hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
             >
-              Deja de adivinar cuánto puedes comprar. En menos de 2 minutos
-              te mostramos tu capacidad real, tu cuota estimada y el tipo
-              de crédito que tiene más sentido para ti: VIS, VIP, BIESS o banca
-              privada. Sin filas, sin papeles y sin miedo a “manchar” tu buró.
-            </motion.p>
+              Simular ahora
+              <span className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-950/10 text-[11px]">
+                →
+              </span>
+            </button>
 
-            <motion.div
-              className="mt-6 flex flex-col sm:flex-row gap-3 sm:items-center"
-              initial="hidden"
-              animate="visible"
-              variants={fadeUp}
+            <button
+              type="button"
+              onClick={() =>
+                document
+                  .getElementById("como-funciona")
+                  ?.scrollIntoView({ behavior: "smooth" })
+              }
+              className="inline-flex items-center justify-center rounded-full border border-slate-700/70 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-slate-500 hover:bg-slate-900/60"
             >
-              <button
-                onClick={onStart}
-                className="inline-flex items-center justify-center rounded-full bg-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-[0_20px_45px_rgba(79,70,229,0.6)] hover:bg-indigo-400 transition"
-              >
-                Simular ahora
-              </button>
-
-              <button
-                type="button"
-                onClick={scrollToHow}
-                className="inline-flex items-center justify-center rounded-full border border-slate-700/80 bg-slate-900/60 px-5 py-3 text-sm font-semibold text-slate-100 hover:border-slate-500 hover:bg-slate-900 transition"
-              >
-                Ver cómo funciona
-              </button>
-            </motion.div>
-
-            <motion.div
-              className="mt-6 flex flex-wrap gap-4 text-[11px] text-slate-400"
-              initial="hidden"
-              animate="visible"
-              variants={fadeUp}
-              custom={1}
-            >
-              <div className="inline-flex items-center gap-1.5">
-                <ShieldCheckIcon className="h-4 w-4 text-emerald-400" />
-                Datos cifrados AES-256
-              </div>
-              <div className="inline-flex items-center gap-1.5">
-                <SparklesIcon className="h-4 w-4 text-indigo-300" />
-                Recomendación VIS / VIP / BIESS
-              </div>
-              <div className="inline-flex items-center gap-1.5">
-                <UserGroupIcon className="h-4 w-4 text-sky-300" />
-                Acompañamiento humano sin costo
-              </div>
-            </motion.div>
+              Ver ejemplo de resultado
+            </button>
           </div>
 
-          {/* Right - card simulación previa */}
-          <motion.div
-            className="relative"
-            initial="hidden"
-            animate="visible"
-            variants={fadeIn}
-          >
-            <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_0_0,#4f46e5_0,transparent_55%),radial-gradient(circle_at_100%_0,#22c55e_0,transparent_55%)] opacity-70" />
-            <div className="rounded-3xl bg-slate-900/80 border border-slate-700/60 px-6 py-5 shadow-[0_24px_80px_rgba(15,23,42,1)] max-w-md ml-auto">
-              <p className="text-xs font-semibold text-slate-300 tracking-[0.18em] uppercase">
-                Vista previa de un resultado
-              </p>
-              <p className="mt-1 text-xs text-slate-400">
-                Perfil VIS / VIP simulado
-              </p>
-
-              <div className="mt-4 flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-xs text-slate-400">Capacidad estimada</p>
-                  <p className="text-3xl font-semibold text-white">
-                    $98,500
-                  </p>
-                  <p className="text-[11px] text-slate-500">
-                    según tus ingresos y deudas
-                  </p>
-                </div>
-                <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-3 py-1 text-[11px] font-medium text-emerald-300 border border-emerald-500/40">
-                  No afecta tu buró
-                </span>
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
-                <div className="rounded-2xl bg-slate-900/80 border border-slate-700/80 px-3 py-3">
-                  <p className="text-slate-400">Cuota estimada</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-50">
-                    $480 / mes
-                  </p>
-                  <p className="text-[11px] text-slate-500">
-                    Plazo 20 años · tasa ref.
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-slate-900/80 border border-slate-700/80 px-3 py-3">
-                  <p className="text-slate-400">Producto tentativo</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-50">
-                    VIS / VIP
-                  </p>
-                  <p className="text-[11px] text-slate-500">
-                    Ajustable según tu perfil real.
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-4 grid grid-cols-3 gap-3 text-[11px] text-slate-400">
-                <div>
-                  <p className="text-slate-500">Familias simuladas</p>
-                  <p className="font-semibold text-slate-100">+1,000</p>
-                </div>
-                <div>
-                  <p className="text-slate-500">Tiempo estimado</p>
-                  <p className="font-semibold text-slate-100">&lt; 2 min</p>
-                </div>
-                <div>
-                  <p className="text-slate-500">Seguridad</p>
-                  <p className="font-semibold text-slate-100">AES-256</p>
-                </div>
-              </div>
-
-              <button
-                onClick={onStart}
-                className="mt-5 w-full rounded-full bg-indigo-500 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/60 hover:bg-indigo-400 transition"
-              >
-                Ver mi capacidad real
-              </button>
-
-              <p className="mt-3 text-[10px] leading-snug text-slate-500">
-                Este es un ejemplo ilustrativo. Al simular, calculamos tu
-                resultado real con tus datos y diferentes escenarios de tasa /
-                plazo.
-              </p>
+          {/* Bullets cortos */}
+          <div className="mt-5 flex flex-wrap gap-4 text-[11px] text-slate-400">
+            <div className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              Datos cifrados
             </div>
-          </motion.div>
-        </section>
-
-        {/* =================== CÓMO FUNCIONA =================== */}
-        <section id="como-funciona" className="mt-20 md:mt-24">
-          <motion.h2
-            className="text-2xl md:text-3xl font-semibold text-slate-50"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.4 }}
-            variants={fadeUp}
-          >
-            ¿Cómo funciona HabitaLibre?
-          </motion.h2>
-
-          <motion.p
-            className="mt-3 text-sm md:text-base text-slate-300 max-w-2xl"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.4 }}
-            variants={fadeUp}
-            custom={1}
-          >
-            Diseñamos el proceso para que, en vez de sentir ansiedad,
-            sientas claridad y control. Es como tener a un analista bancario
-            de tu lado, pero sin papeleo ni letra pequeña.
-          </motion.p>
-
-          <div className="mt-8 grid gap-6 lg:grid-cols-2">
-            {[
-              {
-                title: "1. Simulas sin riesgo y sin claves bancarias.",
-                text: "Te pedimos solo lo esencial: ingresos, deudas, aportes IESS y entrada disponible. No conectamos con tus cuentas ni afectamos tu historial.",
-                Icon: BoltIcon,
-              },
-              {
-                title: "2. Analizamos tu perfil como lo haría un banco.",
-                text: "Calculamos capacidad de pago, LTV, DTI, stress de cuota y escenarios de tasa / plazo con la lógica de un analista humano.",
-                Icon: ChartBarIcon,
-              },
-              {
-                title: "3. Te mostramos tu mejor ruta hipotecaria.",
-                text: "VIS, VIP, BIESS o banca privada. Te decimos qué hace más sentido para ti hoy, con montos y cuotas que puedes sostener.",
-                Icon: SparklesIcon,
-              },
-              {
-                title: "4. Recibes tu reporte premium listo para negociar.",
-                text: "Un PDF world-class con explicación de cada métrica, tabla de amortización y plan de mejora. Perfecto para sentarte frente al banco con argumentos.",
-                Icon: DocumentChartBarIcon,
-              },
-              {
-                title: "5. Si quieres, te acompañamos hasta la firma.",
-                text: "Un asesor HabitaLibre te guía sin costo desde la simulación hasta que tengas las llaves en la mano. Tú decides hasta dónde quieres llegar.",
-                Icon: UserGroupIcon,
-              },
-            ].map((step, i) => (
-              <motion.div
-                key={step.title}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, amount: 0.3 }}
-                variants={fadeUp}
-                custom={i * 0.3}
-                className="flex gap-4 rounded-2xl border border-slate-800/80 bg-slate-900/60 px-4 py-4 md:px-5 md:py-5"
-              >
-                <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/15 border border-indigo-400/40 text-indigo-300 shrink-0">
-                  <step.Icon className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-50">
-                    {step.title}
-                  </h3>
-                  <p className="mt-1 text-xs md:text-sm text-slate-300">
-                    {step.text}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
+            <div className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
+              Enfoque VIS / VIP / BIESS
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
+              Asesoría sin costo
+            </div>
           </div>
-        </section>
+        </motion.div>
 
-        {/* =================== BENEFICIOS =================== */}
-        <section id="beneficios" className="mt-20 md:mt-24 pb-4">
-          <motion.h2
-            className="text-2xl md:text-3xl font-semibold text-slate-50"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.4 }}
-            variants={fadeUp}
-          >
-            Beneficios de simular con HabitaLibre
-          </motion.h2>
+        {/* Columna derecha – tarjeta de ejemplo */}
+        <motion.div
+          className="flex-1"
+          initial="hidden"
+          animate="visible"
+          custom={1}
+          variants={fadeUp}
+        >
+          <div className="mx-auto w-full max-w-md rounded-3xl border border-slate-800/70 bg-gradient-to-br from-slate-900/90 via-slate-900/95 to-slate-950/90 p-5 shadow-[0_22px_60px_rgba(15,23,42,0.9)]">
+            <div className="flex items-center justify-between text-[11px] text-slate-400">
+              <span>Vista previa de un resultado</span>
+              <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-[11px] font-medium text-emerald-400">
+                No afecta tu buró
+              </span>
+            </div>
 
-          <motion.p
-            className="mt-3 text-sm md:text-base text-slate-300 max-w-2xl"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.4 }}
-            variants={fadeUp}
-            custom={1}
-          >
-            No eres un número en una fila. Eres una familia, un plan, un
-            proyecto de vida. Nuestro trabajo es darte información tan clara
-            que puedas dormir tranquilo con la decisión que tomes.
-          </motion.p>
+            <p className="mt-3 text-[12px] font-medium text-slate-300">
+              Perfil VIS / VIP simulado
+            </p>
 
-          <div className="mt-8 grid gap-6 md:grid-cols-3">
-            {[
-              {
-                title: "Claridad inmediata y accionable",
-                text: "En vez de un simple “aprobado / rechazado” recibes un análisis que te explica el porqué y qué puedes mejorar.",
-                Icon: DocumentChartBarIcon,
-              },
-              {
-                title: "Recomendación honesta de producto",
-                text: "VIS, VIP, BIESS o banca privada. No vendemos créditos, te mostramos la ruta que realmente te conviene.",
-                Icon: SparklesIcon,
-              },
-              {
-                title: "Seguridad nivel bancario",
-                text: "Cifrado AES-256, servidores seguros y cero venta de datos. Tu información es tuya.",
-                Icon: ShieldCheckIcon,
-              },
-              {
-                title: "Reporte world-class para negociar",
-                text: "Llega al banco con un reporte sólido, profesional y visualmente claro. Cambia la conversación.",
-                Icon: ChartBarIcon,
-              },
-              {
-                title: "Acompañamiento humano real",
-                text: "Un equipo que te habla claro, sin letras pequeñas y sin empujarte a un crédito que no puedes pagar.",
-                Icon: UserGroupIcon,
-              },
-              {
-                title: "Todo en menos de 2 minutos",
-                text: "Interfaz diseñada para que la completes sin esfuerzo, incluso desde el celular, sin pedirte documentos.",
-                Icon: BoltIcon,
-              },
-            ].map((card, i) => (
-              <motion.div
-                key={card.title}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, amount: 0.3 }}
-                variants={fadeUp}
-                custom={i * 0.25}
-                className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-4 md:px-5 md:py-5 shadow-[0_16px_40px_rgba(15,23,42,0.75)]"
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-emerald-400/5 pointer-events-none" />
-                <div className="relative flex items-start gap-3">
-                  <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 border border-slate-700 text-indigo-300 shrink-0">
-                    <card.Icon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-50">
-                      {card.title}
-                    </h3>
-                    <p className="mt-1 text-xs md:text-sm text-slate-300">
-                      {card.text}
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+            <p className="mt-2 text-xs text-slate-400">Capacidad estimada</p>
+            <p className="mt-1 text-3xl font-semibold text-slate-50">
+              $98,500
+            </p>
+            <p className="text-[11px] text-slate-400">
+              según tus ingresos y deudas
+            </p>
+
+            <div className="mt-5 grid grid-cols-2 gap-2 rounded-2xl bg-slate-900/70 p-3 text-xs text-slate-200">
+              <div className="rounded-xl bg-slate-900/80 p-3">
+                <p className="text-[11px] text-slate-400">Cuota estimada</p>
+                <p className="mt-1 text-sm font-semibold">$480 / mes</p>
+                <p className="mt-0.5 text-[10px] text-slate-500">
+                  Plazo 20 años · tasa ref.
+                </p>
+              </div>
+              <div className="rounded-xl bg-slate-900/80 p-3">
+                <p className="text-[11px] text-slate-400">Producto tentativo</p>
+                <p className="mt-1 text-sm font-semibold">VIS / VIP</p>
+                <p className="mt-0.5 text-[10px] text-slate-500">
+                  Ajustable según tu perfil real.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-3 gap-2 text-[10px] text-slate-400">
+              <div>
+                <p className="text-slate-500">Familias simuladas</p>
+                <p className="mt-0.5 font-medium text-slate-200">+1,000</p>
+              </div>
+              <div>
+                <p className="text-slate-500">Tiempo estimado</p>
+                <p className="mt-0.5 font-medium text-slate-200">&lt; 2 min</p>
+              </div>
+              <div>
+                <p className="text-slate-500">Enfoque</p>
+                <p className="mt-0.5 font-medium text-slate-200">
+                  VIS / VIP / BIESS
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onStart}
+              className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_18px_45px_rgba(79,70,229,0.8)] hover:bg-indigo-400"
+            >
+              Ver mi capacidad real
+            </button>
+
+            <p className="mt-3 text-[10px] leading-relaxed text-slate-500">
+              Este es un ejemplo ilustrativo. Al simular, calculamos tu
+              resultado real con tus datos y diferentes escenarios de tasa /
+              plazo.
+            </p>
           </div>
-        </section>
+        </motion.div>
       </main>
+    </div>
+  );
+}
+
+export default function Landing({ onStart }) {
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-50">
+      <Hero onStart={onStart} />
+
+      {/* ====== Sección: Cómo funciona ====== */}
+      <section
+        id="como-funciona"
+        className="mx-auto max-w-6xl px-5 pb-12 pt-14 md:px-6 lg:px-4"
+      >
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={fadeUp}
+        >
+          <h2 className="text-2xl font-semibold tracking-tight text-slate-50 md:text-[26px]">
+            ¿Cómo funciona HabitaLibre?
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm text-slate-300 md:text-[15px]">
+            No eres un formulario más. En 4 pasos analizamos tu perfil y te
+            mostramos cuánto podrías comprar hoy y con qué tipo de crédito
+            tiene sentido avanzar.
+          </p>
+        </motion.div>
+
+        <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[
+            {
+              title: "Responde 4 bloques claros",
+              body: "Ingresos, deudas, ahorros y tu situación frente al IESS / BIESS. Nada de papeleo, solo datos que ya conoces.",
+              icon: BoltIcon,
+            },
+            {
+              title: "Calculamos tu capacidad real",
+              body: "Aplicamos reglas específicas de VIS, VIP, BIESS y banca privada para estimar cuánto podrías comprar hoy.",
+              icon: ChartBarIcon,
+            },
+            {
+              title: "Comparamos productos por ti",
+              body: "Te mostramos una ruta tentativamente ganadora: VIS, VIP, BIESS o banca privada según tu perfil y objetivos.",
+              icon: SparklesIcon,
+            },
+            {
+              title: "Te acompañamos hasta la firma",
+              body: "Si quieres avanzar, un asesor HabitaLibre te ayuda a pulir tu caso y a negociar con la entidad adecuada.",
+              icon: ChatBubbleLeftRightIcon,
+            },
+          ].map((item, i) => (
+            <motion.div
+              key={item.title}
+              custom={i + 1}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.25 }}
+              variants={fadeUp}
+              className="flex flex-col rounded-2xl border border-slate-800/80 bg-slate-900/60 p-4 shadow-[0_12px_32px_rgba(15,23,42,0.6)]"
+            >
+              <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-800/90">
+                <item.icon className="h-5 w-5 text-indigo-400" />
+              </div>
+              <h3 className="text-sm font-semibold text-slate-50">
+                {item.title}
+              </h3>
+              <p className="mt-2 text-[13px] leading-relaxed text-slate-300">
+                {item.body}
+              </p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* ====== Sección: Beneficios ====== */}
+      <section
+        id="beneficios"
+        className="mx-auto max-w-6xl px-5 pb-20 md:px-6 lg:px-4"
+      >
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={fadeUp}
+        >
+          <h2 className="text-2xl font-semibold tracking-tight text-slate-50 md:text-[26px]">
+            Beneficios de simular con HabitaLibre
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm text-slate-300 md:text-[15px]">
+            Todo está diseñado para que entiendas tu situación real, sin humo y
+            sin letras pequeñas.
+          </p>
+        </motion.div>
+
+        <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[
+            {
+              title: "Comparación inteligente",
+              body: "No solo mostramos un número: ordenamos VIS, VIP, BIESS y banca privada según cuánto sentido tiene para ti.",
+              icon: SparklesIcon,
+            },
+            {
+              title: "Sin afectar tu buró",
+              body: "Trabajamos con datos declarativos. El análisis no deja huella en tu historial crediticio.",
+              icon: ShieldCheckIcon,
+            },
+            {
+              title: "Acompañamiento humano",
+              body: "Detrás del simulador hay un equipo que te acompaña en el proceso de punta a punta, en lenguaje claro.",
+              icon: ChatBubbleLeftRightIcon,
+            },
+            {
+              title: "Enfoque en VIS y VIP",
+              body: "Tomamos en cuenta subsidios, límites de precio y reglas específicas del segmento social.",
+              icon: BanknotesIcon,
+            },
+            {
+              title: "Visión a largo plazo",
+              body: "Te mostramos qué pasa si cambia la tasa, el plazo o tus ingresos. No es solo un número de hoy.",
+              icon: ChartBarIcon,
+            },
+            {
+              title: "Cero compromiso",
+              body: "Puedes usar el simulador todas las veces que quieras. Si todavía no es tu momento, igual sales con claridad.",
+              icon: BoltIcon,
+            },
+          ].map((item, i) => (
+            <motion.div
+              key={item.title}
+              custom={i + 1}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.25 }}
+              variants={fadeUp}
+              className="flex flex-col rounded-2xl border border-slate-800/80 bg-slate-900/60 p-4"
+            >
+              <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-800/80">
+                <item.icon className="h-5 w-5 text-emerald-400" />
+              </div>
+              <h3 className="text-sm font-semibold text-slate-50">
+                {item.title}
+              </h3>
+              <p className="mt-2 text-[13px] leading-relaxed text-slate-300">
+                {item.body}
+              </p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
