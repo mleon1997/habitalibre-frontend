@@ -1,5 +1,4 @@
 // src/pages/Landing.jsx
-import React from "react";
 import {
   SparklesIcon,
   ClipboardDocumentListIcon,
@@ -7,7 +6,10 @@ import {
   ShieldCheckIcon,
   UserGroupIcon,
   ChatBubbleLeftRightIcon,
+  ChatBubbleOvalLeftEllipsisIcon,
+  StarIcon,
 } from "@heroicons/react/24/outline";
+
 
 export default function Landing({ onStart }) {
   const handleStart = () => {
@@ -458,6 +460,111 @@ export default function Landing({ onStart }) {
     </div>
   </div>
 </section>
+
+{/* TESTIMONIOS */}
+<section
+  id="testimonios"
+  className="border-t border-slate-800 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-950/95"
+>
+  <div className="mx-auto max-w-6xl px-4 py-12 md:py-16">
+    {/* Header */}
+    <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
+      <div>
+        <div className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-[11px] text-slate-300 mb-3">
+          <ChatBubbleOvalLeftEllipsisIcon className="h-3.5 w-3.5 text-emerald-400" />
+          <span>Personas reales, procesos reales</span>
+        </div>
+        <h2 className="text-xl md:text-2xl font-semibold text-slate-50">
+          Lo que dicen quienes ya simularon
+        </h2>
+        <p className="mt-2 text-sm text-slate-400 max-w-xl">
+          Historias de personas que usaron HabitaLibre como primer paso para
+          entender su capacidad real antes de ir al banco.
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2 text-xs text-slate-400">
+        <StarIcon className="h-4 w-4 text-amber-400" />
+        <span>
+          <span className="text-slate-50 font-semibold">4.9/5</span>{" "}
+          satisfacción promedio en experiencias piloto
+        </span>
+      </div>
+    </div>
+
+    {/* Grid de testimonios */}
+    <div className="grid gap-5 md:grid-cols-3 text-sm">
+      {/* Testimonio 1 */}
+      <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
+        <div className="absolute inset-0 pointer-events-none opacity-60 bg-[radial-gradient(circle_at_top,_rgba(52,211,153,0.15),transparent_55%)]" />
+        <div className="relative flex items-center gap-3 mb-3">
+          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-emerald-400 to-sky-500 text-slate-950 flex items-center justify-center text-xs font-semibold">
+            MA
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-50">
+              Mateo &amp; Alejandra
+            </p>
+            <p className="text-[11px] text-slate-400">Primera vivienda · Quito</p>
+          </div>
+        </div>
+        <p className="relative text-xs text-slate-300">
+          “Siempre nos decían cosas distintas en cada banco. Con el reporte de
+          HabitaLibre entendimos de una vez nuestro rango de compra y qué tipo
+          de crédito nos convenía. Llegamos a la cita con el banco mucho más
+          seguros.”
+        </p>
+      </div>
+
+      {/* Testimonio 2 */}
+      <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
+        <div className="absolute inset-0 pointer-events-none opacity-60 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.16),transparent_55%)]" />
+        <div className="relative flex items-center gap-3 mb-3">
+          <div className="h-9 w-9 rounded-full bg-slate-800 text-slate-200 flex items-center justify-center text-xs font-semibold">
+            CR
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-50">
+              Carolina R.
+            </p>
+            <p className="text-[11px] text-slate-400">
+              Migrando de arriendo a dueño · VIS/VIP
+            </p>
+          </div>
+        </div>
+        <p className="relative text-xs text-slate-300">
+          “Pensé que no calificaba. El simulador me mostró que sí podía, pero
+          ajustando plazo y entrada. El acompañamiento después del resultado fue
+          clave para ordenar mis documentos y saber por dónde arrancar.”
+        </p>
+      </div>
+
+      {/* Testimonio 3 */}
+      <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
+        <div className="absolute inset-0 pointer-events-none opacity-60 bg-[radial-gradient(circle_at_top,_rgba(236,72,153,0.16),transparent_55%)]" />
+        <div className="relative flex items-center gap-3 mb-3">
+          <div className="h-9 w-9 rounded-full bg-slate-800 text-slate-200 flex items-center justify-center text-xs font-semibold">
+            JP
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-50">
+              Jorge P.
+            </p>
+            <p className="text-[11px] text-slate-400">
+              Cambio de banco · Refinanciamiento
+            </p>
+          </div>
+        </div>
+        <p className="relative text-xs text-slate-300">
+          “Yo ya tenía hipoteca, pero quería una mejor tasa. El stress test del
+          reporte me ayudó a ver cuánto me ahorraba cambiando de producto y en
+          cuánto tiempo se pagaba el esfuerzo de hacer el trámite.”
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
 
     </main>
   );
