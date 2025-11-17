@@ -9,28 +9,32 @@ function pmt(rate, nper, pv) {
 }
 
 export default function SimulatorForm({ onResult }) {
-  // --- Estados de formulario ---
-  const [ingreso, setIngreso] = useState(0);
-  const [ingresoPareja, setIngresoPareja] = useState(0);
-  const [deudas, setDeudas] = useState(0);
-  const [valor, setValor] = useState(0);
-  const [entrada, setEntrada] = useState(0);
-  const [edad, setEdad] = useState(30);
+  // --- Estados de formulario (como STRINGS para evitar glitches) ---
+  const [ingreso, setIngreso] = useState("");          // titular
+  const [ingresoPareja, setIngresoPareja] = useState("");
+  const [deudas, setDeudas] = useState("");
+  const [valor, setValor] = useState("");
+  const [entrada, setEntrada] = useState("");
+  const [edad, setEdad] = useState("30");
   const [tipoIngreso, setTipoIngreso] = useState("Dependiente");
-  const [estabilidad, setEstabilidad] = useState(2);
+  const [estabilidad, setEstabilidad] = useState("2");
   const [tieneVivienda, setTieneVivienda] = useState(false);
   const [afiliadoIESS, setAfiliadoIESS] = useState(false);
   const [declaracionBuro, setDeclaracionBuro] = useState("ninguno");
 
   // Aportes IESS para BIESS
-  const [aportesTotales, setAportesTotales] = useState(0);
-  const [aportesConsecutivos, setAportesConsecutivos] = useState(0);
+  const [aportesTotales, setAportesTotales] = useState("0");
+  const [aportesConsecutivos, setAportesConsecutivos] = useState("0");
 
   // Estado civil
   const [estadoCivil, setEstadoCivil] = useState("Soltero/a");
 
   // Permite aplicar con pareja aunque no sea estado civil formal
   const [aplicarConPareja, setAplicarConPareja] = useState(false);
+
+  // NUEVOS: lógica hipotecaria
+  const [esPrimeraVivienda, setEsPrimeraVivienda] = useState("si"); // "si" | "no"
+  const [estadoVivienda, setEstadoVivienda] = useState("por_estrenar"); // "por_estrenar" | "usada"
 
   // Contacto
   const [nombre, setNombre] = useState("");
@@ -62,26 +66,24 @@ export default function SimulatorForm({ onResult }) {
     estadoCivil === "Casado/a" || estadoCivil === "Unión de hecho";
 
   const usarSoloPareja = esParejaFormal || aplicarConPareja;
-
   const mostrarPareja = usarSoloPareja;
 
   /** Derivados */
   const derived = useMemo(() => {
-    const v = Number(valor) || 0;
-    const e = Number(entrada) || 0;
+    const v = Number(valor || 0);
+    const e = Number(entrada || 0);
     const loan = Math.max(0, v - e);
     const ltv = v > 0 ? loan / v : 0;
 
-    const ingresoTotalUsado = usarSoloPareja
-      ? Number(ingresoPareja) || 0
-      : Number(ingreso) || 0;
+    const ingresoTitular = Number(ingreso || 0);
+    const ingresoConyuge = Number(ingresoPareja || 0);
+    const deudasNum = Number(deudas || 0);
+
+    const ingresoTotalUsado = usarSoloPareja ? ingresoConyuge : ingresoTitular;
 
     const dti = afiliadoIESS ? 0.4 : 0.35;
 
-    const cap = Math.max(
-      0,
-      (ingresoTotalUsado - (Number(deudas) || 0)) * dti
-    );
+    const cap = Math.max(0, (ingresoTotalUsado - deudasNum) * dti);
 
     let tentativo = "Banca Privada";
     const sinCasa = !tieneVivienda;
@@ -113,8 +115,7 @@ export default function SimulatorForm({ onResult }) {
       nMeses = 240;
     }
 
-    const cuotaPreview =
-      loan > 0 ? pmt(tasaAnual / 12, nMeses, loan) : 0;
+    const cuotaPreview = loan > 0 ? pmt(tasaAnual / 12, nMeses, loan) : 0;
 
     const subPreview = `${Math.round(nMeses / 12)} años · ${(tasaAnual * 100).toFixed(2)}% anual`;
 
@@ -171,30 +172,38 @@ export default function SimulatorForm({ onResult }) {
     try {
       fetch(`${API_BASE}/api/health`).catch(() => {});
 
-      const ingresoNeto = usarSoloPareja
-        ? Number(ingresoPareja || 0)
-        : Number(ingreso || 0);
+      const ingresoTitular = Number(ingreso || 0);
+      const ingresoConyuge = Number(ingresoPareja || 0);
+      const deudasNum = Number(deudas || 0);
+      const valorNum = Number(valor || 0);
+      const entradaNum = Number(entrada || 0);
+      const edadNum = Number(edad || 0);
+      const estabilidadNum = Number(estabilidad || 0);
+      const aportesTotalesNum = Number(aportesTotales || 0);
+      const aportesConsecutivosNum = Number(aportesConsecutivos || 0);
 
-      const ingresoParejaPayload = usarSoloPareja
-        ? Number(ingresoPareja || 0)
-        : 0;
+      const ingresoNeto = usarSoloPareja ? ingresoConyuge : ingresoTitular;
+      const ingresoParejaPayload = usarSoloPareja ? ingresoConyuge : 0;
 
       const payload = {
         ingresoNetoMensual: ingresoNeto,
         ingresoPareja: ingresoParejaPayload,
-        otrasDeudasMensuales: Number(deudas),
-        valorVivienda: Number(valor),
-        entradaDisponible: Number(entrada),
-        edad: Number(edad),
+        otrasDeudasMensuales: deudasNum,
+        valorVivienda: valorNum,
+        entradaDisponible: entradaNum,
+        edad: edadNum,
         tipoIngreso,
-        aniosEstabilidad: Number(estabilidad),
+        aniosEstabilidad: estabilidadNum,
         tieneVivienda,
         afiliadoIess: afiliadoIESS,
-        iessAportesTotales: Number(aportesTotales || 0),
-        iessAportesConsecutivos: Number(aportesConsecutivos || 0),
+        iessAportesTotales: aportesTotalesNum,
+        iessAportesConsecutivos: aportesConsecutivosNum,
         declaracionBuro,
         estadoCivil,
         aplicarConPareja,
+        // nuevos campos
+        esPrimeraVivienda: esPrimeraVivienda === "si",
+        tipoVivienda: estadoVivienda,
       };
 
       const data = await precalificar(payload);
@@ -329,6 +338,28 @@ export default function SimulatorForm({ onResult }) {
           />
         </Field>
 
+        <Field label="¿Es tu primera vivienda?">
+          <select
+            className="w-full rounded-xl border px-3 py-2"
+            value={esPrimeraVivienda}
+            onChange={(e) => setEsPrimeraVivienda(e.target.value)}
+          >
+            <option value="si">Sí, es mi primera vivienda</option>
+            <option value="no">No, ya he tenido vivienda propia</option>
+          </select>
+        </Field>
+
+        <Field label="Estado de la vivienda">
+          <select
+            className="w-full rounded-xl border px-3 py-2"
+            value={estadoVivienda}
+            onChange={(e) => setEstadoVivienda(e.target.value)}
+          >
+            <option value="por_estrenar">Por estrenar / proyecto nuevo</option>
+            <option value="usada">Usada / segunda mano</option>
+          </select>
+        </Field>
+
         <Field label="¿Estás afiliado al IESS?">
           <SelectBool
             value={afiliadoIESS}
@@ -452,14 +483,22 @@ function Field({ label, children }) {
   );
 }
 
+/** 👉 Input de dinero SIN glitches: trabaja con strings */
 function InputMoney({ value, onChange }) {
+  const handleChange = (e) => {
+    const raw = e.target.value;
+    const clean = raw.replace(/[^\d]/g, ""); // solo dígitos
+    onChange(clean);
+  };
+
   return (
     <input
-      type="number"
-      min="0"
+      type="text"
+      inputMode="numeric"
       className="w-full rounded-xl border px-3 py-2"
       value={value}
-      onChange={(e) => onChange(Number(e.target.value || 0))}
+      onChange={handleChange}
+      placeholder="0"
     />
   );
 }
@@ -470,7 +509,7 @@ function InputNumber({ value, onChange }) {
       type="number"
       className="w-full rounded-xl border px-3 py-2"
       value={value}
-      onChange={(e) => onChange(Number(e.target.value || 0))}
+      onChange={(e) => onChange(e.target.value)}
     />
   );
 }
@@ -489,7 +528,7 @@ function Select({ value, onChange, options }) {
   );
 }
 
-/** 🔥 Select booleano corregido */
+/** 🔥 Select booleano */
 function SelectBool({ value, onChange }) {
   return (
     <select
@@ -523,13 +562,9 @@ function MiniCard({ label, value, sub }) {
 }
 
 function Warn({ children }) {
-  return (
-    <div className="text-xs text-amber-600 mt-1">{children}</div>
-  );
+  return <div className="text-xs text-amber-600 mt-1">{children}</div>;
 }
 
 function ErrorText({ children }) {
-  return (
-    <div className="mt-3 text-sm text-red-600">{children}</div>
-  );
+  return <div className="mt-3 text-sm text-red-600">{children}</div>;
 }

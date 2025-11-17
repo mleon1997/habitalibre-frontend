@@ -1,6 +1,20 @@
 // src/lib/api.js
-const VITE_URL = (import.meta?.env?.VITE_API_URL || "").replace(/\/$/, "");
-export const API_BASE = VITE_URL || "https://habitalibre-backend.onrender.com";
+
+// Detectamos si estamos en dev (Vite expone import.meta.env.DEV)
+const IS_DEV = import.meta.env.DEV;
+
+// En dev: forzamos backend local.
+// En build/prod: usamos VITE_API_URL (y si faltara, caemos a Render).
+const VITE_URL_RAW = import.meta.env.VITE_API_URL || "";
+const VITE_URL = VITE_URL_RAW.replace(/\/$/, "");
+
+export const API_BASE = IS_DEV
+  ? "http://localhost:4000"
+  : (VITE_URL || "https://habitalibre-backend.onrender.com");
+
+console.log("[API] IS_DEV:", IS_DEV);
+console.log("[API] VITE_API_URL:", import.meta.env.VITE_API_URL);
+console.log("[API] API_BASE usado:", API_BASE);
 
 // Pequeño helper de fetch con timeout y logs
 async function request(path, { method = "GET", body, headers } = {}, timeoutMs = 45000) {
@@ -16,7 +30,6 @@ async function request(path, { method = "GET", body, headers } = {}, timeoutMs =
       headers: { "Content-Type": "application/json", ...(headers || {}) },
       body: body ? JSON.stringify(body) : undefined,
       signal: ctrl.signal,
-      // mode: "cors", // generalmente no hace falta ponerlo; descomenta si ves error CORS
     });
 
     const ct = res.headers.get("content-type") || "";
@@ -38,10 +51,10 @@ async function request(path, { method = "GET", body, headers } = {}, timeoutMs =
   }
 }
 
-// (Opcional) “despertar” Render free antes de la petición pesada
+// “Despertar” backend antes de la petición pesada (útil en Render)
 async function wake() {
   try {
-    await fetch(`${API_BASE}/health`, { method: "GET" }); // ajusta si tu backend tiene /health
+    await fetch(`${API_BASE}/health`, { method: "GET" });
   } catch {
     // ignorar
   }
@@ -57,14 +70,10 @@ export async function crearLead(payload) {
   return request("/api/leads", { method: "POST", body: payload }, 45000);
 }
 
- // ======================================================================
+// ======================================================================
 // 🧾 LEADS (admin)
 // ======================================================================
 
-/**
- * Lista todos los leads guardados en el backend.
- * Usado en: src/pages/Leads.jsx y AdminDashboard.jsx
- */
 export async function listarLeads() {
   const res = await fetch(`${API_BASE}/api/leads`, {
     method: "GET",
@@ -80,10 +89,6 @@ export async function listarLeads() {
   return await res.json();
 }
 
-/**
- * Actualiza un lead (por ejemplo, marcar como contactado, cambiar estado, etc.).
- * Usado en: src/pages/AdminDashboard.jsx
- */
 export async function updateLead(id, payload) {
   const res = await fetch(`${API_BASE}/api/leads/${id}`, {
     method: "PUT",
