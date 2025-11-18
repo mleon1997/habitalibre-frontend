@@ -1,4 +1,5 @@
 // src/pages/Landing.jsx
+import React, { useState } from "react";
 import {
   SparklesIcon,
   ClipboardDocumentListIcon,
@@ -8,10 +9,15 @@ import {
   ChatBubbleLeftRightIcon,
   ChatBubbleOvalLeftEllipsisIcon,
   StarIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 
+import HIcon from "../assets/HICON.png";
+import HLogo from "../assets/HLOGO.png";
 
 export default function Landing({ onStart }) {
+  const [activeLegalSection, setActiveLegalSection] = useState(null);
+
   const handleStart = () => {
     if (typeof onStart === "function") {
       onStart();
@@ -20,47 +26,69 @@ export default function Landing({ onStart }) {
     }
   };
 
+  const openLegal = (section) => setActiveLegalSection(section);
+  const closeLegal = () => setActiveLegalSection(null);
+
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50">
       {/* NAVBAR */}
-      <header className="border-b border-slate-800/70 bg-slate-950/80 backdrop-blur">
-        <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
-          {/* Logo simple */}
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-2xl bg-gradient-to-br from-indigo-500 via-blue-500 to-emerald-400 flex items-center justify-center text-xs font-semibold shadow-lg shadow-indigo-500/40">
-              HL
-            </div>
-            <div className="leading-tight">
-              <div className="font-semibold text-sm">HabitaLibre</div>
-              <div className="text-[11px] text-slate-400">
-                Hipoteca exprés · VIS · VIP · BIESS
-              </div>
-            </div>
-          </div>
+      <header className="border-b border-slate-800/70 bg-slate-950/90 backdrop-blur">
+  <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
+    
+    {/* Logo HabitaLibre */}
+<div className="flex items-center gap-3">
+  {/* Ícono H-casa grande */}
+  <div
+    className="
+      h-12 w-12 md:h-14 md:w-14
+      rounded-2xl bg-slate-900/90 
+      border border-emerald-400/60
+      shadow-[0_0_25px_rgba(16,185,129,0.4)]
+      flex items-center justify-center overflow-hidden
+    "
+  >
+    <img
+      src={HIcon}         // 👈 aquí usamos SOLO la H
+      alt="HabitaLibre"
+      className="h-7 w-7 md:h-8 md:w-8 object-contain"
+    />
+  </div>
 
-          {/* Links simples con anchors */}
-          <nav className="hidden md:flex items-center gap-8 text-sm">
-            <a
-              href="#como-funciona"
-              className="text-slate-300 hover:text-slate-50 transition"
-            >
-              Cómo funciona
-            </a>
-            <a
-              href="#beneficios"
-              className="text-slate-300 hover:text-slate-50 transition"
-            >
-              Beneficios
-            </a>
-            <button
-              onClick={handleStart}
-              className="px-4 py-2 rounded-full bg-blue-500 hover:bg-blue-400 text-slate-950 font-semibold text-xs shadow-lg shadow-blue-500/40 transition"
-            >
-              Iniciar simulación
-            </button>
-          </nav>
-        </div>
-      </header>
+  {/* Texto fuera de la imagen, siempre nítido */}
+  <div className="leading-tight">
+    <div className="font-bold text-lg md:text-xl text-white tracking-tight">
+      HabitaLibre
+    </div>
+    <div className="text-[11px] md:text-xs text-emerald-300/90">
+      Hipoteca exprés · VIS · VIP · BIESS
+    </div>
+  </div>
+</div>
+
+
+
+    {/* NAV LINKS */}
+    <nav className="hidden md:flex items-center gap-8 text-sm">
+      <a href="#como-funciona" className="text-slate-300 hover:text-slate-50 transition">
+        Cómo funciona
+      </a>
+
+      <a href="#beneficios" className="text-slate-300 hover:text-slate-50 transition">
+        Beneficios
+      </a>
+
+      <button
+        onClick={handleStart}
+        className="px-5 py-2.5 rounded-full bg-blue-500 hover:bg-blue-400 text-slate-950 
+                 font-semibold text-sm shadow-lg shadow-blue-500/40 transition"
+      >
+        Iniciar simulación
+      </button>
+    </nav>
+
+  </div>
+</header>
+
 
       {/* HERO */}
       <section className="relative overflow-hidden">
@@ -69,6 +97,33 @@ export default function Landing({ onStart }) {
           <div className="grid gap-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] items-center">
             {/* LEFT – copy principal */}
             <div>
+              {/* Marca HabitaLibre en el hero */}
+<div className="inline-flex items-center gap-3 rounded-full bg-slate-900/80 border border-slate-800/80 px-3.5 py-1.5 mb-4 shadow-[0_14px_40px_rgba(15,23,42,0.85)]">
+  <div
+    className="
+      h-9 w-9 md:h-10 md:w-10
+      rounded-2xl bg-slate-950
+      border border-emerald-400/60
+      shadow-[0_0_20px_rgba(16,185,129,0.5)]
+      flex items-center justify-center overflow-hidden
+    "
+  >
+    <img
+      src={HIcon}          // 🔥 SOLO LA H-CASA
+      alt="HabitaLibre"
+      className="h-7 w-7 md:h-8 md:w-8 object-contain"
+    />
+  </div>
+  <span className="text-[11px] font-semibold tracking-[0.18em] text-slate-200">
+    HABITALIBRE
+  </span>
+  <span className="hidden sm:inline text-[11px] text-slate-400">
+    Precalificación hipotecaria digital en Ecuador
+  </span>
+</div>
+
+
+
               <p className="text-[11px] tracking-[0.2em] uppercase text-slate-400 mb-3">
                 ● Precalificación sin afectar tu buró
               </p>
@@ -101,14 +156,17 @@ export default function Landing({ onStart }) {
                   className="inline-flex items-center justify-center px-4 py-2.5 rounded-full border border-slate-600/80 text-slate-200 text-sm hover:border-slate-400 hover:text-slate-50 transition"
                   onClick={() => {
                     const el = document.getElementById("preview");
-                    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+                    if (el)
+                      el.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                      });
                   }}
                 >
                   Ver ejemplo de resultado
                 </button>
               </div>
 
-              {/* mini badges */}
               <div className="flex flex-wrap gap-x-6 gap-y-2 text-[11px] text-slate-400">
                 <div className="flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
@@ -125,16 +183,27 @@ export default function Landing({ onStart }) {
               </div>
             </div>
 
-            {/* RIGHT – result card mejorada */}
+            {/* RIGHT – result card */}
             <div id="preview">
               <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 shadow-[0_24px_60px_rgba(15,23,42,0.9)] backdrop-blur-sm">
-                {/* Header */}
-                <div className="flex items-center justify-between text-xs mb-4">
+                <div className="flex items-start justify-between text-xs mb-4">
                   <div>
-                    <p className="text-teal-300 font-medium">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-slate-900 border border-slate-700/70 px-2.5 py-1 mb-2">
+                      <div className="h-4 w-4 rounded-lg bg-slate-950 flex items-center justify-center border border-emerald-400/60 overflow-hidden">
+                        <img
+                          src={HLogo}
+                          alt="HabitaLibre"
+                          className="h-3.5 w-3.5 object-contain"
+                        />
+                      </div>
+                      <span className="text-[11px] text-teal-300 font-medium">
+                        Precalificación HabitaLibre
+                      </span>
+                    </div>
+                    <p className="text-slate-400 text-[11px]">
                       Vista previa de tu resultado
                     </p>
-                    <p className="text-slate-400 mt-0.5">
+                    <p className="text-slate-500 mt-0.5 text-[11px]">
                       Ejemplo con ingresos de $1.600 y deudas moderadas
                     </p>
                   </div>
@@ -143,7 +212,6 @@ export default function Landing({ onStart }) {
                   </span>
                 </div>
 
-                {/* Capacidad principal */}
                 <div className="mb-5">
                   <p className="text-slate-400 text-[11px] mb-1">
                     Capacidad estimada de compra
@@ -156,7 +224,6 @@ export default function Landing({ onStart }) {
                   </p>
                 </div>
 
-                {/* Bloques clave */}
                 <div className="grid grid-cols-2 gap-4 text-sm mb-4">
                   <div className="bg-slate-900 border border-slate-700/70 rounded-2xl p-4">
                     <p className="text-slate-400 text-[11px] mb-1">
@@ -179,7 +246,6 @@ export default function Landing({ onStart }) {
                   </div>
                 </div>
 
-                {/* Tasa, plazo y score */}
                 <div className="grid grid-cols-3 gap-3 text-[11px] mb-5">
                   <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
                     <p className="text-slate-400 text-[10px] mb-0.5">
@@ -216,7 +282,6 @@ export default function Landing({ onStart }) {
                   </div>
                 </div>
 
-                {/* Tip */}
                 <div className="mb-5 bg-slate-900 border border-slate-700/70 rounded-2xl p-3 flex gap-2 items-start">
                   <div className="mt-0.5 h-6 w-6 rounded-full bg-emerald-500/10 border border-emerald-500/50 flex items-center justify-center text-[13px] text-emerald-300">
                     i
@@ -234,12 +299,18 @@ export default function Landing({ onStart }) {
                   </div>
                 </div>
 
-                {/* CTA */}
                 <button
                   onClick={handleStart}
-                  className="w-full py-3 rounded-xl bg-blue-500 hover:bg-blue-400 text-slate-950 font-semibold text-sm transition"
+                  className="w-full py-3 rounded-xl bg-blue-500 hover:bg-blue-400 text-slate-950 font-semibold text-sm transition flex items-center justify-center gap-2"
                 >
-                  Ver mi capacidad real
+                  <div className="h-5 w-5 rounded-lg bg-slate-950 flex items-center justify-center border border-emerald-400/60 overflow-hidden">
+                    <img
+                      src={HLogo}
+                      alt=""
+                      className="h-4 w-4 object-contain"
+                    />
+                  </div>
+                  <span>Ver mi capacidad real</span>
                 </button>
 
                 <p className="text-[9px] text-slate-500 mt-3 leading-snug">
@@ -253,319 +324,466 @@ export default function Landing({ onStart }) {
         </div>
       </section>
 
-     {/* CÓMO FUNCIONA – versión pro */}
-<section
-  id="como-funciona"
-  className="border-t border-slate-800 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-950"
->
-  <div className="mx-auto max-w-6xl px-4 py-12 md:py-16">
-    <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
-      <div>
-        <div className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-[11px] text-slate-300 mb-3">
-          <SparklesIcon className="h-3.5 w-3.5 text-emerald-400" />
-          <span>Proceso guiado en menos de 2 minutos</span>
-        </div>
-        <h2 className="text-xl md:text-2xl font-semibold text-slate-50">
-          ¿Cómo funciona HabitaLibre?
-        </h2>
-        <p className="mt-2 text-sm text-slate-400 max-w-xl">
-          No es solo un simulador. Es una primera lectura realista de cuánto
-          podrías comprar y con qué tipo de crédito tiene más sentido avanzar.
-        </p>
-      </div>
+      {/* CÓMO FUNCIONA */}
+      <section
+        id="como-funciona"
+        className="border-t border-slate-800 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-950"
+      >
+        <div className="mx-auto max-w-6xl px-4 py-12 md:py-16">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-[11px] text-slate-300 mb-3">
+                <SparklesIcon className="h-3.5 w-3.5 text-emerald-400" />
+                <span>Proceso guiado en menos de 2 minutos</span>
+              </div>
+              <h2 className="text-xl md:text-2xl font-semibold text-slate-50">
+                ¿Cómo funciona HabitaLibre?
+              </h2>
+              <p className="mt-2 text-sm text-slate-400 max-w-xl">
+                No es solo un simulador. Es una primera lectura realista de
+                cuánto podrías comprar y con qué tipo de crédito tiene más
+                sentido avanzar.
+              </p>
+            </div>
 
-      <div className="flex gap-4 text-xs text-slate-400">
-        <div className="rounded-2xl bg-slate-900/60 border border-slate-800 px-4 py-3">
-          <div className="text-[11px] text-slate-500 mb-1">
-            Tiempo promedio
+            <div className="flex gap-4 text-xs text-slate-400">
+              <div className="rounded-2xl bg-slate-900/60 border border-slate-800 px-4 py-3">
+                <div className="text-[11px] text-slate-500 mb-1">
+                  Tiempo promedio
+                </div>
+                <div className="text-sm font-semibold text-slate-50">
+                  1–2 min
+                </div>
+              </div>
+              <div className="rounded-2xl bg-slate-900/60 border border-slate-800 px-4 py-3">
+                <div className="text-[11px] text-slate-500 mb-1">
+                  Información requerida
+                </div>
+                <div className="text-sm font-semibold text-slate-50">
+                  Solo ingresos y deudas
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="text-sm font-semibold text-slate-50">1–2 min</div>
-        </div>
-        <div className="rounded-2xl bg-slate-900/60 border border-slate-800 px-4 py-3">
-          <div className="text-[11px] text-slate-500 mb-1">
-            Información requerida
-          </div>
-          <div className="text-sm font-semibold text-slate-50">
-            Solo ingresos y deudas
-          </div>
-        </div>
-      </div>
-    </div>
 
-    <div className="grid gap-5 md:grid-cols-3 text-sm">
-      {/* Paso 1 */}
-      <div className="group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/70 p-5 transition hover:border-emerald-400/60 hover:bg-slate-900">
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition pointer-events-none bg-[radial-gradient(circle_at_top,_rgba(52,211,153,0.16),transparent_55%)]" />
-        <div className="relative flex items-center gap-3 mb-2">
-          <div className="h-9 w-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
-            <ClipboardDocumentListIcon className="h-5 w-5 text-emerald-400" />
-          </div>
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-              Paso 1
-            </p>
-            <p className="font-semibold text-slate-50">
-              Simulas sin papeles ni claves bancarias
-            </p>
+          <div className="grid gap-5 md:grid-cols-3 text-sm">
+            {/* Paso 1 */}
+            <div className="group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/70 p-5 transition hover:border-emerald-400/60 hover:bg-slate-900">
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition pointer-events-none bg-[radial-gradient(circle_at_top,_rgba(52,211,153,0.16),transparent_55%)]" />
+              <div className="relative flex items-center gap-3 mb-2">
+                <div className="h-9 w-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
+                  <ClipboardDocumentListIcon className="h-5 w-5 text-emerald-400" />
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
+                    Paso 1
+                  </p>
+                  <p className="font-semibold text-slate-50">
+                    Simulas sin papeles ni claves bancarias
+                  </p>
+                </div>
+              </div>
+              <p className="relative text-xs text-slate-400">
+                Completa una simulación guiada en 4 pasos con tus ingresos,
+                deudas y si aportas o no al IESS. No pedimos buró ni claves
+                bancarias, solo datos declarativos.
+              </p>
+            </div>
+
+            {/* Paso 2 */}
+            <div className="group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/70 p-5 transition hover:border-emerald-400/60 hover:bg-slate-900">
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition pointer-events-none bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.16),transparent_55%)]" />
+              <div className="relative flex items-center gap-3 mb-2">
+                <div className="h-9 w-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
+                  <BanknotesIcon className="h-5 w-5 text-sky-400" />
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
+                    Paso 2
+                  </p>
+                  <p className="font-semibold text-slate-50">
+                    Ves tu rango de compra y tipo de crédito
+                  </p>
+                </div>
+              </div>
+              <p className="relative text-xs text-slate-400">
+                Calculamos tu capacidad de pago, cuota estimada y te mostramos
+                qué producto encaja mejor contigo: VIS, VIP, BIESS o banca
+                privada, con un score hipotecario claro.
+              </p>
+            </div>
+
+            {/* Paso 3 */}
+            <div className="group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/70 p-5 transition hover:border-emerald-400/60 hover:bg-slate-900">
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition pointer-events-none bg-[radial-gradient(circle_at_top,_rgba(236,72,153,0.16),transparent_55%)]" />
+              <div className="relative flex items-center gap-3 mb-2">
+                <div className="h-9 w-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
+                  <UserGroupIcon className="h-5 w-5 text-fuchsia-400" />
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
+                    Paso 3
+                  </p>
+                  <p className="font-semibold text-slate-50">
+                    Si quieres, te acompañamos hasta el crédito
+                  </p>
+                </div>
+              </div>
+              <p className="relative text-xs text-slate-400">
+                Un asesor HabitaLibre revisa tu caso y te ayuda a preparar
+                documentos, comparar bancos y avanzar con la opción que mejor
+                combine cuota, plazo y seguridad para ti.
+              </p>
+            </div>
           </div>
         </div>
-        <p className="relative text-xs text-slate-400">
-          Completa una simulación guiada en 4 pasos con tus ingresos,
-          deudas y si aportas o no al IESS. No pedimos buró ni claves
-          bancarias, solo datos declarativos.
-        </p>
-      </div>
+      </section>
 
-      {/* Paso 2 */}
-      <div className="group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/70 p-5 transition hover:border-emerald-400/60 hover:bg-slate-900">
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition pointer-events-none bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.16),transparent_55%)]" />
-        <div className="relative flex items-center gap-3 mb-2">
-          <div className="h-9 w-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
-            <BanknotesIcon className="h-5 w-5 text-sky-400" />
+      {/* BENEFICIOS */}
+      <section
+        id="beneficios"
+        className="border-t border-slate-800 bg-slate-950 pb-14"
+      >
+        <div className="mx-auto max-w-6xl px-4 pt-10 md:pt-12">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
+            <div>
+              <h2 className="text-xl md:text-2xl font-semibold text-slate-50">
+                Beneficios de simular con HabitaLibre
+              </h2>
+              <p className="mt-2 text-sm text-slate-400 max-w-xl">
+                En lugar de darte un número suelto, conectamos tu realidad con
+                el tipo de crédito, el rango de vivienda y los pasos concretos
+                para llegar a tu hipoteca.
+              </p>
+            </div>
+
+            <div className="flex gap-3 text-[11px] text-slate-400">
+              <div className="rounded-full bg-slate-900/70 border border-slate-800 px-3 py-1.5 flex items-center gap-2">
+                <ShieldCheckIcon className="h-4 w-4 text-emerald-400" />
+                Sin afectar tu buró
+              </div>
+              <div className="rounded-full bg-slate-900/70 border border-slate-800 px-3 py-1.5 flex items-center gap-2">
+                <SparklesIcon className="h-4 w-4 text-sky-400" />
+                Enfoque VIS / VIP / BIESS
+              </div>
+            </div>
           </div>
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-              Paso 2
-            </p>
-            <p className="font-semibold text-slate-50">
-              Ves tu rango de compra y tipo de crédito
-            </p>
+
+          <div className="grid gap-5 md:grid-cols-3 text-sm">
+            {/* Beneficio 1 */}
+            <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-5">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-9 w-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
+                  <SparklesIcon className="h-5 w-5 text-emerald-400" />
+                </div>
+                <p className="font-semibold text-slate-50">
+                  Comparación realmente inteligente
+                </p>
+              </div>
+              <p className="text-xs text-slate-400 mb-2">
+                No eres un formulario más. Tomamos tu ingreso, deudas y aporte
+                al IESS para comparar escenarios VIS, VIP, BIESS y banca
+                privada, y te mostramos lo que tiene sentido para ti hoy.
+              </p>
+              <ul className="text-[11px] text-slate-400 space-y-1.5">
+                <li>• Rango de precio sugerido en vez de un valor aislado.</li>
+                <li>• Score hipotecario para entender qué tan cerca estás.</li>
+              </ul>
+            </div>
+
+            {/* Beneficio 2 */}
+            <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-5">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-9 w-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
+                  <ShieldCheckIcon className="h-5 w-5 text-sky-400" />
+                </div>
+                <p className="font-semibold text-slate-50">
+                  Sin riesgo para tu historial
+                </p>
+              </div>
+              <p className="text-xs text-slate-400 mb-2">
+                Trabajamos con datos declarativos. No hacemos consultas de buró
+                ni movimientos bancarios, así que puedes explorar tu capacidad
+                sin dejar huella.
+              </p>
+              <ul className="text-[11px] text-slate-400 space-y-1.5">
+                <li>• Ideal si aún no estás listo para ir directo al banco.</li>
+                <li>• Puedes simular distintos escenarios antes de decidir.</li>
+              </ul>
+            </div>
+
+            {/* Beneficio 3 */}
+            <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-5">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-9 w-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
+                  <ChatBubbleLeftRightIcon className="h-5 w-5 text-fuchsia-400" />
+                </div>
+                <p className="font-semibold text-slate-50">
+                  Acompañamiento humano cuando tú quieras
+                </p>
+              </div>
+              <p className="text-xs text-slate-400 mb-2">
+                Detrás del simulador hay personas. Si tu resultado te convence,
+                un asesor puede ayudarte sin costo a ordenar tus documentos y
+                preparar tu mejor versión para el banco.
+              </p>
+              <ul className="text-[11px] text-slate-400 space-y-1.5">
+                <li>• Explicamos tu reporte en lenguaje simple.</li>
+                <li>• Te ayudamos a ver qué mejorar para subir tu score.</li>
+              </ul>
+            </div>
           </div>
         </div>
-        <p className="relative text-xs text-slate-400">
-          Calculamos tu capacidad de pago, cuota estimada y te
-          mostramos qué producto encaja mejor contigo: VIS, VIP,
-          BIESS o banca privada, con un score hipotecario claro.
-        </p>
-      </div>
+      </section>
 
-      {/* Paso 3 */}
-      <div className="group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/70 p-5 transition hover:border-emerald-400/60 hover:bg-slate-900">
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition pointer-events-none bg-[radial-gradient(circle_at_top,_rgba(236,72,153,0.16),transparent_55%)]" />
-        <div className="relative flex items-center gap-3 mb-2">
-          <div className="h-9 w-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
-            <UserGroupIcon className="h-5 w-5 text-fuchsia-400" />
+      {/* TESTIMONIOS */}
+      <section
+        id="testimonios"
+        className="border-t border-slate-800 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-950/95"
+      >
+        <div className="mx-auto max-w-6xl px-4 py-12 md:py-16">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-[11px] text-slate-300 mb-3">
+                <ChatBubbleOvalLeftEllipsisIcon className="h-3.5 w-3.5 text-emerald-400" />
+                <span>Personas reales, procesos reales</span>
+              </div>
+              <h2 className="text-xl md:text-2xl font-semibold text-slate-50">
+                Lo que dicen quienes ya simularon
+              </h2>
+              <p className="mt-2 text-sm text-slate-400 max-w-xl">
+                Historias de personas que usaron HabitaLibre como primer paso
+                para entender su capacidad real antes de ir al banco.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <StarIcon className="h-4 w-4 text-amber-400" />
+              <span>
+                <span className="text-slate-50 font-semibold">4.9/5</span>{" "}
+                satisfacción promedio en experiencias piloto
+              </span>
+            </div>
           </div>
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-              Paso 3
-            </p>
-            <p className="font-semibold text-slate-50">
-              Si quieres, te acompañamos hasta el crédito
-            </p>
+
+          <div className="grid gap-5 md:grid-cols-3 text-sm">
+            {/* Testimonio 1 */}
+            <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
+              <div className="absolute inset-0 pointer-events-none opacity-60 bg-[radial-gradient(circle_at_top,_rgba(52,211,153,0.15),transparent_55%)]" />
+              <div className="relative flex items-center gap-3 mb-3">
+                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-emerald-400 to-sky-500 text-slate-950 flex items-center justify-center text-xs font-semibold">
+                  MA
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-50">
+                    Mateo &amp; Alejandra
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    Primera vivienda · Quito
+                  </p>
+                </div>
+              </div>
+              <p className="relative text-xs text-slate-300">
+                “Siempre nos decían cosas distintas en cada banco. Con el
+                reporte de HabitaLibre entendimos de una vez nuestro rango de
+                compra y qué tipo de crédito nos convenía. Llegamos a la cita
+                con el banco mucho más seguros.”
+              </p>
+            </div>
+
+            {/* Testimonio 2 */}
+            <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
+              <div className="absolute inset-0 pointer-events-none opacity-60 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.16),transparent_55%)]" />
+              <div className="relative flex items-center gap-3 mb-3">
+                <div className="h-9 w-9 rounded-full bg-slate-800 text-slate-200 flex items-center justify-center text-xs font-semibold">
+                  CR
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-50">
+                    Carolina R.
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    Migrando de arriendo a dueño · VIS/VIP
+                  </p>
+                </div>
+              </div>
+              <p className="relative text-xs text-slate-300">
+                “Pensé que no calificaba. El simulador me mostró que sí podía,
+                pero ajustando plazo y entrada. El acompañamiento después del
+                resultado fue clave para ordenar mis documentos y saber por
+                dónde arrancar.”
+              </p>
+            </div>
+
+            {/* Testimonio 3 */}
+            <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
+              <div className="absolute inset-0 pointer-events-none opacity-60 bg-[radial-gradient(circle_at_top,_rgba(236,72,153,0.16),transparent_55%)]" />
+              <div className="relative flex items-center gap-3 mb-3">
+                <div className="h-9 w-9 rounded-full bg-slate-800 text-slate-200 flex items-center justify-center text-xs font-semibold">
+                  JP
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-50">
+                    Jorge P.
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    Cambio de banco · Refinanciamiento
+                  </p>
+                </div>
+              </div>
+              <p className="relative text-xs text-slate-300">
+                “Yo ya tenía hipoteca, pero quería una mejor tasa. El stress
+                test del reporte me ayudó a ver cuánto me ahorraba cambiando de
+                producto y en cuánto tiempo se pagaba el esfuerzo de hacer el
+                trámite.”
+              </p>
+            </div>
           </div>
         </div>
-        <p className="relative text-xs text-slate-400">
-          Un asesor HabitaLibre revisa tu caso y te ayuda a preparar
-          documentos, comparar bancos y avanzar con la opción que
-          mejor combine cuota, plazo y seguridad para ti.
-        </p>
-      </div>
-    </div>
-  </div>
-</section>
+      </section>
 
-     {/* BENEFICIOS – versión pro */}
-<section
-  id="beneficios"
-  className="border-t border-slate-800 bg-slate-950 pb-14"
->
-  <div className="mx-auto max-w-6xl px-4 pt-10 md:pt-12">
-    <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
-      <div>
-        <h2 className="text-xl md:text-2xl font-semibold text-slate-50">
-          Beneficios de simular con HabitaLibre
-        </h2>
-        <p className="mt-2 text-sm text-slate-400 max-w-xl">
-          En lugar de darte un número suelto, conectamos tu realidad con
-          el tipo de crédito, el rango de vivienda y los pasos concretos
-          para llegar a tu hipoteca.
-        </p>
-      </div>
-
-      <div className="flex gap-3 text-[11px] text-slate-400">
-        <div className="rounded-full bg-slate-900/70 border border-slate-800 px-3 py-1.5 flex items-center gap-2">
-          <ShieldCheckIcon className="h-4 w-4 text-emerald-400" />
-          Sin afectar tu buró
-        </div>
-        <div className="rounded-full bg-slate-900/70 border border-slate-800 px-3 py-1.5 flex items-center gap-2">
-          <SparklesIcon className="h-4 w-4 text-sky-400" />
-          Enfoque VIS / VIP / BIESS
-        </div>
-      </div>
-    </div>
-
-    <div className="grid gap-5 md:grid-cols-3 text-sm">
-      {/* Beneficio 1 */}
-      <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-5">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="h-9 w-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
-            <SparklesIcon className="h-5 w-5 text-emerald-400" />
-          </div>
-          <p className="font-semibold text-slate-50">
-            Comparación realmente inteligente
+      {/* FOOTER – Disclaimer + Links */}
+      <footer className="border-t border-slate-800 bg-slate-950 py-7 mt-4">
+        <div className="mx-auto max-w-6xl px-4 text-center text-[11px] text-slate-500 leading-relaxed">
+          <p className="text-slate-400 font-semibold mb-1">
+            HabitaLibre © 2025
           </p>
-        </div>
-        <p className="text-xs text-slate-400 mb-2">
-          No eres un formulario más. Tomamos tu ingreso, deudas y
-          aporte al IESS para comparar escenarios VIS, VIP, BIESS y
-          banca privada, y te mostramos lo que tiene sentido para ti
-          hoy.
-        </p>
-        <ul className="text-[11px] text-slate-400 space-y-1.5">
-          <li>• Rango de precio sugerido en vez de un valor aislado.</li>
-          <li>• Score hipotecario para entender qué tan cerca estás.</li>
-        </ul>
-      </div>
 
-      {/* Beneficio 2 */}
-      <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-5">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="h-9 w-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
-            <ShieldCheckIcon className="h-5 w-5 text-sky-400" />
-          </div>
-        <p className="font-semibold text-slate-50">Sin riesgo para tu historial</p>
-        </div>
-        <p className="text-xs text-slate-400 mb-2">
-          Trabajamos con datos declarativos. No hacemos consultas de
-          buró ni movimientos bancarios, así que puedes explorar tu
-          capacidad sin dejar huella.
-        </p>
-        <ul className="text-[11px] text-slate-400 space-y-1.5">
-          <li>• Ideal si aún no estás listo para ir directo al banco.</li>
-          <li>• Puedes simular distintos escenarios antes de decidir.</li>
-        </ul>
-      </div>
-
-      {/* Beneficio 3 */}
-      <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-5">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="h-9 w-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
-            <ChatBubbleLeftRightIcon className="h-5 w-5 text-fuchsia-400" />
-          </div>
-          <p className="font-semibold text-slate-50">
-            Acompañamiento humano cuando tú quieras
+          <p className="mb-3 max-w-2xl mx-auto">
+            Las estimaciones son referenciales y pueden variar según verificación
+            bancaria. No afecta tu buró ni solicitamos claves bancarias. Tus
+            datos se procesan de forma segura y no se comparten sin tu
+            autorización.
           </p>
-        </div>
-        <p className="text-xs text-slate-400 mb-2">
-          Detrás del simulador hay personas. Si tu resultado te
-          convence, un asesor puede ayudarte sin costo a ordenar tus
-          documentos y preparar tu mejor versión para el banco.
-        </p>
-        <ul className="text-[11px] text-slate-400 space-y-1.5">
-          <li>• Explicamos tu reporte en lenguaje simple.</li>
-          <li>• Te ayudamos a ver qué mejorar para subir tu score.</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-</section>
 
-{/* TESTIMONIOS */}
-<section
-  id="testimonios"
-  className="border-t border-slate-800 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-950/95"
->
-  <div className="mx-auto max-w-6xl px-4 py-12 md:py-16">
-    {/* Header */}
-    <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
-      <div>
-        <div className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-[11px] text-slate-300 mb-3">
-          <ChatBubbleOvalLeftEllipsisIcon className="h-3.5 w-3.5 text-emerald-400" />
-          <span>Personas reales, procesos reales</span>
-        </div>
-        <h2 className="text-xl md:text-2xl font-semibold text-slate-50">
-          Lo que dicen quienes ya simularon
-        </h2>
-        <p className="mt-2 text-sm text-slate-400 max-w-xl">
-          Historias de personas que usaron HabitaLibre como primer paso para
-          entender su capacidad real antes de ir al banco.
-        </p>
-      </div>
+          <div className="flex justify-center gap-6 mt-2 text-[11px]">
+            <button
+              onClick={() => openLegal("politica")}
+              className="text-slate-400 hover:text-slate-200 transition underline-offset-4 hover:underline"
+            >
+              Política de Privacidad
+            </button>
 
-      <div className="flex items-center gap-2 text-xs text-slate-400">
-        <StarIcon className="h-4 w-4 text-amber-400" />
-        <span>
-          <span className="text-slate-50 font-semibold">4.9/5</span>{" "}
-          satisfacción promedio en experiencias piloto
-        </span>
-      </div>
-    </div>
-
-    {/* Grid de testimonios */}
-    <div className="grid gap-5 md:grid-cols-3 text-sm">
-      {/* Testimonio 1 */}
-      <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
-        <div className="absolute inset-0 pointer-events-none opacity-60 bg-[radial-gradient(circle_at_top,_rgba(52,211,153,0.15),transparent_55%)]" />
-        <div className="relative flex items-center gap-3 mb-3">
-          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-emerald-400 to-sky-500 text-slate-950 flex items-center justify-center text-xs font-semibold">
-            MA
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-slate-50">
-              Mateo &amp; Alejandra
-            </p>
-            <p className="text-[11px] text-slate-400">Primera vivienda · Quito</p>
+            <button
+              onClick={() => openLegal("terminos")}
+              className="text-slate-400 hover:text-slate-200 transition underline-offset-4 hover:underline"
+            >
+              Términos de Uso
+            </button>
           </div>
         </div>
-        <p className="relative text-xs text-slate-300">
-          “Siempre nos decían cosas distintas en cada banco. Con el reporte de
-          HabitaLibre entendimos de una vez nuestro rango de compra y qué tipo
-          de crédito nos convenía. Llegamos a la cita con el banco mucho más
-          seguros.”
-        </p>
-      </div>
+      </footer>
 
-      {/* Testimonio 2 */}
-      <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
-        <div className="absolute inset-0 pointer-events-none opacity-60 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.16),transparent_55%)]" />
-        <div className="relative flex items-center gap-3 mb-3">
-          <div className="h-9 w-9 rounded-full bg-slate-800 text-slate-200 flex items-center justify-center text-xs font-semibold">
-            CR
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-slate-50">
-              Carolina R.
-            </p>
-            <p className="text-[11px] text-slate-400">
-              Migrando de arriendo a dueño · VIS/VIP
-            </p>
+      {/* LEGAL MODAL – solo cuando hay sección activa */}
+      {activeLegalSection && (
+        <div
+          className="hl-modal-overlay"
+          onClick={closeLegal} // click fuera cierra
+        >
+          <div
+            className="hl-modal-panel bg-slate-950 border border-slate-800"
+            onClick={(e) => e.stopPropagation()} // evitar cerrar al hacer click dentro
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                <ShieldCheckIcon className="h-4 w-4 text-emerald-400" />
+                <span>Centro de confianza HabitaLibre</span>
+              </div>
+
+              <button
+                onClick={closeLegal}
+                className="p-1.5 rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800/70 transition"
+              >
+                <XMarkIcon className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* CONTENIDO: Términos de Uso */}
+            {activeLegalSection === "terminos" && (
+              <div className="text-slate-300 text-sm leading-relaxed space-y-4">
+                <h2 className="text-xl font-semibold text-slate-50">
+                  Términos de Uso
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Al usar el simulador de HabitaLibre aceptas estos términos de
+                  forma previa y consciente.
+                </p>
+
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="font-semibold text-slate-100">
+                      1. Naturaleza del servicio
+                    </h3>
+                    <p>
+                      HabitaLibre es una herramienta educativa y de orientación
+                      financiera inicial. Los resultados son estimaciones
+                      referenciales y no constituyen una oferta formal de crédito,
+                      compromiso de aprobación ni asesoría financiera, legal o
+                      tributaria personalizada.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-slate-100">
+                      2. Responsabilidad sobre la información ingresada
+                    </h3>
+                    <p>
+                      Las estimaciones dependen de la veracidad y actualización de
+                      los datos que tú proporcionas. No somos responsables por
+                      decisiones tomadas exclusivamente con base en la simulación
+                      sin contraste posterior con las políticas y evaluación de
+                      riesgo de cada entidad financiera.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-slate-100">
+                      3. Relación con bancos y terceros
+                    </h3>
+                    <p>
+                      HabitaLibre no representa a ningún banco en particular.
+                      Cuando, con tu autorización, compartimos tu caso con
+                      instituciones financieras o desarrolladores aliados, la
+                      evaluación final dependerá exclusivamente de sus políticas
+                      internas, análisis de riesgo y documentación que ellos
+                      requieran.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-slate-100">
+                      4. Uso permitido y limitaciones
+                    </h3>
+                    <p>
+                      El simulador está destinado a uso personal. No se permite su
+                      uso automatizado, con fines ilícitos o para reproducir, copiar
+                      o revender el servicio sin autorización previa por escrito de
+                      HabitaLibre.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-slate-100">
+                      5. Modificaciones
+                    </h3>
+                    <p>
+                      Podemos actualizar estos Términos de Uso y la Política de
+                      Privacidad para reflejar cambios normativos o mejoras del
+                      servicio. Publicaremos la versión vigente en este mismo
+                      apartado, indicando la fecha de actualización.
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-slate-500">
+                  Última actualización: Enero 2025.
+                </p>
+              </div>
+            )}
           </div>
         </div>
-        <p className="relative text-xs text-slate-300">
-          “Pensé que no calificaba. El simulador me mostró que sí podía, pero
-          ajustando plazo y entrada. El acompañamiento después del resultado fue
-          clave para ordenar mis documentos y saber por dónde arrancar.”
-        </p>
-      </div>
-
-      {/* Testimonio 3 */}
-      <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
-        <div className="absolute inset-0 pointer-events-none opacity-60 bg-[radial-gradient(circle_at_top,_rgba(236,72,153,0.16),transparent_55%)]" />
-        <div className="relative flex items-center gap-3 mb-3">
-          <div className="h-9 w-9 rounded-full bg-slate-800 text-slate-200 flex items-center justify-center text-xs font-semibold">
-            JP
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-slate-50">
-              Jorge P.
-            </p>
-            <p className="text-[11px] text-slate-400">
-              Cambio de banco · Refinanciamiento
-            </p>
-          </div>
-        </div>
-        <p className="relative text-xs text-slate-300">
-          “Yo ya tenía hipoteca, pero quería una mejor tasa. El stress test del
-          reporte me ayudó a ver cuánto me ahorraba cambiando de producto y en
-          cuánto tiempo se pagaba el esfuerzo de hacer el trámite.”
-        </p>
-      </div>
-    </div>
-  </div>
-</section>
-
-
+      )}
     </main>
   );
 }

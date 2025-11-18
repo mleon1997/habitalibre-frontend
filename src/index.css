@@ -1,3 +1,4 @@
+
 /* ===========================================================
    1) IMPORTS — SIEMPRE PRIMERO
 =========================================================== */
@@ -68,11 +69,20 @@ body {
 
 /* ===========================================================
    6) FOCUS ACCESIBLE
+   (limitamos a elementos interactivos para evitar glitches)
 =========================================================== */
 
 *:focus-visible {
-  box-shadow: 0 0 0 3px var(--ring-brand);
   outline: none;
+}
+
+/* Solo estos elementos muestran el anillo de focus */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  box-shadow: 0 0 0 3px var(--ring-brand);
 }
 
 /* ===========================================================
@@ -148,3 +158,28 @@ body {
     max-width: 100%;
   }
 }
+
+/* ===========================================================
+   8) FIX INPUTS NUMÉRICOS (Safari / Chrome)
+=========================================================== */
+
+input[type="number"] {
+  -webkit-appearance: textfield;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Evitamos cambios raros de caja en cada tecla */
+input[type="number"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring-brand);
+}
+
+/* Aseguramos tipografía estable en inputs */
+input,
+select,
+textarea {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
