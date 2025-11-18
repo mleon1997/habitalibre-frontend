@@ -1,84 +1,96 @@
 // src/components/SimulatorWizard.jsx
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { precalificar } from "../lib/api";
 import { useLeadCapture } from "../context/LeadCaptureContext.jsx";
 
 const TOTAL_STEPS = 4;
 
-export default function SimulatorWizard({
-  onResult,
-  aportesTotales: aportesTotalesProp,
-  setAportesTotales: setAportesTotalesProp,
-  aportesConsecutivos: aportesConsecutivosProp,
-  setAportesConsecutivos: setAportesConsecutivosProp,
-}) {
+// =====================
+//  INPUT NUMÉRICO NUEVO
+// =====================
+function NumericInput({ value, onChangeFinal, placeholder }) {
+  const [inner, setInner] = useState(value ?? "");
+
+  // Si desde arriba cambia el valor (por reset, etc.), sincronizamos
+  useEffect(() => {
+    setInner(value ?? "");
+  }, [value]);
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={inner}
+      placeholder={placeholder}
+      onChange={(e) => {
+        setInner(e.target.value);
+      }}
+      onBlur={() => {
+        // cuando el usuario sale del input, mandamos el valor completo al wizard
+        onChangeFinal(inner);
+      }}
+      className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 placeholder-slate-500 outline-none ring-0 transition focus:border-violet-400 focus:ring-2 focus:ring-violet-500/40"
+    />
+  );
+}
+
+export default function SimulatorWizard({ onResult }) {
   const { openLead } = useLeadCapture();
 
   const [step, setStep] = useState(1);
 
-  // ===== DATOS BÁSICOS =====
+  // ====== Estados (strings) ======
   const [nacionalidad, setNacionalidad] = useState("ecuatoriana");
   const [estadoCivil, setEstadoCivil] = useState("soltero");
-  const [edad, setEdad] = useState(30);
-
-  // ===== INGRESOS / DEUDAS =====
-  const [ingreso, setIngreso] = useState(1600);
-  const [ingresoPareja, setIngresoPareja] = useState(0);
-  const [deudas, setDeudas] = useState(300);
+  const [edad, setEdad] = useState("30");
   const [tipoIngreso, setTipoIngreso] = useState("Dependiente");
+  const [aniosEstabilidad, setAniosEstabilidad] = useState("2");
 
-  // ===== VIVIENDA / ENTRADA (mantener en estado, pero inputs no controlados) =====
-  const [valor, setValor] = useState(90000);
-  const [entrada, setEntrada] = useState(15000);
+  const [tieneVivienda, setTieneVivienda] = useState("no");
+  const [primeraVivienda, setPrimeraVivienda] = useState("sí");
+  const [tipoVivienda, setTipoVivienda] = useState("por_estrenar");
 
-  // ===== PERFIL / IESS =====
-  const [afiliadoIESS, setAfiliadoIESS] = useState(false);
+  const [ingreso, setIngreso] = useState("1200");
+  const [ingresoPareja, setIngresoPareja] = useState("0");
+  const [deudas, setDeudas] = useState("300");
 
-  const [aportesTotalesLocal, setAportesTotalesLocal] = useState(0);
-  const [aportesConsecutivosLocal, setAportesConsecutivosLocal] = useState(0);
+  const [valor, setValor] = useState("90000");
+  const [entrada, setEntrada] = useState("15000");
 
-  const aportesTotales = aportesTotalesProp ?? aportesTotalesLocal;
-  const setAportesTotales = setAportesTotalesProp ?? setAportesTotalesLocal;
-
-  const aportesConsecutivos = aportesConsecutivosProp ?? aportesConsecutivosLocal;
-  const setAportesConsecutivos =
-    aportesConsecutivosProp ?? setAportesConsecutivosLocal;
-
-  // ===== NUEVAS PREGUNTAS CLAVE =====
-  const [esPrimeraVivienda, setEsPrimeraVivienda] = useState(true);
-  const [estadoVivienda, setEstadoVivienda] = useState("por_estrenar"); // por_estrenar | usada
+  const [afiliadoIESS, setAfiliadoIESS] = useState("no");
+  const [aportesTotales, setAportesTotales] = useState("0");
+  const [aportesConsecutivos, setAportesConsecutivos] = useState("0");
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
+  const toNum = (v) => {
+    const n = Number((v ?? "").toString().replace(/[^0-9.]/g, ""));
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const afiliadoBool = afiliadoIESS === "sí";
   const esParejaFormal =
     estadoCivil === "casado" || estadoCivil === "union_de_hecho";
 
   const ingresoUsado =
-    Number(ingreso || 0) +
-    (esParejaFormal ? Number(ingresoPareja || 0) : 0);
-
-  const valorNum = Number(valor || 0);
-  const entradaNum = Number(entrada || 0);
+    toNum(ingreso) + (esParejaFormal ? toNum(ingresoPareja) : 0);
 
   const preview = useMemo(() => {
-    const loan = Math.max(0, valorNum - entradaNum);
+    const v = toNum(valor);
+    const e = toNum(entrada);
+    const loan = Math.max(0, v - e);
     return { loan };
-  }, [valorNum, entradaNum]);
+  }, [valor, entrada]);
 
-  // ===== VALIDACIÓN POR PASO =====
+  // ===== Validaciones =====
   function validate(s) {
     if (s === 2 && ingresoUsado < 400)
       return "El ingreso considerado (tuyo + pareja si aplica) debe ser al menos $400.";
-    if (s === 3 && (valorNum || 0) < 30000)
+    if (s === 3 && toNum(valor) < 30000)
       return "El valor mínimo de vivienda que analizamos es $30.000.";
-    if (s === 4 && (Number(edad) < 21 || Number(edad) > 75))
+    if (s === 4 && (toNum(edad) < 21 || toNum(edad) > 75))
       return "La edad debe estar entre 21 y 75 años.";
-    if (s === 3 && entradaNum < valorNum * 0.05)
-      return `La entrada mínima sugerida es 5% del valor de la vivienda (~$${Math.ceil(
-        valorNum * 0.05
-      ).toLocaleString("es-EC")}).`;
-
     return null;
   }
 
@@ -94,31 +106,30 @@ export default function SimulatorWizard({
     setStep((s) => Math.max(1, s - 1));
   };
 
-  // ===== PAYLOAD BACKEND =====
+  // ===== Payload =====
   function buildEntrada() {
-    const tieneVivienda = !esPrimeraVivienda;
-
     return {
       nacionalidad,
       estadoCivil,
-      edad: Number(edad || 0),
+      edad: toNum(edad),
 
-      afiliadoIess: afiliadoIESS,
       tipoIngreso,
-      aniosEstabilidad: 2,
+      aniosEstabilidad: toNum(aniosEstabilidad),
 
-      iessAportesTotales: Number(aportesTotales || 0),
-      iessAportesConsecutivos: Number(aportesConsecutivos || 0),
+      afiliadoIess: afiliadoBool,
+      tieneVivienda: tieneVivienda === "sí",
+      primeraVivienda: primeraVivienda === "sí",
+      tipoVivienda,
 
-      ingresoNetoMensual: Number(ingreso || 0),
-      ingresoPareja: esParejaFormal ? Number(ingresoPareja || 0) : 0,
-      otrasDeudasMensuales: Number(deudas || 0),
+      ingresoNetoMensual: toNum(ingreso),
+      ingresoPareja: esParejaFormal ? toNum(ingresoPareja) : 0,
+      otrasDeudasMensuales: toNum(deudas),
 
-      valorVivienda: valorNum,
-      entradaDisponible: entradaNum,
+      valorVivienda: toNum(valor),
+      entradaDisponible: toNum(entrada),
 
-      tieneVivienda,
-      estadoVivienda,
+      iessAportesTotales: toNum(aportesTotales),
+      iessAportesConsecutivos: toNum(aportesConsecutivos),
 
       origen: "simulador",
     };
@@ -130,8 +141,8 @@ export default function SimulatorWizard({
 
     setLoading(true);
     try {
-      const entradaPayload = buildEntrada();
-      const res = await precalificar(entradaPayload);
+      const payload = buildEntrada();
+      const res = await precalificar(payload);
 
       onResult?.(res);
       openLead(res);
@@ -145,7 +156,7 @@ export default function SimulatorWizard({
 
   const progress = (step / TOTAL_STEPS) * 100;
 
-  // ===== SUBCOMPONENTES =====
+  // ===== Helpers visuales =====
   const Field = ({ label, children, helper }) => (
     <div className="mb-4">
       <label className="mb-1 block text-xs font-medium text-slate-200">
@@ -160,42 +171,16 @@ export default function SimulatorWizard({
     </div>
   );
 
-  const Input = (props) => (
-    <input
-      {...props}
-      className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 placeholder-slate-500 outline-none ring-0 transition focus:border-violet-400 focus:ring-2 focus:ring-violet-500/40"
-    />
-  );
-
-  // 🔥 Estos inputs son NO CONTROLADOS para evitar el glitch
-  function UncontrolledMoneyInput({ defaultValue, onValueChange, ...rest }) {
-    return (
-      <input
-        {...rest}
-        type="number"
-        inputMode="decimal"
-        defaultValue={defaultValue}
-        className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 placeholder-slate-500 outline-none ring-0 transition focus:border-violet-400 focus:ring-2 focus:ring-violet-500/40"
-        onBlur={(e) => {
-          const raw = e.target.value;
-          const num = Number(raw || 0);
-          onValueChange(Number.isFinite(num) ? num : 0);
-        }}
-      />
-    );
-  }
-
-  const MoneyInputControlled = ({ value, onChange, ...rest }) => (
+  const TextInput = ({ value, onChange, ...rest }) => (
     <input
       {...rest}
-      type="number"
-      inputMode="decimal"
-      className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 placeholder-slate-500 outline-none ring-0 transition focus:border-violet-400 focus:ring-2 focus:ring-violet-500/40"
       value={value}
-      onChange={(e) => onChange(Number(e.target.value || 0))}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 placeholder-slate-500 outline-none ring-0 transition focus:border-violet-400 focus:ring-2 focus:ring-violet-500/40"
     />
   );
 
+  // ================== RENDER ==================
   return (
     <div className="text-slate-50">
       {/* Header */}
@@ -222,289 +207,137 @@ export default function SimulatorWizard({
         />
       </div>
 
-      {/* ========== PASO 1: DATOS BÁSICOS ========== */}
-      {step === 1 && (
-        <div>
-          <Field label="Nacionalidad">
-            <select
-              className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-500/40"
-              value={nacionalidad}
-              onChange={(e) => setNacionalidad(e.target.value)}
-            >
-              <option value="ecuatoriana">Ecuatoriana 🇪🇨</option>
-              <option value="otra">Otra nacionalidad 🌍</option>
-            </select>
-          </Field>
+      {/* PASO 1: DATOS BÁSICOS (versión corta) */}
+  {step === 1 && (
+  <div>
+    <Field label="Nacionalidad">
+      <select
+        className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-500/40"
+        value={nacionalidad}
+        onChange={(e) => setNacionalidad(e.target.value)}
+      >
+        <option value="ecuatoriana">Ecuatoriana 🇪🇨</option>
+        <option value="otra">Otra nacionalidad 🌍</option>
+      </select>
+    </Field>
 
-          <Field
-            label="Estado civil"
-            helper="Si estás casad@ o en unión de hecho, podremos considerar el ingreso de tu pareja."
-          >
-            <select
-              className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-500/40"
-              value={estadoCivil}
-              onChange={(e) => setEstadoCivil(e.target.value)}
-            >
-              <option value="soltero">Soltero/a</option>
-              <option value="casado">Casado/a</option>
-              <option value="union_de_hecho">Unión de hecho</option>
-            </select>
-          </Field>
+    <Field
+      label="Estado civil"
+      helper="Si estás casad@ o en unión de hecho, podremos considerar el ingreso de tu pareja."
+    >
+      <select
+        className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-500/40"
+        value={estadoCivil}
+        onChange={(e) => setEstadoCivil(e.target.value)}
+      >
+        <option value="soltero">Soltero/a</option>
+        <option value="casado">Casado/a</option>
+        <option value="union_de_hecho">Unión de hecho</option>
+        <option value="divorciado">Divorciado/a</option>
+        <option value="viudo">Viudo/a</option>
+      </select>
+    </Field>
 
-          {err && (
-            <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">
-              {err}
-            </div>
-          )}
+    <Field label="Edad">
+      <NumericInput value={edad} onChangeFinal={setEdad} />
+    </Field>
 
-          <div className="mt-5 flex justify-between gap-3">
-            <button className="btn-ghost btn-sm" onClick={back}>
-              Atrás
-            </button>
-            <button className="btn-primary btn-sm" onClick={next}>
-              Siguiente
-            </button>
-          </div>
-        </div>
-      )}
+    <Field label="Tipo de ingreso">
+      <select
+        className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-500/40"
+        value={tipoIngreso}
+        onChange={(e) => setTipoIngreso(e.target.value)}
+      >
+        <option value="Dependiente">Relación de dependencia</option>
+        <option value="Independiente">Independiente / RUC</option>
+        <option value="Mixto">Mixto</option>
+      </select>
+    </Field>
 
-      {/* ========== PASO 2: INGRESOS Y DEUDAS ========== */}
+    <Field
+      label="Años de estabilidad laboral"
+      helper="Tiempo en tu empleo actual o actividad principal."
+    >
+      <NumericInput
+        value={aniosEstabilidad}
+        onChangeFinal={setAniosEstabilidad}
+      />
+    </Field>
+
+    {err && (
+      <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">
+        {err}
+      </div>
+    )}
+
+    <div className="mt-5 flex justify-end gap-3">
+      <button className="btn-primary btn-sm" onClick={next}>
+        Siguiente
+      </button>
+    </div>
+  </div>
+)}
+
+
+      {/* PASO 2: INGRESOS Y DEUDAS */}
       {step === 2 && (
         <div className="space-y-6">
-          {/* INGRESO NETO MENSUAL */}
-          <div className="space-y-1">
-            <label className="block text-sm font-semibold text-slate-200">
-              Tu ingreso neto mensual
-            </label>
-
-            <MoneyInputControlled
+          <Field label="Tu ingreso neto mensual">
+            <NumericInput
               value={ingreso}
-              onChange={setIngreso}
-              placeholder="Ej: 1.600"
+              onChangeFinal={setIngreso}
+              placeholder="Ej: 1.200"
             />
+          </Field>
 
-            <p className="text-xs text-slate-400 leading-tight">
-              Ingreso libre después de descuentos IESS.
-            </p>
-          </div>
-
-          {/* TIPO DE INGRESO */}
-          <div className="space-y-1">
-            <label className="block text-sm font-semibold text-slate-200">
-              Tipo de ingreso
-            </label>
-
-            <div className="relative">
-              <select
-                value={tipoIngreso}
-                onChange={(e) => setTipoIngreso(e.target.value)}
-                className="
-                  w-full appearance-none rounded-2xl bg-slate-900/60 
-                  border border-slate-700 px-4 py-3 text-slate-100
-                  shadow-[0_0_0_1px_rgba(255,255,255,0.05)] 
-                  focus:ring-4 focus:ring-indigo-500/30 focus:border-indigo-400
-                  transition-all
-                "
-              >
-                <option className="bg-slate-800" value="Dependiente">
-                  Relación de dependencia (empleado)
-                </option>
-                <option className="bg-slate-800" value="Independiente">
-                  Independiente / RUC personal
-                </option>
-                <option className="bg-slate-800" value="Mixto">
-                  Mixto (sueldo + ingresos adicionales)
-                </option>
-              </select>
-
-              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
-                ▼
-              </span>
-            </div>
-
-            <p className="text-xs text-slate-400 leading-tight">
-              Esto ayuda a estimar tu estabilidad y capacidad real de pago.
-            </p>
-          </div>
-
-          {/* INGRESO PAREJA (si aplica) */}
-          {["casado", "union_de_hecho"].includes(
-            String(estadoCivil).toLowerCase()
-          ) && (
-            <div className="space-y-1">
-              <label className="block text-sm font-semibold text-slate-200">
-                Ingreso neto mensual de tu pareja (opcional)
-              </label>
-
-              <MoneyInputControlled
+          {["casado", "union_de_hecho"].includes(estadoCivil) && (
+            <Field label="Ingreso neto mensual de tu pareja (opcional)">
+              <NumericInput
                 value={ingresoPareja}
-                onChange={setIngresoPareja}
-                placeholder="Ej: 800 (opcional)"
+                onChangeFinal={setIngresoPareja}
+                placeholder="Ej: 800"
               />
-
-              <p className="text-xs text-slate-400 leading-tight">
-                Si tienen{" "}
-                <span className="text-indigo-400 font-medium">
-                  separación conyugal
-                </span>
-                , deja este valor en 0.
-              </p>
-            </div>
+            </Field>
           )}
 
-          {/* OTRAS DEUDAS */}
-          <div className="space-y-1">
-            <label className="block text-sm font-semibold text-slate-200">
-              Otras deudas mensuales
-            </label>
-
-            <MoneyInputControlled
+          <Field label="Otras deudas mensuales (tarjetas, préstamos, etc.)">
+            <NumericInput
               value={deudas}
-              onChange={setDeudas}
+              onChangeFinal={setDeudas}
               placeholder="Ej: 300"
-            />
-
-            <p className="text-xs text-slate-400 leading-tight">
-              Tarjetas, préstamos, cuotas, etc. Afectan tu DTI y capacidad de
-              crédito.
-            </p>
-          </div>
-
-          {err && (
-            <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">
-              {err}
-            </div>
-          )}
-
-          <div className="mt-5 flex justify-between gap-3">
-            <button className="btn-ghost btn-sm" onClick={back}>
-              Atrás
-            </button>
-            <button className="btn-primary btn-sm" onClick={next}>
-              Siguiente
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ========== PASO 3: VIVIENDA ========== */}
-      {step === 3 && (
-        <div>
-          <h3 className="mb-3 text-sm font-semibold text-slate-100">
-            🏠 Vivienda que quieres comprar
-          </h3>
-
-          <Field label="Valor aproximado de la vivienda (USD)">
-            <UncontrolledMoneyInput
-              defaultValue={valor}
-              onValueChange={setValor}
-              placeholder="Ej: 90.000"
-            />
-          </Field>
-
-          <Field
-            label="Entrada disponible (USD)"
-            helper="Incluye ahorros, cesantía, fondos de reserva u otros."
-          >
-            <UncontrolledMoneyInput
-              defaultValue={entrada}
-              onValueChange={setEntrada}
-              placeholder="Ej: 15.000"
-            />
-          </Field>
-
-          {/* NUEVAS PREGUNTAS CLAVE */}
-          <Field label="¿Es tu primera vivienda?">
-            <select
-              className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-500/40"
-              value={esPrimeraVivienda ? "si" : "no"}
-              onChange={(e) => setEsPrimeraVivienda(e.target.value === "si")}
-            >
-              <option value="si">Sí, primera vivienda</option>
-              <option value="no">No, ya tengo vivienda</option>
-            </select>
-          </Field>
-
-          <Field label="¿La vivienda es por estrenar o usada?">
-            <select
-              className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-500/40"
-              value={estadoVivienda}
-              onChange={(e) => setEstadoVivienda(e.target.value)}
-            >
-              <option value="por_estrenar">
-                Por estrenar (proyecto / entrega nueva)
-              </option>
-              <option value="usada">Usada / segunda mano</option>
-            </select>
-          </Field>
-
-          {err && (
-            <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">
-              {err}
-            </div>
-          )}
-
-          <div className="mt-5 flex justify-between gap-3">
-            <button className="btn-ghost btn-sm" onClick={back}>
-              Atrás
-            </button>
-            <button className="btn-primary btn-sm" onClick={next}>
-              Siguiente
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ========== PASO 4: PERFIL E IESS ========== */}
-      {step === 4 && (
-        <div>
-          <h3 className="mb-3 text-sm font-semibold text-slate-100">
-            👤 Tu perfil y aportes IESS
-          </h3>
-
-          <Field label="Edad">
-            <Input
-              type="number"
-              value={edad}
-              onChange={(e) => setEdad(Number(e.target.value || 0))}
             />
           </Field>
 
           <Field label="¿Estás afiliado al IESS?">
             <select
               className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-500/40"
-              value={afiliadoIESS ? "sí" : "no"}
-              onChange={(e) => setAfiliadoIESS(e.target.value === "sí")}
+              value={afiliadoIESS}
+              onChange={(e) => setAfiliadoIESS(e.target.value)}
             >
               <option value="no">No</option>
               <option value="sí">Sí</option>
             </select>
           </Field>
 
-          {afiliadoIESS && (
+          {afiliadoBool && (
             <>
               <Field
                 label="Aportes IESS totales (meses)"
                 helper="Para créditos BIESS suelen requerirse al menos 36 aportes totales."
               >
-                <Input
-                  type="number"
+                <NumericInput
                   value={aportesTotales}
-                  onChange={(e) =>
-                    setAportesTotales(Number(e.target.value || 0))
-                  }
+                  onChangeFinal={setAportesTotales}
                 />
               </Field>
+
               <Field
                 label="Aportes IESS consecutivos (meses)"
                 helper="Suelen pedir mínimo 13 aportes consecutivos."
               >
-                <Input
-                  type="number"
+                <NumericInput
                   value={aportesConsecutivos}
-                  onChange={(e) =>
-                    setAportesConsecutivos(Number(e.target.value || 0))
-                  }
+                  onChangeFinal={setAportesConsecutivos}
                 />
               </Field>
             </>
@@ -516,19 +349,85 @@ export default function SimulatorWizard({
             </div>
           )}
 
+          <div className="mt-5 flex justify-between gap-3">
+            <button className="btn-ghost btn-sm" onClick={back}>
+              Atrás
+            </button>
+            <button className="btn-primary btn-sm" onClick={next}>
+              Siguiente
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* PASO 3: VIVIENDA */}
+      {step === 3 && (
+        <div>
+          <h3 className="mb-3 text-sm font-semibold text-slate-100">
+            🏠 Vivienda
+          </h3>
+
+          <Field label="Valor aproximado de la vivienda (USD)">
+            <NumericInput value={valor} onChangeFinal={setValor} />
+          </Field>
+
+          <Field
+            label="Entrada disponible (USD)"
+            helper="Incluye ahorros, cesantía, fondos de reserva u otros."
+          >
+            <NumericInput value={entrada} onChangeFinal={setEntrada} />
+          </Field>
+
+          {err && (
+            <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">
+              {err}
+            </div>
+          )}
+
+          <div className="mt-5 flex justify-between gap-3">
+            <button className="btn-ghost btn-sm" onClick={back}>
+              Atrás
+            </button>
+            <button className="btn-primary btn-sm" onClick={next}>
+              Siguiente
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* PASO 4: CONFIRMACIÓN */}
+      {step === 4 && (
+        <div>
+          <h3 className="mb-3 text-sm font-semibold text-slate-100">
+            ✅ Listo para ver tu resultado
+          </h3>
+
+          <p className="text-[11px] text-slate-400 mb-3">
+            Revisaremos tu capacidad de pago, tipo de crédito (VIS/VIP/BIESS/
+            privado) y te mostraremos un resumen claro. No afecta tu buró.
+          </p>
+
+          <div className="mb-3 text-[11px] text-slate-500">
+            Monto referencial a analizar:
+            <span className="font-semibold text-slate-100">
+              {" "}
+              $
+              {preview.loan.toLocaleString("en-US", {
+                maximumFractionDigits: 0,
+              })}
+            </span>
+          </div>
+
+          {err && (
+            <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">
+              {err}
+            </div>
+          )}
+
           <div className="mt-5 flex items-center justify-between gap-3">
             <button className="btn-ghost btn-sm" onClick={back}>
               Atrás
             </button>
-            <div className="text-right text-[11px] text-slate-400 mr-2 hidden sm:block">
-              🧮 Monto estimado a analizar:{" "}
-              <span className="font-semibold text-slate-100">
-                $
-                {Number(preview.loan).toLocaleString("en-US", {
-                  maximumFractionDigits: 0,
-                })}
-              </span>
-            </div>
             <button
               className="btn-primary btn-sm"
               onClick={handleCalcular}
@@ -536,16 +435,6 @@ export default function SimulatorWizard({
             >
               {loading ? "Analizando perfil…" : "Ver resultados"}
             </button>
-          </div>
-
-          <div className="mt-3 text-[11px] text-slate-500 sm:hidden">
-            Monto a analizar:{" "}
-            <span className="font-semibold text-slate-100">
-              $
-              {Number(preview.loan).toLocaleString("en-US", {
-                maximumFractionDigits: 0,
-              })}
-            </span>
           </div>
         </div>
       )}

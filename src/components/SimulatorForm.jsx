@@ -503,28 +503,27 @@ function InputMoney({ value, onChange }) {
   );
 }
 
-function InputNumber({ value, onChange }) {
+function InputMoney({ value, onChange }) {
   return (
     <input
-      type="number"
+      type="text"
+      inputMode="decimal"
       className="w-full rounded-xl border px-3 py-2"
-      value={value}
+      defaultValue={value}
       onChange={(e) => onChange(e.target.value)}
     />
   );
 }
 
-function Select({ value, onChange, options }) {
+function InputNumber({ value, onChange }) {
   return (
-    <select
+    <input
+      type="text"
+      inputMode="numeric"
       className="w-full rounded-xl border px-3 py-2"
-      value={value}
+      defaultValue={value}
       onChange={(e) => onChange(e.target.value)}
-    >
-      {options.map((o) => (
-        <option key={o}>{o}</option>
-      ))}
-    </select>
+    />
   );
 }
 
