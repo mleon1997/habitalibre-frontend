@@ -49,10 +49,9 @@ export default function WizardHL({ onResult }) {
   const [tipoIngreso, setTipoIngreso] = useState("Dependiente");
   const [aniosEstabilidad, setAniosEstabilidad] = useState("2");
 
-  // nuevo: cómo sustenta ingresos si es independiente/mixto
-  const [sustentoIndependiente, setSustentoIndependiente] = useState(
-    "declaracion"
-  );
+  // Cómo sustenta ingresos si es independiente/mixto
+  const [sustentoIndependiente, setSustentoIndependiente] =
+    useState("declaracion");
 
   const [tieneVivienda, setTieneVivienda] = useState("no");
   const [primeraVivienda, setPrimeraVivienda] = useState("sí");
@@ -128,9 +127,9 @@ export default function WizardHL({ onResult }) {
       tipoIngreso,
       aniosEstabilidad: toNum(aniosEstabilidad),
 
-      // enviamos cómo sustenta ingresos si aplica
+      // Enviamos cómo sustenta ingresos si aplica
       sustentoIndependiente,
-      
+
       afiliadoIess: afiliadoBool,
       tieneVivienda: tieneVivienda === "sí",
       primeraVivienda: primeraVivienda === "sí",
@@ -161,9 +160,11 @@ export default function WizardHL({ onResult }) {
       const payload = buildEntrada();
       const res = await precalificar(payload);
 
+      // 👉 Guardamos en contexto y abrimos el modal de lead
+      openLead(res);
+
+      // Compatibilidad por si algún contenedor usa onResult
       onResult?.(res);
-      // Si quieres que el modal se abra automáticamente, descomenta:
-      // openLead(res);
     } catch (ex) {
       console.error(ex);
       setErr("No se pudo calcular tu resultado ahora.");
@@ -276,20 +277,25 @@ export default function WizardHL({ onResult }) {
             </Field>
           )}
 
-          {/* Solo Independiente o Mixto → cómo sustenta ingresos */}
+          {/* Independiente o Mixto → cómo sustenta ingresos */}
           {(tipoIngreso === "Independiente" || tipoIngreso === "Mixto") && (
-    <Field
-      label="¿Cómo sustentas tus ingresos?"
-      helper="Esto ayuda a saber si calificas mejor por IR o por historial bancario."
-    >
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[13px]">
-        {[
-          { value: "declaracion", label: "Declaración de Impuesto a la Renta" },
-          { value: "movimientos", label: "Movimientos bancarios últimos 6 meses" },
-          { value: "ambos", label: "Ambos" },
-          // 👉 NUEVA OPCIÓN
-          { value: "informal", label: "Ninguno (ingreso informal)" },
-        ].map((opt) => {
+            <Field
+              label="¿Cómo sustentas tus ingresos?"
+              helper="Esto ayuda a saber si calificas mejor por IR o por historial bancario."
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[13px]">
+                {[
+                  {
+                    value: "declaracion",
+                    label: "Declaración de Impuesto a la Renta",
+                  },
+                  {
+                    value: "movimientos",
+                    label: "Movimientos bancarios últimos 6 meses",
+                  },
+                  { value: "ambos", label: "Ambos" },
+                  { value: "informal", label: "Ninguno (ingreso informal)" },
+                ].map((opt) => {
                   const selected = sustentoIndependiente === opt.value;
                   return (
                     <button
