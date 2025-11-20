@@ -45,8 +45,14 @@ export default function WizardHL({ onResult }) {
   const [nacionalidad, setNacionalidad] = useState("ecuatoriana");
   const [estadoCivil, setEstadoCivil] = useState("soltero");
   const [edad, setEdad] = useState("30");
+
   const [tipoIngreso, setTipoIngreso] = useState("Dependiente");
   const [aniosEstabilidad, setAniosEstabilidad] = useState("2");
+
+  // nuevo: cómo sustenta ingresos si es independiente/mixto
+  const [sustentoIndependiente, setSustentoIndependiente] = useState(
+    "declaracion"
+  );
 
   const [tieneVivienda, setTieneVivienda] = useState("no");
   const [primeraVivienda, setPrimeraVivienda] = useState("sí");
@@ -122,6 +128,9 @@ export default function WizardHL({ onResult }) {
       tipoIngreso,
       aniosEstabilidad: toNum(aniosEstabilidad),
 
+      // enviamos cómo sustenta ingresos si aplica
+      sustentoIndependiente,
+      
       afiliadoIess: afiliadoBool,
       tieneVivienda: tieneVivienda === "sí",
       primeraVivienda: primeraVivienda === "sí",
@@ -254,15 +263,53 @@ export default function WizardHL({ onResult }) {
             </select>
           </Field>
 
-          <Field
-            label="Años de estabilidad laboral"
-            helper="Tiempo en tu empleo actual o actividad principal."
-          >
-            <NumericInput
-              value={aniosEstabilidad}
-              onChangeFinal={setAniosEstabilidad}
-            />
-          </Field>
+          {/* Sólo Dependiente o Mixto → años de estabilidad */}
+          {(tipoIngreso === "Dependiente" || tipoIngreso === "Mixto") && (
+            <Field
+              label="Años de estabilidad laboral"
+              helper="Tiempo en tu empleo actual o actividad principal."
+            >
+              <NumericInput
+                value={aniosEstabilidad}
+                onChangeFinal={setAniosEstabilidad}
+              />
+            </Field>
+          )}
+
+          {/* Solo Independiente o Mixto → cómo sustenta ingresos */}
+          {(tipoIngreso === "Independiente" || tipoIngreso === "Mixto") && (
+    <Field
+      label="¿Cómo sustentas tus ingresos?"
+      helper="Esto ayuda a saber si calificas mejor por IR o por historial bancario."
+    >
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[13px]">
+        {[
+          { value: "declaracion", label: "Declaración de Impuesto a la Renta" },
+          { value: "movimientos", label: "Movimientos bancarios últimos 6 meses" },
+          { value: "ambos", label: "Ambos" },
+          // 👉 NUEVA OPCIÓN
+          { value: "informal", label: "Ninguno (ingreso informal)" },
+        ].map((opt) => {
+                  const selected = sustentoIndependiente === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setSustentoIndependiente(opt.value)}
+                      className={[
+                        "rounded-xl border px-3 py-2 text-left transition",
+                        selected
+                          ? "bg-sky-500 text-slate-900 border-sky-400 shadow-lg shadow-sky-500/30"
+                          : "bg-slate-900/60 text-slate-200 border-slate-700/70 hover:border-sky-400/60 hover:bg-slate-900",
+                      ].join(" ")}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
+          )}
 
           {err && (
             <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">
@@ -410,50 +457,49 @@ export default function WizardHL({ onResult }) {
             </select>
           </Field>
 
-        {/* 🌟 HORIZONTE COMO CHIPS SUPER VISIBLES */}
-<Field label="¿En qué plazo te gustaría adquirir tu vivienda?">
-  <fieldset className="grid grid-cols-2 gap-2 text-[13px]">
-    {HORIZONTE_OPCIONES.map((opt) => {
-      const selected = horizonteCompra === opt.value;
-      return (
-        <button
-          key={opt.value}
-          type="button"
-          onClick={() => setHorizonteCompra(opt.value)}
-          className={[
-            "flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left transition",
-            selected
-              ? "bg-emerald-500 text-slate-900 border-emerald-400 shadow-lg shadow-emerald-500/30"
-              : "bg-slate-900/60 text-slate-200 border-slate-700/70 hover:border-emerald-400/60 hover:bg-slate-900",
-          ].join(" ")}
-        >
-          <span className="flex-1">{opt.label}</span>
-          {/* Check visible solo cuando está seleccionado */}
-          <span
-            className={[
-              "ml-2 flex h-5 w-5 items-center justify-center rounded-full border text-[11px] font-bold",
-              selected
-                ? "border-slate-900 bg-slate-900 text-emerald-400"
-                : "border-slate-600 text-slate-500",
-            ].join(" ")}
-          >
-            ✓
-          </span>
-        </button>
-      );
-    })}
-  </fieldset>
+          {/* 🌟 HORIZONTE COMO CHIPS SUPER VISIBLES */}
+          <Field label="¿En qué plazo te gustaría adquirir tu vivienda?">
+            <fieldset className="grid grid-cols-2 gap-2 text-[13px]">
+              {HORIZONTE_OPCIONES.map((opt) => {
+                const selected = horizonteCompra === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setHorizonteCompra(opt.value)}
+                    className={[
+                      "flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left transition",
+                      selected
+                        ? "bg-emerald-500 text-slate-900 border-emerald-400 shadow-lg shadow-emerald-500/30"
+                        : "bg-slate-900/60 text-slate-200 border-slate-700/70 hover:border-emerald-400/60 hover:bg-slate-900",
+                    ].join(" ")}
+                  >
+                    <span className="flex-1">{opt.label}</span>
+                    <span
+                      className={[
+                        "ml-2 flex h-5 w-5 items-center justify-center rounded-full border text-[11px] font-bold",
+                        selected
+                          ? "border-slate-900 bg-slate-900 text-emerald-400"
+                          : "border-slate-600 text-slate-500",
+                      ].join(" ")}
+                    >
+                      ✓
+                    </span>
+                  </button>
+                );
+              })}
+            </fieldset>
 
-  <p className="mt-1 text-[11px] text-slate-400">
-    {horizonteCompra
-      ? `Has seleccionado: ${
-          HORIZONTE_OPCIONES.find((o) => o.value === horizonteCompra)?.label ||
-          ""
-        }`
-      : "Selecciona una opción para continuar."}
-  </p>
-</Field>
-
+            <p className="mt-1 text-[11px] text-slate-400">
+              {horizonteCompra
+                ? `Has seleccionado: ${
+                    HORIZONTE_OPCIONES.find(
+                      (o) => o.value === horizonteCompra
+                    )?.label || ""
+                  }`
+                : "Selecciona una opción para continuar."}
+            </p>
+          </Field>
 
           {err && (
             <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">

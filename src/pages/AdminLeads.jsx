@@ -10,7 +10,8 @@ const AdminLeads = () => {
   const [email, setEmail] = useState("");
   const [telefono, setTelefono] = useState("");
   const [ciudad, setCiudad] = useState("");
-  const [tiempoCompra, setTiempoCompra] = useState(""); // 👈 nuevo filtro
+  const [tiempoCompra, setTiempoCompra] = useState(""); // filtro horizonte
+  const [sustentoFiltro, setSustentoFiltro] = useState(""); // 👈 nuevo filtro
 
   const [leads, setLeads] = useState([]);
   const [totalLeads, setTotalLeads] = useState(0);
@@ -32,7 +33,9 @@ const AdminLeads = () => {
       if (telefono.trim()) params.append("telefono", telefono.trim());
       if (ciudad.trim()) params.append("ciudad", ciudad.trim());
       if (tiempoCompra.trim())
-        params.append("tiempoCompra", tiempoCompra.trim()); // 👈 enviar al backend
+        params.append("tiempoCompra", tiempoCompra.trim());
+      if (sustentoFiltro.trim())
+        params.append("sustentoIndependiente", sustentoFiltro.trim()); // 👈 enviamos al backend
 
       params.append("pagina", paginaNueva);
       params.append("limit", pageSize);
@@ -76,7 +79,8 @@ const AdminLeads = () => {
     setEmail("");
     setTelefono("");
     setCiudad("");
-    setTiempoCompra(""); // 👈 resetear filtro
+    setTiempoCompra("");
+    setSustentoFiltro(""); // 👈 resetear filtro nuevo
     fetchLeads(1);
   };
 
@@ -108,6 +112,39 @@ const AdminLeads = () => {
     }
   };
 
+  // 👇 Helper para mostrar chip visual de sustento
+  const chipSustento = (s) => {
+    if (!s) {
+      return <span className="text-xs text-slate-400">-</span>;
+    }
+
+    if (s === "declaracion") {
+      return (
+        <span className="inline-flex items-center px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-medium">
+          Declaración IR
+        </span>
+      );
+    }
+
+    if (s === "movimientos") {
+      return (
+        <span className="inline-flex items-center px-2 py-1 rounded-lg bg-sky-50 text-sky-700 text-xs font-medium">
+          Movimientos 6 meses
+        </span>
+      );
+    }
+
+    if (s === "ninguno") {
+      return (
+        <span className="inline-flex items-center px-2 py-1 rounded-lg bg-slate-100 text-slate-600 text-xs font-medium">
+          Ninguno
+        </span>
+      );
+    }
+
+    return <span className="text-xs text-slate-400">-</span>;
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-8 md:px-10">
       {/* Header */}
@@ -135,7 +172,7 @@ const AdminLeads = () => {
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Filtros */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 px-5 py-4 md:px-6 md:py-5">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="flex flex-col">
               <label className="text-xs font-medium text-slate-500 mb-1">
                 Email
@@ -175,7 +212,7 @@ const AdminLeads = () => {
               />
             </div>
 
-            {/* Nuevo filtro: Horizonte de compra */}
+            {/* Filtro: Horizonte de compra */}
             <div className="flex flex-col">
               <label className="text-xs font-medium text-slate-500 mb-1">
                 Horizonte de compra
@@ -190,6 +227,23 @@ const AdminLeads = () => {
                 <option value="3-12">3–12 meses</option>
                 <option value="12-24">12–24 meses</option>
                 <option value="explorando">Explorando</option>
+              </select>
+            </div>
+
+            {/* ⭐ Nuevo filtro: sustento ingresos */}
+            <div className="flex flex-col">
+              <label className="text-xs font-medium text-slate-500 mb-1">
+                Sustento ingresos
+              </label>
+              <select
+                value={sustentoFiltro}
+                onChange={(e) => setSustentoFiltro(e.target.value)}
+                className="h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white"
+              >
+                <option value="">Todos</option>
+                <option value="declaracion">Declaración IR</option>
+                <option value="movimientos">Movimientos 6 meses</option>
+                <option value="ninguno">Ninguno</option>
               </select>
             </div>
           </div>
@@ -239,6 +293,10 @@ const AdminLeads = () => {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
                     Ciudad
                   </th>
+                  {/* ⭐ Nueva columna */}
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
+                    Sustento ingresos
+                  </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
                     Horizonte
                   </th>
@@ -254,7 +312,7 @@ const AdminLeads = () => {
                 {!loading && leads.length === 0 && (
                   <tr>
                     <td
-                      colSpan={8}
+                      colSpan={9}
                       className="px-4 py-6 text-center text-sm text-slate-400"
                     >
                       No hay leads para los filtros seleccionados.
@@ -290,6 +348,10 @@ const AdminLeads = () => {
                     <td className="px-4 py-3 text-sm text-slate-700">
                       {lead.ciudad || "-"}
                     </td>
+                    {/* 👇 Nuevo chip de sustento */}
+                    <td className="px-4 py-3 text-sm">
+                      {chipSustento(lead.sustentoIndependiente)}
+                    </td>
                     <td className="px-4 py-3 text-sm text-slate-700">
                       {formatTiempoCompra(lead.tiempoCompra)}
                     </td>
@@ -305,7 +367,7 @@ const AdminLeads = () => {
                 {loading && (
                   <tr>
                     <td
-                      colSpan={8}
+                      colSpan={9}
                       className="px-4 py-6 text-center text-sm text-slate-400"
                     >
                       Cargando leads…
