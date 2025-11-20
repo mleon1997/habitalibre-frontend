@@ -12,7 +12,7 @@ import Leads from "./pages/Leads.jsx";
 import Admin from "./pages/Admin.jsx";
 import Gracias from "./pages/Gracias.jsx";
 
-import SimulatorWizard from "./components/SimulatorWizard.jsx";
+import WizardHL from "./components/WizardHL.jsx"; // 👈 nuevo
 import LeadModalBare from "./components/LeadModalBare.jsx";
 
 import { LeadCaptureProvider } from "./context/LeadCaptureContext.jsx";
@@ -24,7 +24,7 @@ function SimuladorPage() {
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-xl bg-slate-900/60 rounded-3xl shadow-[0_24px_80px_rgba(15,23,42,0.9)] border border-slate-800/80 px-5 py-6 md:px-8 md:py-8">
-        <SimulatorWizard />
+        <WizardHL />
       </div>
     </div>
   );
@@ -35,30 +35,16 @@ export default function App() {
     <LeadCaptureProvider>
       <Router>
         <Routes>
-          {/* Landing principal */}
           <Route path="/" element={<Landing />} />
-
-          {/* Simulador */}
           <Route path="/simular" element={<SimuladorPage />} />
-
-          {/* Admin general */}
           <Route path="/admin" element={<Admin />} />
-
-          {/* Dashboard interno de leads */}
           <Route path="/admin/leads" element={<AdminLeads />} />
-
-          {/* Ruta antigua /leads (opcional) */}
           <Route path="/leads" element={<Leads />} />
-
-          {/* Página de agradecimiento */}
           <Route path="/gracias" element={<Gracias />} />
-
-          {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
 
-      {/* Modal global */}
       <LeadModalBare />
     </LeadCaptureProvider>
   );

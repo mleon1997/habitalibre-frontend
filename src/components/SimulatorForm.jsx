@@ -2,15 +2,13 @@
 import { useMemo, useState, useEffect } from "react";
 import { precalificar, crearLead, API_BASE } from "../lib/api";
 
-/** util financiero: cuota (PMT) */
 function pmt(rate, nper, pv) {
   if (!rate) return pv / nper;
   return (pv * rate) / (1 - Math.pow(1 + rate, -nper));
 }
 
 export default function SimulatorForm({ onResult }) {
-  // --- Estados de formulario (como STRINGS para evitar glitches) ---
-  const [ingreso, setIngreso] = useState("");          // titular
+  const [ingreso, setIngreso] = useState("");
   const [ingresoPareja, setIngresoPareja] = useState("");
   const [deudas, setDeudas] = useState("");
   const [valor, setValor] = useState("");
@@ -21,31 +19,24 @@ export default function SimulatorForm({ onResult }) {
   const [tieneVivienda, setTieneVivienda] = useState(false);
   const [afiliadoIESS, setAfiliadoIESS] = useState(false);
   const [declaracionBuro, setDeclaracionBuro] = useState("ninguno");
+  const [horizonteCompra, setHorizonteCompra] = useState("");
 
-  // Aportes IESS para BIESS
   const [aportesTotales, setAportesTotales] = useState("0");
   const [aportesConsecutivos, setAportesConsecutivos] = useState("0");
 
-  // Estado civil
   const [estadoCivil, setEstadoCivil] = useState("Soltero/a");
-
-  // Permite aplicar con pareja aunque no sea estado civil formal
   const [aplicarConPareja, setAplicarConPareja] = useState(false);
 
-  // NUEVOS: lógica hipotecaria
-  const [esPrimeraVivienda, setEsPrimeraVivienda] = useState("si"); // "si" | "no"
-  const [estadoVivienda, setEstadoVivienda] = useState("por_estrenar"); // "por_estrenar" | "usada"
+  const [esPrimeraVivienda, setEsPrimeraVivienda] = useState("si");
+  const [estadoVivienda, setEstadoVivienda] = useState("por_estrenar");
 
-  // Contacto
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [ciudad, setCiudad] = useState("");
 
-  // UI
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Wake-up Render
   useEffect(() => {
     fetch(`${API_BASE}/api/health`).catch(() => {});
   }, []);
@@ -53,7 +44,6 @@ export default function SimulatorForm({ onResult }) {
   const money = (n) =>
     Number(n || 0).toLocaleString("en-US", { maximumFractionDigits: 0 });
 
-  /** VIS/VIP rules */
   const RULES = {
     VIS_MAX_VALOR: 83660,
     VIP_MAX_VALOR: 107630,
@@ -61,14 +51,12 @@ export default function SimulatorForm({ onResult }) {
     VIP_MAX_INGRESO: 2900,
   };
 
-  // Flags de pareja
   const esParejaFormal =
     estadoCivil === "Casado/a" || estadoCivil === "Unión de hecho";
 
   const usarSoloPareja = esParejaFormal || aplicarConPareja;
   const mostrarPareja = usarSoloPareja;
 
-  /** Derivados */
   const derived = useMemo(() => {
     const v = Number(valor || 0);
     const e = Number(entrada || 0);
@@ -82,7 +70,6 @@ export default function SimulatorForm({ onResult }) {
     const ingresoTotalUsado = usarSoloPareja ? ingresoConyuge : ingresoTitular;
 
     const dti = afiliadoIESS ? 0.4 : 0.35;
-
     const cap = Math.max(0, (ingresoTotalUsado - deudasNum) * dti);
 
     let tentativo = "Banca Privada";
@@ -116,8 +103,9 @@ export default function SimulatorForm({ onResult }) {
     }
 
     const cuotaPreview = loan > 0 ? pmt(tasaAnual / 12, nMeses, loan) : 0;
-
-    const subPreview = `${Math.round(nMeses / 12)} años · ${(tasaAnual * 100).toFixed(2)}% anual`;
+    const subPreview = `${Math.round(nMeses / 12)} años · ${(tasaAnual * 100).toFixed(
+      2
+    )}% anual`;
 
     return {
       loan,
@@ -141,7 +129,6 @@ export default function SimulatorForm({ onResult }) {
     usarSoloPareja,
   ]);
 
-  /** Validación */
   function validate() {
     if (derived.ingresoTotalUsado < 400)
       return "El ingreso mínimo considerado es cercano a $400/mes.";
@@ -150,13 +137,10 @@ export default function SimulatorForm({ onResult }) {
     if (Number(edad) < 21 || Number(edad) > 75)
       return "La edad debe estar entre 21 y 75 años.";
     if (!derived.validaEntrada5)
-      return `Entrada mínima sugerida: $${money(
-        derived.entradaMin5
-      )}`;
+      return `Entrada mínima sugerida: $${money(derived.entradaMin5)}`;
     return null;
   }
 
-  /** Enviar */
   async function handleCalcular(e) {
     e?.preventDefault?.();
     if (loading) return;
@@ -201,9 +185,9 @@ export default function SimulatorForm({ onResult }) {
         declaracionBuro,
         estadoCivil,
         aplicarConPareja,
-        // nuevos campos
         esPrimeraVivienda: esPrimeraVivienda === "si",
         tipoVivienda: estadoVivienda,
+        tiempoCompra: horizonteCompra || null,
       };
 
       const data = await precalificar(payload);
@@ -247,17 +231,14 @@ export default function SimulatorForm({ onResult }) {
     }
   }
 
-  // ---------------------------
-  //       RENDER
-  // ---------------------------
-
   return (
     <>
       <h2 className="text-xl font-semibold text-slate-800">
         Simulador inteligente de crédito
       </h2>
       <p className="text-slate-500 text-sm mb-4">
-        Calcula tu capacidad y descubre tu mejor opción hipotecaria con HabitaLibre.
+        Calcula tu capacidad y descubre tu mejor opción hipotecaria con
+        HabitaLibre.
       </p>
 
       {/* INGRESOS */}
@@ -277,10 +258,7 @@ export default function SimulatorForm({ onResult }) {
         </Field>
 
         <Field label="Aplicar con pareja (coconstituyente)">
-          <SelectBool
-            value={aplicarConPareja}
-            onChange={setAplicarConPareja}
-          />
+          <SelectBool value={aplicarConPareja} onChange={setAplicarConPareja} />
         </Field>
 
         <Field label="Ingreso neto mensual del titular (USD)">
@@ -289,10 +267,7 @@ export default function SimulatorForm({ onResult }) {
 
         {mostrarPareja && (
           <Field label="Ingreso neto de pareja (USD)">
-            <InputMoney
-              value={ingresoPareja}
-              onChange={setIngresoPareja}
-            />
+            <InputMoney value={ingresoPareja} onChange={setIngresoPareja} />
           </Field>
         )}
 
@@ -309,10 +284,7 @@ export default function SimulatorForm({ onResult }) {
         </Field>
 
         <Field label="Años de estabilidad">
-          <InputNumber
-            value={estabilidad}
-            onChange={setEstabilidad}
-          />
+          <InputNumber value={estabilidad} onChange={setEstabilidad} />
         </Field>
       </Section>
 
@@ -332,10 +304,7 @@ export default function SimulatorForm({ onResult }) {
         </Field>
 
         <Field label="¿Tienes actualmente una vivienda?">
-          <SelectBool
-            value={tieneVivienda}
-            onChange={setTieneVivienda}
-          />
+          <SelectBool value={tieneVivienda} onChange={setTieneVivienda} />
         </Field>
 
         <Field label="¿Es tu primera vivienda?">
@@ -360,11 +329,22 @@ export default function SimulatorForm({ onResult }) {
           </select>
         </Field>
 
+        <Field label="¿Cuándo quisieras adquirir tu vivienda?">
+          <select
+            className="w-full rounded-xl border px-3 py-2"
+            value={horizonteCompra}
+            onChange={(e) => setHorizonteCompra(e.target.value)}
+          >
+            <option value="">Selecciona una opción</option>
+            <option value="0-6 meses">En los próximos 0–6 meses</option>
+            <option value="6-12 meses">En 6–12 meses</option>
+            <option value="1-2 años">En 1–2 años</option>
+            <option value="Más de 2 años">En más de 2 años</option>
+          </select>
+        </Field>
+
         <Field label="¿Estás afiliado al IESS?">
-          <SelectBool
-            value={afiliadoIESS}
-            onChange={setAfiliadoIESS}
-          />
+          <SelectBool value={afiliadoIESS} onChange={setAfiliadoIESS} />
         </Field>
 
         {afiliadoIESS && (
@@ -444,7 +424,6 @@ export default function SimulatorForm({ onResult }) {
         </div>
       </Section>
 
-      {/* Botón */}
       <button
         type="button"
         onClick={handleCalcular}
@@ -459,17 +438,13 @@ export default function SimulatorForm({ onResult }) {
   );
 }
 
-/* ---------------------------------------------------------
-   Helpers visuales / inputs / wrappers
---------------------------------------------------------- */
+/* Helpers visuales / inputs */
 
 function Section({ title, children }) {
   return (
     <div className="mb-6 pb-6 border-b">
       <div className="text-lg font-semibold mb-3">{title}</div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {children}
-      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{children}</div>
     </div>
   );
 }
@@ -483,11 +458,10 @@ function Field({ label, children }) {
   );
 }
 
-/** 👉 Input de dinero SIN glitches: trabaja con strings */
 function InputMoney({ value, onChange }) {
   const handleChange = (e) => {
     const raw = e.target.value;
-    const clean = raw.replace(/[^\d]/g, ""); // solo dígitos
+    const clean = raw.replace(/[^\d]/g, "");
     onChange(clean);
   };
 
@@ -503,31 +477,18 @@ function InputMoney({ value, onChange }) {
   );
 }
 
-function InputMoney({ value, onChange }) {
-  return (
-    <input
-      type="text"
-      inputMode="decimal"
-      className="w-full rounded-xl border px-3 py-2"
-      defaultValue={value}
-      onChange={(e) => onChange(e.target.value)}
-    />
-  );
-}
-
 function InputNumber({ value, onChange }) {
   return (
     <input
       type="text"
       inputMode="numeric"
       className="w-full rounded-xl border px-3 py-2"
-      defaultValue={value}
+      value={value}
       onChange={(e) => onChange(e.target.value)}
     />
   );
 }
 
-/** 🔥 Select booleano */
 function SelectBool({ value, onChange }) {
   return (
     <select
@@ -537,6 +498,20 @@ function SelectBool({ value, onChange }) {
     >
       <option>No</option>
       <option>Sí</option>
+    </select>
+  );
+}
+
+function Select({ value, onChange, options }) {
+  return (
+    <select
+      className="w-full rounded-xl border px-3 py-2"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      {options.map((opt) => (
+        <option key={opt}>{opt}</option>
+      ))}
     </select>
   );
 }

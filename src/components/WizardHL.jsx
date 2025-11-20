@@ -1,17 +1,24 @@
-// src/components/SimulatorWizard.jsx
+// src/components/WizardHL.jsx
 import React, { useMemo, useState, useEffect } from "react";
 import { precalificar } from "../lib/api";
 import { useLeadCapture } from "../context/LeadCaptureContext.jsx";
 
 const TOTAL_STEPS = 4;
 
+// Opciones para horizonte de compra
+const HORIZONTE_OPCIONES = [
+  { value: "0-3", label: "En los próximos 0–3 meses" },
+  { value: "3-12", label: "En 3–12 meses" },
+  { value: "12-24", label: "En 12–24 meses" },
+  { value: "explorando", label: "Solo estoy explorando" },
+];
+
 // =====================
-//  INPUT NUMÉRICO NUEVO
+// INPUT NUMÉRICO
 // =====================
 function NumericInput({ value, onChangeFinal, placeholder }) {
   const [inner, setInner] = useState(value ?? "");
 
-  // Si desde arriba cambia el valor (por reset, etc.), sincronizamos
   useEffect(() => {
     setInner(value ?? "");
   }, [value]);
@@ -22,24 +29,19 @@ function NumericInput({ value, onChangeFinal, placeholder }) {
       inputMode="decimal"
       value={inner}
       placeholder={placeholder}
-      onChange={(e) => {
-        setInner(e.target.value);
-      }}
-      onBlur={() => {
-        // cuando el usuario sale del input, mandamos el valor completo al wizard
-        onChangeFinal(inner);
-      }}
+      onChange={(e) => setInner(e.target.value)}
+      onBlur={() => onChangeFinal(inner)}
       className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 placeholder-slate-500 outline-none ring-0 transition focus:border-violet-400 focus:ring-2 focus:ring-violet-500/40"
     />
   );
 }
 
-export default function SimulatorWizard({ onResult }) {
+export default function WizardHL({ onResult }) {
   const { openLead } = useLeadCapture();
 
   const [step, setStep] = useState(1);
 
-  // ====== Estados (strings) ======
+  // ====== Estados ======
   const [nacionalidad, setNacionalidad] = useState("ecuatoriana");
   const [estadoCivil, setEstadoCivil] = useState("soltero");
   const [edad, setEdad] = useState("30");
@@ -61,6 +63,9 @@ export default function SimulatorWizard({ onResult }) {
   const [aportesTotales, setAportesTotales] = useState("0");
   const [aportesConsecutivos, setAportesConsecutivos] = useState("0");
 
+  // 🌟 Horizonte
+  const [horizonteCompra, setHorizonteCompra] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
@@ -79,16 +84,17 @@ export default function SimulatorWizard({ onResult }) {
   const preview = useMemo(() => {
     const v = toNum(valor);
     const e = toNum(entrada);
-    const loan = Math.max(0, v - e);
-    return { loan };
+    return { loan: Math.max(0, v - e) };
   }, [valor, entrada]);
 
-  // ===== Validaciones =====
+  // VALIDACIONES
   function validate(s) {
     if (s === 2 && ingresoUsado < 400)
       return "El ingreso considerado (tuyo + pareja si aplica) debe ser al menos $400.";
     if (s === 3 && toNum(valor) < 30000)
       return "El valor mínimo de vivienda que analizamos es $30.000.";
+    if (s === 3 && !horizonteCompra)
+      return "Elige en qué plazo te gustaría adquirir tu vivienda.";
     if (s === 4 && (toNum(edad) < 21 || toNum(edad) > 75))
       return "La edad debe estar entre 21 y 75 años.";
     return null;
@@ -106,7 +112,7 @@ export default function SimulatorWizard({ onResult }) {
     setStep((s) => Math.max(1, s - 1));
   };
 
-  // ===== Payload =====
+  // PAYLOAD PARA EL BACKEND
   function buildEntrada() {
     return {
       nacionalidad,
@@ -131,6 +137,8 @@ export default function SimulatorWizard({ onResult }) {
       iessAportesTotales: toNum(aportesTotales),
       iessAportesConsecutivos: toNum(aportesConsecutivos),
 
+      tiempoCompra: horizonteCompra || null,
+
       origen: "simulador",
     };
   }
@@ -145,7 +153,8 @@ export default function SimulatorWizard({ onResult }) {
       const res = await precalificar(payload);
 
       onResult?.(res);
-      openLead(res);
+      // Si quieres que el modal se abra automáticamente, descomenta:
+      // openLead(res);
     } catch (ex) {
       console.error(ex);
       setErr("No se pudo calcular tu resultado ahora.");
@@ -156,33 +165,24 @@ export default function SimulatorWizard({ onResult }) {
 
   const progress = (step / TOTAL_STEPS) * 100;
 
-  // ===== Helpers visuales =====
+  // Helpers visuales
   const Field = ({ label, children, helper }) => (
-    <div className="mb-4">
+    <div className="mb-4 relative">
       <label className="mb-1 block text-xs font-medium text-slate-200">
         {label}
       </label>
       {children}
       {helper && (
-        <p className="mt-1 text-[11px] text-slate-400 leading-snug">
-          {helper}
-        </p>
+        <p className="mt-1 text-[11px] text-slate-400 leading-snug">{helper}</p>
       )}
     </div>
   );
 
-  const TextInput = ({ value, onChange, ...rest }) => (
-    <input
-      {...rest}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 placeholder-slate-500 outline-none ring-0 transition focus:border-violet-400 focus:ring-2 focus:ring-violet-500/40"
-    />
-  );
-
-  // ================== RENDER ==================
+  // ============================
+  // RENDER
+  // ============================
   return (
-    <div className="text-slate-50">
+    <div className="text-slate-50 relative z-[10]">
       {/* Header */}
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
@@ -199,7 +199,7 @@ export default function SimulatorWizard({ onResult }) {
         </span>
       </div>
 
-      {/* Barra de progreso */}
+      {/* Barra */}
       <div className="mb-5 h-1.5 w-full overflow-hidden rounded-full bg-slate-800/80">
         <div
           className="h-full bg-gradient-to-r from-violet-400 via-fuchsia-400 to-sky-400 transition-all"
@@ -207,79 +207,78 @@ export default function SimulatorWizard({ onResult }) {
         />
       </div>
 
-      {/* PASO 1: DATOS BÁSICOS (versión corta) */}
-  {step === 1 && (
-  <div>
-    <Field label="Nacionalidad">
-      <select
-        className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-500/40"
-        value={nacionalidad}
-        onChange={(e) => setNacionalidad(e.target.value)}
-      >
-        <option value="ecuatoriana">Ecuatoriana 🇪🇨</option>
-        <option value="otra">Otra nacionalidad 🌍</option>
-      </select>
-    </Field>
+      {/* Paso 1: Datos básicos */}
+      {step === 1 && (
+        <div>
+          <Field label="Nacionalidad">
+            <select
+              className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50"
+              value={nacionalidad}
+              onChange={(e) => setNacionalidad(e.target.value)}
+            >
+              <option value="ecuatoriana">Ecuatoriana 🇪🇨</option>
+              <option value="otra">Otra nacionalidad 🌍</option>
+            </select>
+          </Field>
 
-    <Field
-      label="Estado civil"
-      helper="Si estás casad@ o en unión de hecho, podremos considerar el ingreso de tu pareja."
-    >
-      <select
-        className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-500/40"
-        value={estadoCivil}
-        onChange={(e) => setEstadoCivil(e.target.value)}
-      >
-        <option value="soltero">Soltero/a</option>
-        <option value="casado">Casado/a</option>
-        <option value="union_de_hecho">Unión de hecho</option>
-        <option value="divorciado">Divorciado/a</option>
-        <option value="viudo">Viudo/a</option>
-      </select>
-    </Field>
+          <Field
+            label="Estado civil"
+            helper="Si estás casad@ o en unión de hecho, podremos considerar el ingreso de tu pareja."
+          >
+            <select
+              className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50"
+              value={estadoCivil}
+              onChange={(e) => setEstadoCivil(e.target.value)}
+            >
+              <option value="soltero">Soltero/a</option>
+              <option value="casado">Casado/a</option>
+              <option value="union_de_hecho">Unión de hecho</option>
+              <option value="divorciado">Divorciado/a</option>
+              <option value="viudo">Viudo/a</option>
+            </select>
+          </Field>
 
-    <Field label="Edad">
-      <NumericInput value={edad} onChangeFinal={setEdad} />
-    </Field>
+          <Field label="Edad">
+            <NumericInput value={edad} onChangeFinal={setEdad} />
+          </Field>
 
-    <Field label="Tipo de ingreso">
-      <select
-        className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-500/40"
-        value={tipoIngreso}
-        onChange={(e) => setTipoIngreso(e.target.value)}
-      >
-        <option value="Dependiente">Relación de dependencia</option>
-        <option value="Independiente">Independiente / RUC</option>
-        <option value="Mixto">Mixto</option>
-      </select>
-    </Field>
+          <Field label="Tipo de ingreso">
+            <select
+              className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50"
+              value={tipoIngreso}
+              onChange={(e) => setTipoIngreso(e.target.value)}
+            >
+              <option value="Dependiente">Relación de dependencia</option>
+              <option value="Independiente">Independiente / RUC</option>
+              <option value="Mixto">Mixto</option>
+            </select>
+          </Field>
 
-    <Field
-      label="Años de estabilidad laboral"
-      helper="Tiempo en tu empleo actual o actividad principal."
-    >
-      <NumericInput
-        value={aniosEstabilidad}
-        onChangeFinal={setAniosEstabilidad}
-      />
-    </Field>
+          <Field
+            label="Años de estabilidad laboral"
+            helper="Tiempo en tu empleo actual o actividad principal."
+          >
+            <NumericInput
+              value={aniosEstabilidad}
+              onChangeFinal={setAniosEstabilidad}
+            />
+          </Field>
 
-    {err && (
-      <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">
-        {err}
-      </div>
-    )}
+          {err && (
+            <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">
+              {err}
+            </div>
+          )}
 
-    <div className="mt-5 flex justify-end gap-3">
-      <button className="btn-primary btn-sm" onClick={next}>
-        Siguiente
-      </button>
-    </div>
-  </div>
-)}
+          <div className="mt-5 flex justify-end gap-3">
+            <button className="btn-primary btn-sm" onClick={next}>
+              Siguiente
+            </button>
+          </div>
+        </div>
+      )}
 
-
-      {/* PASO 2: INGRESOS Y DEUDAS */}
+      {/* Paso 2 */}
       {step === 2 && (
         <div className="space-y-6">
           <Field label="Tu ingreso neto mensual">
@@ -310,7 +309,7 @@ export default function SimulatorWizard({ onResult }) {
 
           <Field label="¿Estás afiliado al IESS?">
             <select
-              className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-500/40"
+              className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50"
               value={afiliadoIESS}
               onChange={(e) => setAfiliadoIESS(e.target.value)}
             >
@@ -360,7 +359,7 @@ export default function SimulatorWizard({ onResult }) {
         </div>
       )}
 
-      {/* PASO 3: VIVIENDA */}
+      {/* Paso 3 */}
       {step === 3 && (
         <div>
           <h3 className="mb-3 text-sm font-semibold text-slate-100">
@@ -377,6 +376,84 @@ export default function SimulatorWizard({ onResult }) {
           >
             <NumericInput value={entrada} onChangeFinal={setEntrada} />
           </Field>
+
+          <Field label="¿Tienes actualmente una vivienda?">
+            <select
+              className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50"
+              value={tieneVivienda}
+              onChange={(e) => setTieneVivienda(e.target.value)}
+            >
+              <option value="no">No</option>
+              <option value="sí">Sí</option>
+            </select>
+          </Field>
+
+          <Field label="¿Es tu primera vivienda?">
+            <select
+              className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50"
+              value={primeraVivienda}
+              onChange={(e) => setPrimeraVivienda(e.target.value)}
+            >
+              <option value="sí">Sí</option>
+              <option value="no">No</option>
+            </select>
+          </Field>
+
+          <Field label="Estado de la vivienda">
+            <select
+              className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50"
+              value={tipoVivienda}
+              onChange={(e) => setTipoVivienda(e.target.value)}
+            >
+              <option value="por_estrenar">Por estrenar / proyecto nuevo</option>
+              <option value="usada">Usada / segunda mano</option>
+            </select>
+          </Field>
+
+        {/* 🌟 HORIZONTE COMO CHIPS SUPER VISIBLES */}
+<Field label="¿En qué plazo te gustaría adquirir tu vivienda?">
+  <fieldset className="grid grid-cols-2 gap-2 text-[13px]">
+    {HORIZONTE_OPCIONES.map((opt) => {
+      const selected = horizonteCompra === opt.value;
+      return (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => setHorizonteCompra(opt.value)}
+          className={[
+            "flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left transition",
+            selected
+              ? "bg-emerald-500 text-slate-900 border-emerald-400 shadow-lg shadow-emerald-500/30"
+              : "bg-slate-900/60 text-slate-200 border-slate-700/70 hover:border-emerald-400/60 hover:bg-slate-900",
+          ].join(" ")}
+        >
+          <span className="flex-1">{opt.label}</span>
+          {/* Check visible solo cuando está seleccionado */}
+          <span
+            className={[
+              "ml-2 flex h-5 w-5 items-center justify-center rounded-full border text-[11px] font-bold",
+              selected
+                ? "border-slate-900 bg-slate-900 text-emerald-400"
+                : "border-slate-600 text-slate-500",
+            ].join(" ")}
+          >
+            ✓
+          </span>
+        </button>
+      );
+    })}
+  </fieldset>
+
+  <p className="mt-1 text-[11px] text-slate-400">
+    {horizonteCompra
+      ? `Has seleccionado: ${
+          HORIZONTE_OPCIONES.find((o) => o.value === horizonteCompra)?.label ||
+          ""
+        }`
+      : "Selecciona una opción para continuar."}
+  </p>
+</Field>
+
 
           {err && (
             <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">
@@ -395,7 +472,7 @@ export default function SimulatorWizard({ onResult }) {
         </div>
       )}
 
-      {/* PASO 4: CONFIRMACIÓN */}
+      {/* Paso 4 */}
       {step === 4 && (
         <div>
           <h3 className="mb-3 text-sm font-semibold text-slate-100">

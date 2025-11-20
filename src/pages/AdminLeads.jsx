@@ -10,6 +10,7 @@ const AdminLeads = () => {
   const [email, setEmail] = useState("");
   const [telefono, setTelefono] = useState("");
   const [ciudad, setCiudad] = useState("");
+  const [tiempoCompra, setTiempoCompra] = useState(""); // 👈 nuevo filtro
 
   const [leads, setLeads] = useState([]);
   const [totalLeads, setTotalLeads] = useState(0);
@@ -30,6 +31,8 @@ const AdminLeads = () => {
       if (email.trim()) params.append("email", email.trim());
       if (telefono.trim()) params.append("telefono", telefono.trim());
       if (ciudad.trim()) params.append("ciudad", ciudad.trim());
+      if (tiempoCompra.trim())
+        params.append("tiempoCompra", tiempoCompra.trim()); // 👈 enviar al backend
 
       params.append("pagina", paginaNueva);
       params.append("limit", pageSize);
@@ -73,6 +76,7 @@ const AdminLeads = () => {
     setEmail("");
     setTelefono("");
     setCiudad("");
+    setTiempoCompra(""); // 👈 resetear filtro
     fetchLeads(1);
   };
 
@@ -84,10 +88,25 @@ const AdminLeads = () => {
     if (pagina < totalPaginas) fetchLeads(pagina + 1);
   };
 
-  const mostrarDesde =
-    totalLeads === 0 ? 0 : (pagina - 1) * pageSize + 1;
+  const mostrarDesde = totalLeads === 0 ? 0 : (pagina - 1) * pageSize + 1;
   const mostrarHasta =
     totalLeads === 0 ? 0 : Math.min(pagina * pageSize, totalLeads);
+
+  // 👇 Helper para mostrar el horizonte de forma amigable
+  const formatTiempoCompra = (t) => {
+    switch (t) {
+      case "0-3":
+        return "0–3 meses";
+      case "3-12":
+        return "3–12 meses";
+      case "12-24":
+        return "12–24 meses";
+      case "explorando":
+        return "Explorando";
+      default:
+        return t || "-";
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-8 md:px-10">
@@ -116,7 +135,7 @@ const AdminLeads = () => {
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Filtros */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 px-5 py-4 md:px-6 md:py-5">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="flex flex-col">
               <label className="text-xs font-medium text-slate-500 mb-1">
                 Email
@@ -154,6 +173,24 @@ const AdminLeads = () => {
                 onChange={(e) => setCiudad(e.target.value)}
                 className="h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white"
               />
+            </div>
+
+            {/* Nuevo filtro: Horizonte de compra */}
+            <div className="flex flex-col">
+              <label className="text-xs font-medium text-slate-500 mb-1">
+                Horizonte de compra
+              </label>
+              <select
+                value={tiempoCompra}
+                onChange={(e) => setTiempoCompra(e.target.value)}
+                className="h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white"
+              >
+                <option value="">Todos</option>
+                <option value="0-3">0–3 meses</option>
+                <option value="3-12">3–12 meses</option>
+                <option value="12-24">12–24 meses</option>
+                <option value="explorando">Explorando</option>
+              </select>
             </div>
           </div>
 
@@ -203,6 +240,9 @@ const AdminLeads = () => {
                     Ciudad
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
+                    Horizonte
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
                     Producto
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
@@ -214,7 +254,7 @@ const AdminLeads = () => {
                 {!loading && leads.length === 0 && (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={8}
                       className="px-4 py-6 text-center text-sm text-slate-400"
                     >
                       No hay leads para los filtros seleccionados.
@@ -251,6 +291,9 @@ const AdminLeads = () => {
                       {lead.ciudad || "-"}
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-700">
+                      {formatTiempoCompra(lead.tiempoCompra)}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-700">
                       {lead.producto || lead.tipoProducto || "-"}
                     </td>
                     <td className="px-4 py-3 text-sm font-semibold text-slate-900">
@@ -262,7 +305,7 @@ const AdminLeads = () => {
                 {loading && (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={8}
                       className="px-4 py-6 text-center text-sm text-slate-400"
                     >
                       Cargando leads…

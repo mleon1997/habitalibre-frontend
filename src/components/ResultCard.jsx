@@ -1,6 +1,7 @@
 // src/components/ResultCard.jsx
 import React from "react";
 import { useLeadCapture } from "../context/LeadCaptureContext.jsx";
+import { calcularPlanCompra } from "../lib/planCompra.js";
 
 // Helpers de formato
 const fmtMoney = (n, d = 0) =>
@@ -11,6 +12,180 @@ const fmtMoney = (n, d = 0) =>
 
 const fmtPct = (n, d = 1) =>
   `${(Number(n || 0) * 100).toFixed(d).replace(".0", "")} %`;
+
+// Chip “Viable / A revisar” a nivel módulo para usarlo en OptionRow
+const fmtViable = (opt) =>
+  opt?.viable ? (
+    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 border border-emerald-100">
+      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+      Viable
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-500 border border-slate-200">
+      <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+      A revisar
+    </span>
+  );
+
+/**
+ * Bloque nuevo: Plan recomendado de ahorro / timing de compra
+ */
+function PlanRecomendado({ data }) {
+  // Intentamos derivar los datos base desde la respuesta del backend
+  const valorVivienda =
+    data?.valorVivienda ?? data?.precioMaxVivienda ?? null;
+
+  // Si el backend ya devuelve la entrada usada, la usamos; si no, la calculamos como valor - préstamo
+  const entradaDisponible =
+    data?.entradaDisponible ??
+    (valorVivienda && data?.montoMaximo
+      ? valorVivienda - data.montoMaximo
+      : null);
+
+  // Horizonte de compra: viene del wizard / payload inicial
+  const horizonteCompra =
+    data?.tiempoCompra ??
+    data?.horizonteCompra ??
+    data?.entrada?.tiempoCompra ??
+    null;
+
+  // Si no tenemos insumos mínimos, mostramos un fallback suave
+  if (!valorVivienda || !entradaDisponible || !horizonteCompra) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+        <h3 className="text-sm font-semibold text-slate-900 mb-1">
+          📈 Plan recomendado
+        </h3>
+        <p className="text-[11px] text-slate-600">
+          Con tu valor de vivienda, tu entrada y tu horizonte de compra
+          diseñamos un plan de ahorro mensual para que llegues más fuerte a la
+          solicitud de crédito.
+        </p>
+        <p className="mt-2 text-[11px] text-slate-500">
+          En tu siguiente simulación, asegúrate de indicar el rango de tiempo
+          en el que quisieras comprar: así podremos personalizar aún más tu
+          plan.
+        </p>
+      </div>
+    );
+  }
+
+  const plan = calcularPlanCompra({
+    valorVivienda,
+    entradaDisponible,
+    horizonteCompra,
+  });
+
+  const { brecha, ahorroMensual, meses, escenario, entradaObjetivo } = plan;
+  const fmt = new Intl.NumberFormat("es-EC");
+
+  const bloques = {
+    urgente_baja_entrada: (
+      <>
+        <p className="text-[11px] text-slate-700">
+          Quieres comprar pronto pero tu entrada aún es baja para este rango de
+          vivienda.
+        </p>
+        <ul className="text-[11px] text-slate-600 mt-2 space-y-0.5">
+          <li>
+            • Entrada objetivo:{" "}
+            <b>${fmt.format(entradaObjetivo ?? 0)}</b>
+          </li>
+          <li>
+            • Brecha actual: <b>${fmt.format(brecha ?? 0)}</b>
+          </li>
+          <li>
+            • Ahorro recomendado:{" "}
+            <b>${fmt.format(ahorroMensual ?? 0)}</b> / mes durante {meses} meses
+          </li>
+        </ul>
+        <p className="mt-2 text-[10px] text-slate-500">
+          Adicionalmente podrías considerar opciones un poco más económicas,
+          sumar un co-deudor o usar cesantía / fondos de reserva para completar
+          la entrada.
+        </p>
+      </>
+    ),
+
+    mediano_plazo: (
+      <>
+        <p className="text-[11px] text-slate-700">
+          Estás bien encaminado. Si mantienes un ahorro mensual, podrás mejorar
+          tu entrada y acceder a mejores condiciones.
+        </p>
+        <ul className="text-[11px] text-slate-600 mt-2 space-y-0.5">
+          <li>
+            • Entrada objetivo:{" "}
+            <b>${fmt.format(entradaObjetivo ?? 0)}</b>
+          </li>
+          <li>
+            • Ahorro recomendado:{" "}
+            <b>${fmt.format(ahorroMensual ?? 0)}</b> / mes durante {meses} meses
+          </li>
+        </ul>
+      </>
+    ),
+
+    largo_plazo: (
+      <>
+        <p className="text-[11px] text-slate-700">
+          Tu plan es a más largo plazo. Este es un buen momento para ordenar
+          tus finanzas, reducir deudas caras y fortalecer tu perfil crediticio.
+        </p>
+        <ul className="text-[11px] text-slate-600 mt-2 space-y-0.5">
+          <li>
+            • Meta de entrada:{" "}
+            <b>${fmt.format(entradaObjetivo ?? 0)}</b>
+          </li>
+          <li>
+            • Con un ahorro de{" "}
+            <b>${fmt.format(ahorroMensual ?? 0)}</b> / mes estarías listo en{" "}
+            {meses} meses.
+          </li>
+        </ul>
+      </>
+    ),
+
+    explorando: (
+      <>
+        <p className="text-[11px] text-slate-700">
+          Estás explorando opciones. Con tu perfil actual, este es un rango
+          saludable de compra.
+        </p>
+        <p className="text-[11px] text-slate-600 mt-2">
+          Si ahorras{" "}
+          <b>${fmt.format(ahorroMensual ?? 0)}</b> al mes, podrías llegar a una
+          entrada aproximada de{" "}
+          <b>${fmt.format(entradaObjetivo ?? 0)}</b> en {meses} meses.
+        </p>
+      </>
+    ),
+
+    listo: (
+      <>
+        <p className="text-[11px] text-slate-700">
+          ¡Excelente! Tu entrada ya está en un nivel competitivo para este
+          rango de vivienda.
+        </p>
+        <p className="text-[11px] text-slate-600 mt-2">
+          Estás listo para avanzar con una precalificación bancaria inmediata y
+          comparar ofertas entre varias entidades.
+        </p>
+      </>
+    ),
+  };
+
+  const contenido = bloques[escenario] ?? bloques.mediano_plazo;
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+      <h3 className="text-sm font-semibold text-slate-900 mb-1">
+        📈 Plan recomendado
+      </h3>
+      {contenido}
+    </div>
+  );
+}
 
 function ResultCard({ data }) {
   const { leadSaved, openLead } = useLeadCapture();
@@ -37,8 +212,8 @@ function ResultCard({ data }) {
           🔒 Resultado bloqueado
         </h3>
         <p className="text-slate-600 mb-4">
-          Déjanos tus datos para ver el detalle completo y recibir tu reporte
-          en PDF.
+          Déjanos tus datos para ver el detalle completo y recibir tu reporte en
+          PDF.
         </p>
         <button className="btn-primary" onClick={() => openLead(data)}>
           Ver mi resultado
@@ -55,7 +230,8 @@ function ResultCard({ data }) {
   const cuota = data.cuotaEstimada;
   const cuotaStress = data.stressTest?.cuotaStress ?? data.cuotaStress;
   const tasaBase = data.tasaAnual;
-  const tasaStress = data.stressTest?.tasaStress ?? (tasaBase ? tasaBase + 0.02 : null);
+  const tasaStress =
+    data.stressTest?.tasaStress ?? (tasaBase ? tasaBase + 0.02 : null);
 
   const dti = data.dtiConHipoteca;
   const ltv = data.ltv;
@@ -85,19 +261,6 @@ function ResultCard({ data }) {
     riesgoClass = "bg-red-100 text-red-700";
   }
 
-  const fmtViable = (opt) =>
-    opt?.viable ? (
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 border border-emerald-100">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-        Viable
-      </span>
-    ) : (
-      <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-500 border border-slate-200">
-        <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-        A revisar
-      </span>
-    );
-
   return (
     <div className="space-y-4">
       {/* Headline principal */}
@@ -122,6 +285,7 @@ function ResultCard({ data }) {
                 <p className="text-sm font-semibold text-slate-800">
                   {score}/100
                 </p>
+                <p className="text-[10px] text-slate-400">{scoreLabel}</p>
               </div>
             )}
             <span
@@ -211,6 +375,9 @@ function ResultCard({ data }) {
         </div>
       </div>
 
+      {/* NUEVO: Plan recomendado */}
+      <PlanRecomendado data={data} />
+
       {/* Opciones por tipo de crédito */}
       <div className="rounded-2xl border border-slate-200 bg-white p-3">
         <p className="text-[11px] font-semibold text-slate-600 mb-2 uppercase tracking-wide">
@@ -244,7 +411,7 @@ function ResultCard({ data }) {
         </div>
       </div>
 
-      {/* Plan de acción */}
+      {/* Plan de acción (acciones clave) */}
       <div className="rounded-2xl border border-indigo-100 bg-indigo-50/70 p-3">
         <p className="text-[11px] font-semibold text-indigo-900 mb-1 uppercase tracking-wide">
           Cómo aumentar tus probabilidades de aprobación
@@ -272,8 +439,8 @@ function ResultCard({ data }) {
 
       {/* Disclaimer */}
       <p className="mt-1 text-[10px] text-slate-500 leading-snug">
-        Este resultado es referencial y no constituye oferta de crédito.
-        La aprobación final depende de la validación de cada entidad financiera
+        Este resultado es referencial y no constituye oferta de crédito. La
+        aprobación final depende de la validación de cada entidad financiera
         (políticas internas, documentación y análisis de riesgo).
       </p>
     </div>
@@ -340,5 +507,4 @@ function OptionRow({ label, opt, note, destacado }) {
   );
 }
 
-// Reexport default
 export default ResultCard;
