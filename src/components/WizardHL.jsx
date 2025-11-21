@@ -16,12 +16,21 @@ const HORIZONTE_OPCIONES = [
 // =====================
 // INPUT NUMÉRICO
 // =====================
-function NumericInput({ value, onChangeFinal, placeholder }) {
+function NumericInput({ value, onChangeFinal, placeholder, min, max }) {
   const [inner, setInner] = useState(value ?? "");
 
   useEffect(() => {
     setInner(value ?? "");
   }, [value]);
+
+  const sanitizeNumber = (raw) => {
+    const num = Number((raw ?? "").toString().replace(/[^0-9.]/g, ""));
+    if (!Number.isFinite(num)) return "";
+    let v = num;
+    if (typeof min === "number" && v < min) v = min;
+    if (typeof max === "number" && v > max) v = max;
+    return v;
+  };
 
   return (
     <input
@@ -30,7 +39,16 @@ function NumericInput({ value, onChangeFinal, placeholder }) {
       value={inner}
       placeholder={placeholder}
       onChange={(e) => setInner(e.target.value)}
-      onBlur={() => onChangeFinal(inner)}
+      onBlur={() => {
+        const v = sanitizeNumber(inner);
+        if (v === "") {
+          setInner("");
+          onChangeFinal("");
+        } else {
+          setInner(String(v));
+          onChangeFinal(String(v));
+        }
+      }}
       className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 placeholder-slate-500 outline-none ring-0 transition focus:border-violet-400 focus:ring-2 focus:ring-violet-500/40"
     />
   );
@@ -261,7 +279,7 @@ export default function WizardHL({ onResult }) {
           </Field>
 
           <Field label="Edad">
-            <NumericInput value={edad} onChangeFinal={setEdad} />
+            <NumericInput value={edad} onChangeFinal={setEdad} min={21} max={75} />
           </Field>
 
           <Field label="Tipo de ingreso">
@@ -280,16 +298,18 @@ export default function WizardHL({ onResult }) {
           {(tipoIngreso === "Dependiente" || tipoIngreso === "Mixto") && (
             <Field
               label="Años de estabilidad laboral"
-              helper="Tiempo en tu empleo actual o actividad principal."
+              helper="Mínimo 1 año en tu empleo actual o actividad principal."
             >
               <NumericInput
                 value={aniosEstabilidad}
                 onChangeFinal={setAniosEstabilidad}
+                min={1}
+                max={40}
               />
             </Field>
           )}
 
-          {/* Independiente o Mixto → cómo sustenta ingresos */}
+          {/* Independiente o Mixto → cómo sustentas ingresos */}
           {(tipoIngreso === "Independiente" || tipoIngreso === "Mixto") && (
             <Field
               label="¿Cómo sustentas tus ingresos?"
@@ -351,6 +371,8 @@ export default function WizardHL({ onResult }) {
               value={ingreso}
               onChangeFinal={setIngreso}
               placeholder="Ej: 1.200"
+              min={0}
+              max={100000}
             />
           </Field>
 
@@ -360,6 +382,8 @@ export default function WizardHL({ onResult }) {
                 value={ingresoPareja}
                 onChangeFinal={setIngresoPareja}
                 placeholder="Ej: 800"
+                min={0}
+                max={100000}
               />
             </Field>
           )}
@@ -369,6 +393,8 @@ export default function WizardHL({ onResult }) {
               value={deudas}
               onChangeFinal={setDeudas}
               placeholder="Ej: 300"
+              min={0}
+              max={100000}
             />
           </Field>
 
@@ -392,6 +418,8 @@ export default function WizardHL({ onResult }) {
                 <NumericInput
                   value={aportesTotales}
                   onChangeFinal={setAportesTotales}
+                  min={0}
+                  max={600}
                 />
               </Field>
 
@@ -402,6 +430,8 @@ export default function WizardHL({ onResult }) {
                 <NumericInput
                   value={aportesConsecutivos}
                   onChangeFinal={setAportesConsecutivos}
+                  min={0}
+                  max={600}
                 />
               </Field>
             </>
@@ -432,14 +462,24 @@ export default function WizardHL({ onResult }) {
           </h3>
 
           <Field label="Valor aproximado de la vivienda (USD)">
-            <NumericInput value={valor} onChangeFinal={setValor} />
+            <NumericInput
+              value={valor}
+              onChangeFinal={setValor}
+              min={30000}
+              max={1000000}
+            />
           </Field>
 
           <Field
             label="Entrada disponible (USD)"
             helper="Incluye ahorros, cesantía, fondos de reserva u otros."
           >
-            <NumericInput value={entrada} onChangeFinal={setEntrada} />
+            <NumericInput
+              value={entrada}
+              onChangeFinal={setEntrada}
+              min={0}
+              max={1000000}
+            />
           </Field>
 
           <Field label="¿Tienes actualmente una vivienda?">
@@ -515,8 +555,8 @@ export default function WizardHL({ onResult }) {
                       (o) => o.value === horizonteCompra
                     )?.label || ""
                   }`
-                : "Selecciona una opción para continuar."
-            }</p>
+                : "Selecciona una opción para continuar."}
+            </p>
           </Field>
 
           {err && (
