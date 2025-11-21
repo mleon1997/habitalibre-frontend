@@ -94,13 +94,25 @@ export default function WizardHL({ onResult }) {
 
   // VALIDACIONES
   function validate(s) {
+    const edadNum = toNum(edad);
+    const estabNum = toNum(aniosEstabilidad);
+
+    // ⚠️ Bloqueo si ponen menos de 1 año de estabilidad laboral
+    if (
+      s === 1 &&
+      (tipoIngreso === "Dependiente" || tipoIngreso === "Mixto") &&
+      estabNum < 1
+    ) {
+      return "Para simular, necesitas al menos 1 año de estabilidad laboral en tu empleo o actividad principal.";
+    }
+
     if (s === 2 && ingresoUsado < 400)
       return "El ingreso considerado (tuyo + pareja si aplica) debe ser al menos $400.";
     if (s === 3 && toNum(valor) < 30000)
       return "El valor mínimo de vivienda que analizamos es $30.000.";
     if (s === 3 && !horizonteCompra)
       return "Elige en qué plazo te gustaría adquirir tu vivienda.";
-    if (s === 4 && (toNum(edad) < 21 || toNum(edad) > 75))
+    if (s === 4 && (edadNum < 21 || edadNum > 75))
       return "La edad debe estar entre 21 y 75 años.";
     return null;
   }
@@ -503,8 +515,8 @@ export default function WizardHL({ onResult }) {
                       (o) => o.value === horizonteCompra
                     )?.label || ""
                   }`
-                : "Selecciona una opción para continuar."}
-            </p>
+                : "Selecciona una opción para continuar."
+            }</p>
           </Field>
 
           {err && (
