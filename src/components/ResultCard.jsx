@@ -225,8 +225,31 @@ function ResultCard({ data }) {
     );
   }
 
+  // =========================
+  // Segmento / tipo de crédito
+  // =========================
+  // Intentamos unificar VIS / VIP / BIESS / Privado según lo que mande el backend
+  const rawSegmento =
+    data.segmentoHabitaLibre ||
+    data.segmentoCredito ||
+    data.productoElegido ||
+    "";
+
+  const segmentoUpper = rawSegmento.toString().toUpperCase();
+
+  const isVIS = segmentoUpper.includes("VIS");
+  const isVIP = segmentoUpper.includes("VIP");
+  const isBIESS = segmentoUpper.includes("BIESS");
+  const isPriv =
+    segmentoUpper.includes("COMERCIAL") || segmentoUpper.includes("PRIV");
+
+  let producto = "Crédito hipotecario";
+  if (isVIS) producto = "Crédito VIS";
+  else if (isBIESS) producto = "Crédito BIESS";
+  else if (isVIP) producto = "Crédito VIP";
+  else if (isPriv) producto = "Crédito privado";
+
   // Datos con fallback
-  const producto = data.productoElegido || "Crédito hipotecario";
   const cuota = data.cuotaEstimada;
   const cuotaStress = data.stressTest?.cuotaStress ?? data.cuotaStress;
   const tasaBase = data.tasaAnual;
@@ -388,25 +411,25 @@ function ResultCard({ data }) {
             label="Crédito VIS"
             opt={opciones.VIS}
             note="Tope regulado y subsidios si cumples requisitos."
-            destacado={producto === "VIS"}
+            destacado={isVIS}
           />
           <OptionRow
             label="Crédito VIP"
             opt={opciones.VIP}
             note="Mejor tasa para vivienda entre VIS y segmento medio."
-            destacado={producto === "VIP"}
+            destacado={isVIP}
           />
           <OptionRow
             label="Crédito BIESS"
             opt={opciones.BIESS}
             note="Requiere aportes IESS suficientes."
-            destacado={producto?.toUpperCase().includes("BIESS")}
+            destacado={isBIESS}
           />
           <OptionRow
             label="Crédito privado"
             opt={opciones.Privada}
             note="Bancos/financieras privadas, más flexibles pero tasa mayor."
-            destacado={producto === "Comercial"}
+            destacado={isPriv}
           />
         </div>
       </div>
