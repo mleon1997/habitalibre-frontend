@@ -13,24 +13,70 @@ const HORIZONTE_OPCIONES = [
   { value: "explorando", label: "Solo estoy explorando" },
 ];
 
-// =====================
-// INPUT NUMÉRICO
-// =====================
-function NumericInput({ value, onChangeFinal, placeholder }) {
+/* ===========================================================
+   INPUT NUMÉRICO SENCILLO (type="number" + clamp)
+   - No deja letras
+   - No deja 0 si min = 1 (lo convierte a 1)
+   - Limita por min / max en cada cambio
+=========================================================== */
+function NumericInput({
+  value,
+  onChangeFinal,
+  placeholder,
+  min,
+  max,
+  integer = false,
+}) {
   const [inner, setInner] = useState(value ?? "");
 
   useEffect(() => {
     setInner(value ?? "");
   }, [value]);
 
+  const handleChange = (e) => {
+    const raw = e.target.value;
+
+    // Permitir vacío mientras escribe
+    if (raw === "") {
+      setInner("");
+      onChangeFinal("");
+      return;
+    }
+
+    // Convertir a número
+    let num = Number(raw);
+    if (!Number.isFinite(num)) {
+      // Si lo que está escribiendo no es un número válido, no cambiamos
+      return;
+    }
+
+    if (typeof min === "number" && num < min) num = min;
+    if (typeof max === "number" && num > max) num = max;
+    if (integer) num = Math.round(num);
+
+    const finalStr = String(num);
+    setInner(finalStr);
+    onChangeFinal(finalStr);
+  };
+
+  // Bloquear e, +, -
+  const handleKeyDown = (e) => {
+    if (["e", "E", "+", "-"].includes(e.key)) {
+      e.preventDefault();
+    }
+  };
+
   return (
     <input
-      type="text"
-      inputMode="decimal"
+      type="number"
+      inputMode="numeric"
       value={inner}
       placeholder={placeholder}
-      onChange={(e) => setInner(e.target.value)}
-      onBlur={() => onChangeFinal(inner)}
+      onChange={handleChange}
+      onKeyDown={handleKeyDown}
+      min={min}
+      max={max}
+      step={integer ? 1 : "0.01"}
       className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 placeholder-slate-500 outline-none ring-0 transition focus:border-violet-400 focus:ring-2 focus:ring-violet-500/40"
     />
   );
@@ -92,42 +138,24 @@ export default function WizardHL({ onResult }) {
     return { loan: Math.max(0, v - e) };
   }, [valor, entrada]);
 
-  // Handler específico para años de estabilidad:
-  // fuerza mínimo 1 y máximo 60
-  const handleEstabilidadChange = (raw) => {
-    const n = toNum(raw);
-    if (!n) {
-      setAniosEstabilidad("1");
-      return;
-    }
-    const clamped = Math.max(1, Math.min(60, n));
-    setAniosEstabilidad(String(clamped));
-  };
-
-  // VALIDACIONES
+  // VALIDACIONES (para avanzar de paso)
   function validate(s) {
-    if (s === 1 && (tipoIngreso === "Dependiente" || tipoIngreso === "Mixto")) {
-      const a = toNum(aniosEstabilidad);
-      if (a < 1) {
-        return "Para analizar tu perfil necesitas al menos 1 año de estabilidad laboral.";
-      }
-      if (a > 60) {
-        return "Ingresa un número realista de años de estabilidad (máximo 60).";
-      }
+    if (
+      s === 1 &&
+      (tipoIngreso === "Dependiente" || tipoIngreso === "Mixto") &&
+      toNum(aniosEstabilidad) < 1
+    ) {
+      return "Mínimo 1 año en tu empleo actual o actividad principal.";
     }
 
     if (s === 2 && ingresoUsado < 400)
       return "El ingreso considerado (tuyo + pareja si aplica) debe ser al menos $400.";
-
     if (s === 3 && toNum(valor) < 30000)
       return "El valor mínimo de vivienda que analizamos es $30.000.";
-
     if (s === 3 && !horizonteCompra)
       return "Elige en qué plazo te gustaría adquirir tu vivienda.";
-
     if (s === 4 && (toNum(edad) < 21 || toNum(edad) > 75))
       return "La edad debe estar entre 21 y 75 años.";
-
     return null;
   }
 
@@ -186,7 +214,7 @@ export default function WizardHL({ onResult }) {
       const payload = buildEntrada();
       const res = await precalificar(payload);
 
-      // Guardamos en contexto y abrimos el modal de lead
+      // 👉 Guardamos en contexto y abrimos el modal de lead
       openLead(res);
 
       // Compatibilidad por si algún contenedor usa onResult
@@ -275,7 +303,13 @@ export default function WizardHL({ onResult }) {
           </Field>
 
           <Field label="Edad">
-            <NumericInput value={edad} onChangeFinal={setEdad} />
+            <NumericInput
+              value={edad}
+              onChangeFinal={setEdad}
+              integer
+              min={18}
+              max={80}
+            />
           </Field>
 
           <Field label="Tipo de ingreso">
@@ -298,7 +332,10 @@ export default function WizardHL({ onResult }) {
             >
               <NumericInput
                 value={aniosEstabilidad}
-                onChangeFinal={handleEstabilidadChange}
+                onChangeFinal={setAniosEstabilidad}
+                integer
+                min={1}
+                max={50}
               />
             </Field>
           )}
@@ -365,6 +402,9 @@ export default function WizardHL({ onResult }) {
               value={ingreso}
               onChangeFinal={setIngreso}
               placeholder="Ej: 1.200"
+              integer
+              min={0}
+              max={20000}
             />
           </Field>
 
@@ -374,6 +414,9 @@ export default function WizardHL({ onResult }) {
                 value={ingresoPareja}
                 onChangeFinal={setIngresoPareja}
                 placeholder="Ej: 800"
+                integer
+                min={0}
+                max={20000}
               />
             </Field>
           )}
@@ -383,6 +426,9 @@ export default function WizardHL({ onResult }) {
               value={deudas}
               onChangeFinal={setDeudas}
               placeholder="Ej: 300"
+              integer
+              min={0}
+              max={15000}
             />
           </Field>
 
@@ -406,6 +452,9 @@ export default function WizardHL({ onResult }) {
                 <NumericInput
                   value={aportesTotales}
                   onChangeFinal={setAportesTotales}
+                  integer
+                  min={0}
+                  max={600}
                 />
               </Field>
 
@@ -416,6 +465,9 @@ export default function WizardHL({ onResult }) {
                 <NumericInput
                   value={aportesConsecutivos}
                   onChangeFinal={setAportesConsecutivos}
+                  integer
+                  min={0}
+                  max={600}
                 />
               </Field>
             </>
@@ -446,14 +498,26 @@ export default function WizardHL({ onResult }) {
           </h3>
 
           <Field label="Valor aproximado de la vivienda (USD)">
-            <NumericInput value={valor} onChangeFinal={setValor} />
+            <NumericInput
+              value={valor}
+              onChangeFinal={setValor}
+              integer
+              min={30000}
+              max={500000}
+            />
           </Field>
 
           <Field
             label="Entrada disponible (USD)"
             helper="Incluye ahorros, cesantía, fondos de reserva u otros."
           >
-            <NumericInput value={entrada} onChangeFinal={setEntrada} />
+            <NumericInput
+              value={entrada}
+              onChangeFinal={setEntrada}
+              integer
+              min={0}
+              max={500000}
+            />
           </Field>
 
           <Field label="¿Tienes actualmente una vivienda?">
