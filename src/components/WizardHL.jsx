@@ -1,4 +1,4 @@
-// src/components/WizardHL.jsx
+ // src/components/WizardHL.jsx
 import React, { useMemo, useState, useEffect } from "react";
 import { precalificar } from "../lib/api";
 import { useLeadCapture } from "../context/LeadCaptureContext.jsx";
@@ -14,10 +14,7 @@ const HORIZONTE_OPCIONES = [
 ];
 
 /* ===========================================================
-   INPUT NUMÉRICO SENCILLO (type="number" + clamp)
-   - No deja letras
-   - No deja 0 si min = 1 (lo convierte a 1)
-   - Limita por min / max en cada cambio
+   INPUT NUMÉRICO (solo para campos especiales si lo necesitas)
 =========================================================== */
 function NumericInput({
   value,
@@ -36,19 +33,14 @@ function NumericInput({
   const handleChange = (e) => {
     const raw = e.target.value;
 
-    // Permitir vacío mientras escribe
     if (raw === "") {
       setInner("");
       onChangeFinal("");
       return;
     }
 
-    // Convertir a número
     let num = Number(raw);
-    if (!Number.isFinite(num)) {
-      // Si lo que está escribiendo no es un número válido, no cambiamos
-      return;
-    }
+    if (!Number.isFinite(num)) return;
 
     if (typeof min === "number" && num < min) num = min;
     if (typeof max === "number" && num > max) num = max;
@@ -59,7 +51,6 @@ function NumericInput({
     onChangeFinal(finalStr);
   };
 
-  // Bloquear e, +, -
   const handleKeyDown = (e) => {
     if (["e", "E", "+", "-"].includes(e.key)) {
       e.preventDefault();
@@ -79,6 +70,84 @@ function NumericInput({
       step={integer ? 1 : "0.01"}
       className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 placeholder-slate-500 outline-none ring-0 transition focus:border-violet-400 focus:ring-2 focus:ring-violet-500/40"
     />
+  );
+}
+
+/* ===========================================================
+   SLIDER UNIFICADO
+   - Misma experiencia para TODOS los sliders
+   - Se puede hacer slide con mouse o dedo
+=========================================================== */
+function SliderField({
+  label,
+  helper,
+  min,
+  max,
+  step = 1,
+  value,
+  onChange,
+  format = (v) => v,
+}) {
+  const num = Number(value) || 0;
+
+  const handleChange = (e) => {
+    const v = Number(e.target.value);
+    if (!Number.isFinite(v)) return;
+    onChange(String(v));
+  };
+
+  return (
+    <div className="mb-4">
+      {label && (
+        <label className="mb-1 block text-xs font-medium text-slate-200">
+          {label}
+        </label>
+      )}
+
+      <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
+        <span>{format(num)}</span>
+        <span className="opacity-70">
+          {format(min)} – {format(max)}
+        </span>
+      </div>
+
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={num}
+        onChange={handleChange}
+        className={`
+          w-full cursor-pointer touch-pan-y accent-violet-400
+
+          /* WebKit (Chrome, Safari, Edge Chromium) */
+          [&::-webkit-slider-thumb]:appearance-none
+          [&::-webkit-slider-thumb]:h-4
+          [&::-webkit-slider-thumb]:w-4
+          [&::-webkit-slider-thumb]:rounded-full
+          [&::-webkit-slider-thumb]:bg-white
+          [&::-webkit-slider-thumb]:border
+          [&::-webkit-slider-thumb]:border-violet-500
+          [&::-webkit-slider-thumb]:shadow
+          [&::-webkit-slider-thumb]:cursor-pointer
+
+          /* Firefox */
+          [&::-moz-range-thumb]:h-4
+          [&::-moz-range-thumb]:w-4
+          [&::-moz-range-thumb]:rounded-full
+          [&::-moz-range-thumb]:bg-white
+          [&::-moz-range-thumb]:border
+          [&::-moz-range-thumb]:border-violet-500
+          [&::-moz-range-thumb]:shadow
+          [&::-moz-range-thumb]:cursor-pointer
+        `}
+      />
+
+      {helper && (
+        <p className="mt-1 text-[11px] text-slate-400 leading-snug">{helper}</p>
+      )}
+    </div>
   );
 }
 
@@ -302,15 +371,15 @@ export default function WizardHL({ onResult }) {
             </select>
           </Field>
 
-          <Field label="Edad">
-            <NumericInput
-              value={edad}
-              onChangeFinal={setEdad}
-              integer
-              min={18}
-              max={80}
-            />
-          </Field>
+          {/* Edad como slider */}
+          <SliderField
+            label="Edad"
+            min={21}
+            max={75}
+            value={edad}
+            onChange={setEdad}
+            format={(v) => `${v} años`}
+          />
 
           <Field label="Tipo de ingreso">
             <select
@@ -326,18 +395,15 @@ export default function WizardHL({ onResult }) {
 
           {/* Sólo Dependiente o Mixto → años de estabilidad */}
           {(tipoIngreso === "Dependiente" || tipoIngreso === "Mixto") && (
-            <Field
+            <SliderField
               label="Años de estabilidad laboral"
               helper="Mínimo 1 año en tu empleo actual o actividad principal."
-            >
-              <NumericInput
-                value={aniosEstabilidad}
-                onChangeFinal={setAniosEstabilidad}
-                integer
-                min={1}
-                max={50}
-              />
-            </Field>
+              min={1}
+              max={40}
+              value={aniosEstabilidad}
+              onChange={setAniosEstabilidad}
+              format={(v) => `${v} años`}
+            />
           )}
 
           {/* Independiente o Mixto → cómo sustenta ingresos */}
@@ -397,40 +463,46 @@ export default function WizardHL({ onResult }) {
       {/* Paso 2 */}
       {step === 2 && (
         <div className="space-y-6">
-          <Field label="Tu ingreso neto mensual">
-            <NumericInput
-              value={ingreso}
-              onChangeFinal={setIngreso}
-              placeholder="Ej: 1.200"
-              integer
-              min={0}
-              max={20000}
-            />
-          </Field>
+          <SliderField
+            label="Tu ingreso neto mensual"
+            min={0}
+            max={20000}
+            value={ingreso}
+            onChange={setIngreso}
+            format={(v) =>
+              `$${Number(v || 0).toLocaleString("en-US", {
+                maximumFractionDigits: 0,
+              })}`
+            }
+          />
 
           {["casado", "union_de_hecho"].includes(estadoCivil) && (
-            <Field label="Ingreso neto mensual de tu pareja (opcional)">
-              <NumericInput
-                value={ingresoPareja}
-                onChangeFinal={setIngresoPareja}
-                placeholder="Ej: 800"
-                integer
-                min={0}
-                max={20000}
-              />
-            </Field>
+            <SliderField
+              label="Ingreso neto mensual de tu pareja (opcional)"
+              min={0}
+              max={20000}
+              value={ingresoPareja}
+              onChange={setIngresoPareja}
+              format={(v) =>
+                `$${Number(v || 0).toLocaleString("en-US", {
+                  maximumFractionDigits: 0,
+                })}`
+              }
+            />
           )}
 
-          <Field label="Otras deudas mensuales (tarjetas, préstamos, etc.)">
-            <NumericInput
-              value={deudas}
-              onChangeFinal={setDeudas}
-              placeholder="Ej: 300"
-              integer
-              min={0}
-              max={15000}
-            />
-          </Field>
+          <SliderField
+            label="Otras deudas mensuales (tarjetas, préstamos, etc.)"
+            min={0}
+            max={15000}
+            value={deudas}
+            onChange={setDeudas}
+            format={(v) =>
+              `$${Number(v || 0).toLocaleString("en-US", {
+                maximumFractionDigits: 0,
+              })}`
+            }
+          />
 
           <Field label="¿Estás afiliado al IESS?">
             <select
@@ -445,31 +517,25 @@ export default function WizardHL({ onResult }) {
 
           {afiliadoBool && (
             <>
-              <Field
+              <SliderField
                 label="Aportes IESS totales (meses)"
                 helper="Para créditos BIESS suelen requerirse al menos 36 aportes totales."
-              >
-                <NumericInput
-                  value={aportesTotales}
-                  onChangeFinal={setAportesTotales}
-                  integer
-                  min={0}
-                  max={600}
-                />
-              </Field>
+                min={0}
+                max={600}
+                value={aportesTotales}
+                onChange={setAportesTotales}
+                format={(v) => `${v} meses`}
+              />
 
-              <Field
+              <SliderField
                 label="Aportes IESS consecutivos (meses)"
                 helper="Suelen pedir mínimo 13 aportes consecutivos."
-              >
-                <NumericInput
-                  value={aportesConsecutivos}
-                  onChangeFinal={setAportesConsecutivos}
-                  integer
-                  min={0}
-                  max={600}
-                />
-              </Field>
+                min={0}
+                max={600}
+                value={aportesConsecutivos}
+                onChange={setAportesConsecutivos}
+                format={(v) => `${v} meses`}
+              />
             </>
           )}
 
@@ -497,28 +563,34 @@ export default function WizardHL({ onResult }) {
             🏠 Vivienda
           </h3>
 
-          <Field label="Valor aproximado de la vivienda (USD)">
-            <NumericInput
-              value={valor}
-              onChangeFinal={setValor}
-              integer
-              min={30000}
-              max={500000}
-            />
-          </Field>
+          <SliderField
+            label="Valor aproximado de la vivienda (USD)"
+            min={30000}
+            max={500000}
+            step={1000}
+            value={valor}
+            onChange={setValor}
+            format={(v) =>
+              `$${Number(v || 0).toLocaleString("en-US", {
+                maximumFractionDigits: 0,
+              })}`
+            }
+          />
 
-          <Field
+          <SliderField
             label="Entrada disponible (USD)"
             helper="Incluye ahorros, cesantía, fondos de reserva u otros."
-          >
-            <NumericInput
-              value={entrada}
-              onChangeFinal={setEntrada}
-              integer
-              min={0}
-              max={500000}
-            />
-          </Field>
+            min={0}
+            max={500000}
+            step={1000}
+            value={entrada}
+            onChange={setEntrada}
+            format={(v) =>
+              `$${Number(v || 0).toLocaleString("en-US", {
+                maximumFractionDigits: 0,
+              })}`
+            }
+          />
 
           <Field label="¿Tienes actualmente una vivienda?">
             <select
