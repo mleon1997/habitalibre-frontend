@@ -1,5 +1,5 @@
 // src/pages/Landing.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   SparklesIcon,
@@ -20,11 +20,19 @@ import {
 
 import HIcon from "../assets/HICON.png";
 import HLogo from "../assets/HLOGO.png";
+import { trackEvent, trackPageView } from "../lib/analytics";
 
 export default function Landing({ onStart }) {
   const [activeLegalSection, setActiveLegalSection] = useState(null);
 
-  const handleStart = () => {
+  // Page view
+  useEffect(() => {
+    trackPageView("landing_home");
+  }, []);
+
+  const handleStart = (source = "unknown") => {
+    trackEvent("cta_iniciar_simulacion_click", { source });
+
     if (typeof onStart === "function") {
       onStart();
     } else {
@@ -32,8 +40,17 @@ export default function Landing({ onStart }) {
     }
   };
 
-  const openLegal = (section) => setActiveLegalSection(section);
-  const closeLegal = () => setActiveLegalSection(null);
+  const openLegal = (section) => {
+    setActiveLegalSection(section);
+    trackEvent("modal_legal_open", { section });
+  };
+
+  const closeLegal = () => {
+    if (activeLegalSection) {
+      trackEvent("modal_legal_close", { section: activeLegalSection });
+    }
+    setActiveLegalSection(null);
+  };
 
   // Animación base suave
   const fadeUp = {
@@ -81,6 +98,9 @@ export default function Landing({ onStart }) {
             <a
               href="#como-funciona"
               className="text-slate-300 hover:text-slate-50 transition"
+              onClick={() =>
+                trackEvent("nav_click", { target: "como_funciona" })
+              }
             >
               Cómo funciona
             </a>
@@ -88,6 +108,7 @@ export default function Landing({ onStart }) {
             <a
               href="#beneficios"
               className="text-slate-300 hover:text-slate-50 transition"
+              onClick={() => trackEvent("nav_click", { target: "beneficios" })}
             >
               Beneficios
             </a>
@@ -95,6 +116,7 @@ export default function Landing({ onStart }) {
             <a
               href="#nosotros"
               className="text-slate-300 hover:text-slate-50 transition"
+              onClick={() => trackEvent("nav_click", { target: "nosotros" })}
             >
               Nosotros
             </a>
@@ -102,12 +124,15 @@ export default function Landing({ onStart }) {
             <a
               href="#testimonios"
               className="text-slate-300 hover:text-slate-50 transition"
+              onClick={() =>
+                trackEvent("nav_click", { target: "testimonios" })
+              }
             >
               Testimonios
             </a>
 
             <button
-              onClick={handleStart}
+              onClick={() => handleStart("navbar_primary")}
               className="px-5 py-2.5 rounded-full bg-blue-500 hover:bg-blue-400 text-slate-950 
                        font-semibold text-sm shadow-lg shadow-blue-500/40 transition"
             >
@@ -165,23 +190,23 @@ export default function Landing({ onStart }) {
                 tipo de crédito avanzar: VIS, VIP, BIESS o banca privada. Sin ir
                 al banco, sin papeleo y sin consultas a tu buró.
               </p>
-
               {/* CTA buttons */}
               <div className="flex flex-wrap gap-3 mb-4">
                 <button
-                  onClick={handleStart}
+                  onClick={() => handleStart("hero_primary")}
                   className="inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-emerald-400 text-slate-950 font-semibold text-sm shadow-[0_18px_40px_rgba(16,185,129,0.45)] hover:bg-emerald-300 transition"
                 >
-                  <span>Simular ahora</span>
-                  <span className="ml-2 text-[11px] font-normal text-slate-900/80 hidden sm:inline">
-                    2 min · Sin afectar tu buró
-                  </span>
+                  Simular ahora
+                  <span className="ml-1.5 text-base">→</span>
                 </button>
 
                 <button
                   type="button"
                   className="inline-flex items-center justify-center px-4 py-2.5 rounded-full border border-slate-600/80 text-slate-200 text-sm hover:border-slate-400 hover:text-slate-50 transition"
                   onClick={() => {
+                    trackEvent("cta_ver_ejemplo_resultado_click", {
+                      source: "hero",
+                    });
                     const el = document.getElementById("preview");
                     if (el)
                       el.scrollIntoView({
@@ -331,7 +356,9 @@ export default function Landing({ onStart }) {
                 </div>
 
                 <button
-                  onClick={handleStart}
+                  onClick={() =>
+                    handleStart("card_ver_capacidad_real_button")
+                  }
                   className="w-full py-3 rounded-xl bg-blue-500 hover:bg-blue-400 text-slate-950 font-semibold text-sm transition flex items-center justify-center gap-2"
                 >
                   <div className="h-5 w-5 rounded-lg bg-slate-950 flex items-center justify-center border border-emerald-400/60 overflow-hidden">
@@ -416,9 +443,9 @@ export default function Landing({ onStart }) {
                 </div>
               </div>
               <p className="relative text-xs text-slate-400">
-                Llenas 4 pasos sencillos con tus ingresos, deudas y si aportas o
-                no al IESS. No pedimos claves bancarias ni acceso a tu buró, solo
-                datos que tú nos das.
+                Llenas 4 pasos sencillos con tus ingresos, deudas y si aportas
+                o no al IESS. No pedimos claves bancarias ni acceso a tu buró,
+                solo datos que tú nos das.
               </p>
             </div>
 
@@ -523,10 +550,7 @@ export default function Landing({ onStart }) {
               </p>
               <ul className="text-[11px] text-slate-400 space-y-1.5">
                 <li>• Te damos un rango de precio realista, no una cifra aislada.</li>
-                <li>
-                  • Score hipotecario que te dice qué tan listo estás para el
-                  banco.
-                </li>
+                <li>• Score hipotecario que te dice qué tan listo estás para el banco.</li>
               </ul>
             </div>
 
@@ -691,7 +715,9 @@ export default function Landing({ onStart }) {
               </p>
 
               <ul className="text-sm text-slate-300 space-y-2 mb-6">
-                <li>• Documentación alineada a requisitos de bancos y BIESS.</li>
+                <li>
+                  • Documentación alineada a requisitos de bancos y BIESS.
+                </li>
               </ul>
 
               <div className="mt-4 rounded-2xl bg-slate-900/80 border border-slate-700/80 p-4 flex items-start gap-3">
@@ -859,7 +885,9 @@ export default function Landing({ onStart }) {
                   JP
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-slate-50">Jorge P.</p>
+                  <p className="text-sm font-semibold text-slate-50">
+                    Jorge P.
+                  </p>
                   <p className="text-[11px] text-slate-400">
                     Cambio de banco · Refinanciamiento
                   </p>
@@ -907,19 +935,6 @@ export default function Landing({ onStart }) {
           </div>
         </div>
       </footer>
-
-      {/* CTA FIJO MOBILE – maximizar simulaciones iniciadas */}
-      {!activeLegalSection && (
-        <button
-          onClick={handleStart}
-          className="md:hidden fixed bottom-4 inset-x-4 z-40 inline-flex items-center justify-center gap-2 rounded-full bg-emerald-400 text-slate-950 font-semibold text-sm py-3 shadow-[0_18px_40px_rgba(16,185,129,0.45)]"
-        >
-          <span>Iniciar simulación</span>
-          <span className="text-[11px] font-normal text-slate-900/80">
-            2 min · Sin afectar tu buró
-          </span>
-        </button>
-      )}
 
       {/* LEGAL MODAL */}
       {activeLegalSection && (
@@ -1087,4 +1102,3 @@ export default function Landing({ onStart }) {
     </main>
   );
 }
-
