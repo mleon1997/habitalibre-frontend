@@ -1,5 +1,6 @@
 // src/pages/Landing.jsx
 import React, { useState } from "react";
+import { motion } from "framer-motion";
 import {
   SparklesIcon,
   ClipboardDocumentListIcon,
@@ -10,6 +11,11 @@ import {
   ChatBubbleOvalLeftEllipsisIcon,
   StarIcon,
   XMarkIcon,
+  PresentationChartLineIcon,
+  BuildingOffice2Icon,
+  LockClosedIcon,
+  Bars3Icon,
+  ChartBarIcon,
 } from "@heroicons/react/24/outline";
 
 import HIcon from "../assets/HICON.png";
@@ -29,66 +35,87 @@ export default function Landing({ onStart }) {
   const openLegal = (section) => setActiveLegalSection(section);
   const closeLegal = () => setActiveLegalSection(null);
 
+  // Animación base suave
+  const fadeUp = {
+    initial: { opacity: 0, y: 20 },
+    whileInView: { opacity: 1, y: 0 },
+    transition: { duration: 0.6, ease: "easeOut" },
+    viewport: { once: true, amount: 0.3 },
+  };
+
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50">
       {/* NAVBAR */}
-      <header className="border-b border-slate-800/70 bg-slate-950/90 backdrop-blur">
-  <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
-    
-    {/* Logo HabitaLibre */}
-<div className="flex items-center gap-3">
-  {/* Ícono H-casa grande */}
-  <div
-    className="
-      h-12 w-12 md:h-14 md:w-14
-      rounded-2xl bg-slate-900/90 
-      border border-emerald-400/60
-      shadow-[0_0_25px_rgba(16,185,129,0.4)]
-      flex items-center justify-center overflow-hidden
-    "
-  >
-    <img
-      src={HIcon}         // 👈 aquí usamos SOLO la H
-      alt="HabitaLibre"
-      className="h-7 w-7 md:h-8 md:w-8 object-contain"
-    />
-  </div>
+      <header className="border-b border-slate-800/70 bg-slate-950/90 backdrop-blur sticky top-0 z-50">
+        <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
+          {/* Logo HabitaLibre */}
+          <div className="flex items-center gap-3">
+            <div
+              className="
+                h-12 w-12 md:h-14 md:w-14
+                rounded-2xl bg-slate-900/90 
+                border border-emerald-400/60
+                shadow-[0_0_25px_rgba(16,185,129,0.4)]
+                flex items-center justify-center overflow-hidden
+              "
+            >
+              <img
+                src={HIcon}
+                alt="HabitaLibre"
+                className="h-7 w-7 md:h-8 md:w-8 object-contain"
+              />
+            </div>
 
-  {/* Texto fuera de la imagen, siempre nítido */}
-  <div className="leading-tight">
-    <div className="font-bold text-lg md:text-xl text-white tracking-tight">
-      HabitaLibre
-    </div>
-    <div className="text-[11px] md:text-xs text-emerald-300/90">
-      Hipoteca exprés · VIS · VIP · BIESS
-    </div>
-  </div>
-</div>
+            <div className="leading-tight">
+              <div className="font-bold text-lg md:text-xl text-white tracking-tight">
+                HabitaLibre
+              </div>
+              <div className="text-[11px] md:text-xs text-emerald-300/90">
+                Hipoteca exprés · VIS · VIP · BIESS
+              </div>
+            </div>
+          </div>
 
+          {/* NAV LINKS */}
+          <nav className="hidden md:flex items-center gap-8 text-sm">
+            <a
+              href="#como-funciona"
+              className="text-slate-300 hover:text-slate-50 transition"
+            >
+              Cómo funciona
+            </a>
 
+            <a
+              href="#beneficios"
+              className="text-slate-300 hover:text-slate-50 transition"
+            >
+              Beneficios
+            </a>
 
-    {/* NAV LINKS */}
-    <nav className="hidden md:flex items-center gap-8 text-sm">
-      <a href="#como-funciona" className="text-slate-300 hover:text-slate-50 transition">
-        Cómo funciona
-      </a>
+            <a
+              href="#nosotros"
+              className="text-slate-300 hover:text-slate-50 transition"
+            >
+              Nosotros
+            </a>
 
-      <a href="#beneficios" className="text-slate-300 hover:text-slate-50 transition">
-        Beneficios
-      </a>
+            <a
+              href="#testimonios"
+              className="text-slate-300 hover:text-slate-50 transition"
+            >
+              Testimonios
+            </a>
 
-      <button
-        onClick={handleStart}
-        className="px-5 py-2.5 rounded-full bg-blue-500 hover:bg-blue-400 text-slate-950 
-                 font-semibold text-sm shadow-lg shadow-blue-500/40 transition"
-      >
-        Iniciar simulación
-      </button>
-    </nav>
-
-  </div>
-</header>
-
+            <button
+              onClick={handleStart}
+              className="px-5 py-2.5 rounded-full bg-blue-500 hover:bg-blue-400 text-slate-950 
+                       font-semibold text-sm shadow-lg shadow-blue-500/40 transition"
+            >
+              Iniciar simulación
+            </button>
+          </nav>
+        </div>
+      </header>
 
       {/* HERO */}
       <section className="relative overflow-hidden">
@@ -96,33 +123,31 @@ export default function Landing({ onStart }) {
         <div className="relative mx-auto max-w-6xl px-4 py-10 md:py-16 lg:py-20">
           <div className="grid gap-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] items-center">
             {/* LEFT – copy principal */}
-            <div>
+            <motion.div {...fadeUp}>
               {/* Marca HabitaLibre en el hero */}
-<div className="inline-flex items-center gap-3 rounded-full bg-slate-900/80 border border-slate-800/80 px-3.5 py-1.5 mb-4 shadow-[0_14px_40px_rgba(15,23,42,0.85)]">
-  <div
-    className="
-      h-9 w-9 md:h-10 md:w-10
-      rounded-2xl bg-slate-950
-      border border-emerald-400/60
-      shadow-[0_0_20px_rgba(16,185,129,0.5)]
-      flex items-center justify-center overflow-hidden
-    "
-  >
-    <img
-      src={HIcon}          // 🔥 SOLO LA H-CASA
-      alt="HabitaLibre"
-      className="h-7 w-7 md:h-8 md:w-8 object-contain"
-    />
-  </div>
-  <span className="text-[11px] font-semibold tracking-[0.18em] text-slate-200">
-    HABITALIBRE
-  </span>
-  <span className="hidden sm:inline text-[11px] text-slate-400">
-    Precalificación hipotecaria digital en Ecuador
-  </span>
-</div>
-
-
+              <div className="inline-flex items-center gap-3 rounded-full bg-slate-900/80 border border-slate-800/80 px-3.5 py-1.5 mb-4 shadow-[0_14px_40px_rgba(15,23,42,0.85)]">
+                <div
+                  className="
+                    h-9 w-9 md:h-10 md:w-10
+                    rounded-2xl bg-slate-950
+                    border border-emerald-400/60
+                    shadow-[0_0_20px_rgba(16,185,129,0.5)]
+                    flex items-center justify-center overflow-hidden
+                  "
+                >
+                  <img
+                    src={HIcon}
+                    alt="HabitaLibre"
+                    className="h-7 w-7 md:h-8 md:w-8 object-contain"
+                  />
+                </div>
+                <span className="text-[11px] font-semibold tracking-[0.18em] text-slate-200">
+                  HABITALIBRE
+                </span>
+                <span className="hidden sm:inline text-[11px] text-slate-400">
+                  Precalificación hipotecaria digital en Ecuador
+                </span>
+              </div>
 
               <p className="text-[11px] tracking-[0.2em] uppercase text-slate-400 mb-3">
                 ● Precalificación sin afectar tu buró
@@ -181,10 +206,10 @@ export default function Landing({ onStart }) {
                   Asesoría sin costo
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* RIGHT – result card */}
-            <div id="preview">
+            <motion.div id="preview" {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }}>
               <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 shadow-[0_24px_60px_rgba(15,23,42,0.9)] backdrop-blur-sm">
                 <div className="flex items-start justify-between text-xs mb-4">
                   <div>
@@ -319,15 +344,16 @@ export default function Landing({ onStart }) {
                   producto y regulación vigente en Ecuador.
                 </p>
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
 
       {/* CÓMO FUNCIONA */}
-      <section
+      <motion.section
         id="como-funciona"
         className="border-t border-slate-800 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-950"
+        {...fadeUp}
       >
         <div className="mx-auto max-w-6xl px-4 py-12 md:py-16">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
@@ -437,12 +463,13 @@ export default function Landing({ onStart }) {
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* BENEFICIOS */}
-      <section
+      <motion.section
         id="beneficios"
         className="border-t border-slate-800 bg-slate-950 pb-14"
+        {...fadeUp}
       >
         <div className="mx-auto max-w-6xl px-4 pt-10 md:pt-12">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
@@ -534,12 +561,187 @@ export default function Landing({ onStart }) {
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
+
+      {/* NOSOTROS – HL-SCORE */}
+      <motion.section
+        id="nosotros"
+        className="border-t border-slate-800 bg-slate-950"
+        {...fadeUp}
+      >
+        <div className="mx-auto max-w-6xl px-4 py-16">
+          {/* Label */}
+          <div className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-[11px] text-slate-300 mb-6">
+            <PresentationChartLineIcon className="h-3.5 w-3.5 text-emerald-400" />
+            Algoritmo HabitaLibre · HL-Score®
+          </div>
+
+          {/* Title */}
+          <h2 className="text-2xl md:text-3xl font-semibold text-slate-50 mb-3">
+            Un motor diseñado para la realidad hipotecaria ecuatoriana
+          </h2>
+
+          {/* Subtitle */}
+          <p className="text-sm text-slate-400 max-w-2xl mb-8">
+            HL-Score® resume tu ingreso, deudas, relación con el IESS y reglas
+            VIS/VIP/BIESS para darte una lectura honesta de tu capacidad real y
+            qué ajustes te acercan más rápido a tu hipoteca.
+          </p>
+
+          {/* Resume Chips */}
+          <div className="flex flex-wrap gap-3 mb-10">
+            <div className="flex items-center gap-2 rounded-full bg-slate-900 border border-slate-700 px-4 py-1.5 text-[11px]">
+              <SparklesIcon className="h-4 w-4 text-emerald-400" />
+              Algoritmo HL-Score® propio
+            </div>
+
+            <div className="flex items-center gap-2 rounded-full bg-slate-900 border border-slate-700 px-4 py-1.5 text-[11px]">
+              <ChartBarIcon className="h-4 w-4 text-sky-400" />
+              Escenarios multi-banco
+            </div>
+
+            <div className="flex items-center gap-2 rounded-full bg-slate-900 border border-slate-700 px-4 py-1.5 text-[11px]">
+              <Bars3Icon className="h-4 w-4 text-emerald-300" />
+              Decisiones claras
+            </div>
+          </div>
+
+          {/* Two Cards */}
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 text-[12px] text-slate-300">
+              <p className="font-semibold mb-2">Escenarios múltiple banco</p>
+              <ul className="space-y-1 text-slate-400">
+                <li>• Comparamos rangos de tasa, plazo y entrada.</li>
+                <li>• Ajustamos según VIS, VIP, BIESS o banca privada.</li>
+                <li>• Te mostramos un rango, no un número suelto.</li>
+              </ul>
+            </div>
+
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 text-[12px] text-slate-300">
+              <p className="font-semibold mb-2">Decisiones claras, sin jerga</p>
+              <ul className="space-y-1 text-slate-400">
+                <li>• “Stress test” de tu presupuesto para ver qué pasa si bajas deudas.</li>
+                <li>• Gráficos simples, sin letras pequeñas.</li>
+                <li>• Aprendemos de cada caso real para refinar el modelo.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </motion.section>
+
+      {/* OFICINAS – ESTILO APPLE */}
+      <motion.section
+        className="border-t border-slate-800 bg-slate-950/95"
+        {...fadeUp}
+      >
+        <div className="mx-auto max-w-6xl px-4 py-16">
+          <div className="grid gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] items-center">
+            {/* Texto */}
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1 text-[11px] text-slate-300 mb-3">
+                <BuildingOffice2Icon className="h-3.5 w-3.5 text-emerald-300" />
+                <span>Oficinas físicas · Zona financiera de Quito</span>
+              </div>
+
+              <h3 className="text-xl md:text-2xl font-semibold text-slate-50 mb-3">
+                Una proptech real, con equipo y oficinas en Quito
+              </h3>
+
+              <p className="text-sm text-slate-400 max-w-xl mb-6">
+                HabitaLibre nace en Ecuador, pensada para la realidad de
+                familias ecuatorianas. Operamos desde oficinas en la zona
+                financiera de Quito, con experiencia en proyectos VIS/VIP,
+                BIESS y banca privada.
+              </p>
+
+              <ul className="text-sm text-slate-300 space-y-2 mb-6">
+                <li>• Te atendemos por videollamada o reunión presencial.</li>
+                <li>• Documentación alineada a requisitos de bancos y BIESS.</li>
+                <li>• Acompañamiento opcional hasta la firma de tu crédito.</li>
+              </ul>
+
+              <div className="mt-4 rounded-2xl bg-slate-900/80 border border-slate-700/80 p-4 flex items-start gap-3">
+                <LockClosedIcon className="h-5 w-5 text-emerald-300 mt-0.5" />
+                <div className="text-[12px] text-slate-300">
+                  <p className="font-semibold mb-1">
+                    Centro de confianza HabitaLibre
+                  </p>
+                  <p className="text-slate-400 mb-3">
+                    Tus datos se usan solo para construir tu simulación y, si
+                    nos lo autorizas, ayudarte a contactar bancos o proyectos
+                    de vivienda. No vendemos tu información.
+                  </p>
+                  <button
+                    onClick={() => openLegal("politica")}
+                    className="inline-flex items-center gap-1 rounded-full border border-slate-600 px-3 py-1.5 text-[11px] text-slate-200 hover:border-emerald-400 hover:text-emerald-300 transition"
+                  >
+                    <ShieldCheckIcon className="h-3.5 w-3.5 text-emerald-400" />
+                    Ver cómo cuidamos tus datos
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Card estilo Apple con foto */}
+            <motion.div
+              className="relative"
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, ease: "easeOut" }}
+              viewport={{ once: true, amount: 0.4 }}
+            >
+              <div className="relative rounded-3xl bg-slate-900/80 border border-slate-700/70 shadow-[0_30px_80px_rgba(15,23,42,0.95)] overflow-hidden backdrop-blur-lg">
+                <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/10 via-sky-500/5 to-transparent pointer-events-none" />
+                <div className="relative p-5 md:p-6">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-2xl bg-slate-950 border border-emerald-400/60 flex items-center justify-center">
+                        <BuildingOffice2Icon className="h-5 w-5 text-emerald-300" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-50">
+                          Oficinas HabitaLibre
+                        </p>
+                        <p className="text-[11px] text-slate-400">
+                          Quito · Zona financiera
+                        </p>
+                      </div>
+                    </div>
+                    <div className="rounded-full bg-emerald-500/10 border border-emerald-400/60 px-3 py-1 text-[11px] text-emerald-300">
+                      Proptech ecuatoriana
+                    </div>
+                  </div>
+
+                  <div className="relative overflow-hidden rounded-2xl border border-slate-700/70 bg-slate-900/80">
+                    <img
+                      src="/ofcHL.jpeg"
+                      alt="Oficinas HabitaLibre en Quito"
+                      className="h-60 w-full object-cover"
+                    />
+                  </div>
+
+                  <div className="mt-4 text-[12px] text-slate-300">
+                    <p className="mb-1 font-semibold">
+                      Un lugar donde se cruzan proyectos, bancos y familias.
+                    </p>
+                    <p className="text-slate-400">
+                      Aquí afinamos el HL-Score®, recibimos a aliados y
+                      acompañamos a personas que están dando el paso hacia su
+                      vivienda propia.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </motion.section>
 
       {/* TESTIMONIOS */}
-      <section
+      <motion.section
         id="testimonios"
         className="border-t border-slate-800 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-950/95"
+        {...fadeUp}
       >
         <div className="mx-auto max-w-6xl px-4 py-12 md:py-16">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
@@ -640,7 +842,7 @@ export default function Landing({ onStart }) {
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* FOOTER – Disclaimer + Links */}
       <footer className="border-t border-slate-800 bg-slate-950 py-7 mt-4">
@@ -674,15 +876,15 @@ export default function Landing({ onStart }) {
         </div>
       </footer>
 
-      {/* LEGAL MODAL – solo cuando hay sección activa */}
+      {/* LEGAL MODAL */}
       {activeLegalSection && (
         <div
           className="hl-modal-overlay"
-          onClick={closeLegal} // click fuera cierra
+          onClick={closeLegal}
         >
           <div
             className="hl-modal-panel bg-slate-950 border border-slate-800"
-            onClick={(e) => e.stopPropagation()} // evitar cerrar al hacer click dentro
+            onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div className="flex items-center justify-between mb-5">
@@ -698,6 +900,62 @@ export default function Landing({ onStart }) {
                 <XMarkIcon className="h-4 w-4" />
               </button>
             </div>
+
+            {/* CONTENIDO: Política de Privacidad */}
+            {activeLegalSection === "politica" && (
+              <div className="text-slate-300 text-sm leading-relaxed space-y-4">
+                <h2 className="text-xl font-semibold text-slate-50">
+                  Política de Privacidad
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Queremos que tengas claridad total sobre cómo usamos tu
+                  información.
+                </p>
+
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <h3 className="font-semibold text-slate-100">
+                      1. Qué datos pedimos
+                    </h3>
+                    <p>
+                      Solo solicitamos datos necesarios para simular tu
+                      capacidad hipotecaria: ingresos, deudas, tipo de relación
+                      con el IESS y algunos datos de contacto para enviarte tu
+                      resultado.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-slate-100">
+                      2. Cómo usamos tu información
+                    </h3>
+                    <p>
+                      Usamos tus datos para calcular tu HL-Score®, mostrarte
+                      escenarios de crédito y, si tú lo autorizas, ayudarte a
+                      contactar bancos o proyectos de vivienda. No vendemos tu
+                      información.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-slate-100">
+                      3. Seguridad y almacenamiento
+                    </h3>
+                    <p>
+                      Implementamos buenas prácticas de seguridad para proteger
+                      tu información y la conservamos solo el tiempo necesario
+                      para acompañarte en tu proceso o lo que exija la norma
+                      aplicable.
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-slate-500">
+                  Si en algún momento quieres que eliminemos tus datos, puedes
+                  escribirnos y procesaremos tu solicitud.
+                </p>
+              </div>
+            )}
 
             {/* CONTENIDO: Términos de Uso */}
             {activeLegalSection === "terminos" && (
@@ -718,9 +976,9 @@ export default function Landing({ onStart }) {
                     <p>
                       HabitaLibre es una herramienta educativa y de orientación
                       financiera inicial. Los resultados son estimaciones
-                      referenciales y no constituyen una oferta formal de crédito,
-                      compromiso de aprobación ni asesoría financiera, legal o
-                      tributaria personalizada.
+                      referenciales y no constituyen una oferta formal de
+                      crédito, compromiso de aprobación ni asesoría financiera,
+                      legal o tributaria personalizada.
                     </p>
                   </div>
 
@@ -729,11 +987,11 @@ export default function Landing({ onStart }) {
                       2. Responsabilidad sobre la información ingresada
                     </h3>
                     <p>
-                      Las estimaciones dependen de la veracidad y actualización de
-                      los datos que tú proporcionas. No somos responsables por
-                      decisiones tomadas exclusivamente con base en la simulación
-                      sin contraste posterior con las políticas y evaluación de
-                      riesgo de cada entidad financiera.
+                      Las estimaciones dependen de la veracidad y actualización
+                      de los datos que tú proporcionas. No somos responsables
+                      por decisiones tomadas exclusivamente con base en la
+                      simulación sin contraste posterior con las políticas y
+                      evaluación de riesgo de cada entidad financiera.
                     </p>
                   </div>
 
@@ -756,10 +1014,10 @@ export default function Landing({ onStart }) {
                       4. Uso permitido y limitaciones
                     </h3>
                     <p>
-                      El simulador está destinado a uso personal. No se permite su
-                      uso automatizado, con fines ilícitos o para reproducir, copiar
-                      o revender el servicio sin autorización previa por escrito de
-                      HabitaLibre.
+                      El simulador está destinado a uso personal. No se permite
+                      su uso automatizado, con fines ilícitos o para reproducir,
+                      copiar o revender el servicio sin autorización previa por
+                      escrito de HabitaLibre.
                     </p>
                   </div>
 
