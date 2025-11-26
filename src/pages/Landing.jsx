@@ -161,9 +161,9 @@ export default function Landing({ onStart }) {
                 </span>
               </h1>
               <p className="text-sm md:text-[15px] text-slate-300 max-w-xl mb-6">
-                Descubre en menos de 2 minutos cuánto puedes comprar hoy y con
-                qué tipo de crédito: VIS, VIP, BIESS o banca privada. Sin filas,
-                sin papeles y sin afectar tu historial crediticio.
+                En menos de 2 minutos ves cuánto podrías comprar hoy y con qué
+                tipo de crédito avanzar: VIS, VIP, BIESS o banca privada. Sin ir
+                al banco, sin papeleo y sin consultas a tu buró.
               </p>
 
               {/* CTA buttons */}
@@ -172,8 +172,10 @@ export default function Landing({ onStart }) {
                   onClick={handleStart}
                   className="inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-emerald-400 text-slate-950 font-semibold text-sm shadow-[0_18px_40px_rgba(16,185,129,0.45)] hover:bg-emerald-300 transition"
                 >
-                  Simular ahora
-                  <span className="ml-1.5 text-base">→</span>
+                  <span>Simular ahora</span>
+                  <span className="ml-2 text-[11px] font-normal text-slate-900/80 hidden sm:inline">
+                    2 min · Sin afectar tu buró
+                  </span>
                 </button>
 
                 <button
@@ -209,7 +211,11 @@ export default function Landing({ onStart }) {
             </motion.div>
 
             {/* RIGHT – result card */}
-            <motion.div id="preview" {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }}>
+            <motion.div
+              id="preview"
+              {...fadeUp}
+              transition={{ ...fadeUp.transition, delay: 0.1 }}
+            >
               <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 shadow-[0_24px_60px_rgba(15,23,42,0.9)] backdrop-blur-sm">
                 <div className="flex items-start justify-between text-xs mb-4">
                   <div>
@@ -410,9 +416,9 @@ export default function Landing({ onStart }) {
                 </div>
               </div>
               <p className="relative text-xs text-slate-400">
-                Completa una simulación guiada en 4 pasos con tus ingresos,
-                deudas y si aportas o no al IESS. No pedimos buró ni claves
-                bancarias, solo datos declarativos.
+                Llenas 4 pasos sencillos con tus ingresos, deudas y si aportas o
+                no al IESS. No pedimos claves bancarias ni acceso a tu buró, solo
+                datos que tú nos das.
               </p>
             </div>
 
@@ -433,9 +439,10 @@ export default function Landing({ onStart }) {
                 </div>
               </div>
               <p className="relative text-xs text-slate-400">
-                Calculamos tu capacidad de pago, cuota estimada y te mostramos
-                qué producto encaja mejor contigo: VIS, VIP, BIESS o banca
-                privada, con un score hipotecario claro.
+                Calculamos cuánto podrías pagar al mes, tu rango de vivienda y
+                qué tipo de crédito tiene más sentido para ti hoy: VIS, VIP,
+                BIESS o banca privada, con un score hipotecario fácil de
+                entender.
               </p>
             </div>
 
@@ -456,9 +463,10 @@ export default function Landing({ onStart }) {
                 </div>
               </div>
               <p className="relative text-xs text-slate-400">
-                Un asesor HabitaLibre revisa tu caso y te ayuda a preparar
-                documentos, comparar bancos y avanzar con la opción que mejor
-                combine cuota, plazo y seguridad para ti.
+                Si te gusta tu resultado, un asesor HabitaLibre puede ayudarte
+                sin costo a ordenar tus documentos, comparar bancos y llegar a
+                la opción que mejor combine cuota, plazo y seguridad para tu
+                familia.
               </p>
             </div>
           </div>
@@ -508,13 +516,17 @@ export default function Landing({ onStart }) {
                 </p>
               </div>
               <p className="text-xs text-slate-400 mb-2">
-                No eres un formulario más. Tomamos tu ingreso, deudas y aporte
-                al IESS para comparar escenarios VIS, VIP, BIESS y banca
-                privada, y te mostramos lo que tiene sentido para ti hoy.
+                No eres un número más en el banco. Con tu ingreso, deudas y
+                aporte al IESS comparamos escenarios VIS, VIP, BIESS y banca
+                privada para mostrarte qué opción se adapta mejor a tu realidad
+                hoy.
               </p>
               <ul className="text-[11px] text-slate-400 space-y-1.5">
-                <li>• Rango de precio sugerido en vez de un valor aislado.</li>
-                <li>• Score hipotecario para entender qué tan cerca estás.</li>
+                <li>• Te damos un rango de precio realista, no una cifra aislada.</li>
+                <li>
+                  • Score hipotecario que te dice qué tan listo estás para el
+                  banco.
+                </li>
               </ul>
             </div>
 
@@ -529,13 +541,16 @@ export default function Landing({ onStart }) {
                 </p>
               </div>
               <p className="text-xs text-slate-400 mb-2">
-                Trabajamos con datos declarativos. No hacemos consultas de buró
-                ni movimientos bancarios, así que puedes explorar tu capacidad
-                sin dejar huella.
+                Simulas sin asustarte por el buró. No revisamos tu historial ni
+                tus movimientos bancarios, así que puedes ver tu capacidad con
+                total tranquilidad.
               </p>
               <ul className="text-[11px] text-slate-400 space-y-1.5">
-                <li>• Ideal si aún no estás listo para ir directo al banco.</li>
-                <li>• Puedes simular distintos escenarios antes de decidir.</li>
+                <li>• Ideal si todavía no quieres sentarte frente al banco.</li>
+                <li>
+                  • Puedes probar diferentes montos, plazos y cuotas antes de
+                  decidir.
+                </li>
               </ul>
             </div>
 
@@ -550,13 +565,19 @@ export default function Landing({ onStart }) {
                 </p>
               </div>
               <p className="text-xs text-slate-400 mb-2">
-                Detrás del simulador hay personas. Si tu resultado te convence,
-                un asesor puede ayudarte sin costo a ordenar tus documentos y
-                preparar tu mejor versión para el banco.
+                Detrás del simulador hay un equipo real. Si tu resultado te
+                convence, un asesor puede ayudarte sin costo a ordenar tus
+                papeles y preparar tu mejor versión para el banco o el BIESS.
               </p>
               <ul className="text-[11px] text-slate-400 space-y-1.5">
-                <li>• Explicamos tu reporte en lenguaje simple.</li>
-                <li>• Te ayudamos a ver qué mejorar para subir tu score.</li>
+                <li>
+                  • Te explicamos el reporte en lenguaje simple, sin jerga
+                  bancaria.
+                </li>
+                <li>
+                  • Te mostramos qué cambiar (deudas, entrada, plazo) para subir
+                  tu score.
+                </li>
               </ul>
             </div>
           </div>
@@ -583,9 +604,9 @@ export default function Landing({ onStart }) {
 
           {/* Subtitle */}
           <p className="text-sm text-slate-400 max-w-2xl mb-8">
-            HL-Score® resume tu ingreso, deudas, relación con el IESS y reglas
-            VIS/VIP/BIESS para darte una lectura honesta de tu capacidad real y
-            qué ajustes te acercan más rápido a tu hipoteca.
+            HL-Score® combina tu nivel de ingresos, deudas, relación con el IESS
+            y parámetros VIS/VIP/BIESS para darte una lectura honesta de qué tan
+            cerca estás de tu hipoteca y qué ajustes tienen más impacto.
           </p>
 
           {/* Resume Chips */}
@@ -609,20 +630,35 @@ export default function Landing({ onStart }) {
           {/* Two Cards */}
           <div className="grid md:grid-cols-2 gap-6">
             <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 text-[12px] text-slate-300">
-              <p className="font-semibold mb-2">Escenarios múltiple banco</p>
+              <p className="font-semibold mb-2">Escenarios con varios bancos</p>
               <ul className="space-y-1 text-slate-400">
-                <li>• Comparamos rangos de tasa, plazo y entrada.</li>
-                <li>• Ajustamos según VIS, VIP, BIESS o banca privada.</li>
-                <li>• Te mostramos un rango, no un número suelto.</li>
+                <li>
+                  • Comparamos rangos de tasa, plazo y entrada según tu perfil.
+                </li>
+                <li>
+                  • Ajustamos el modelo si aplicas a VIS, VIP, BIESS o banca
+                  privada.
+                </li>
+                <li>
+                  • Te mostramos un rango de vivienda, no una cifra aislada.
+                </li>
               </ul>
             </div>
 
             <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 text-[12px] text-slate-300">
               <p className="font-semibold mb-2">Decisiones claras, sin jerga</p>
               <ul className="space-y-1 text-slate-400">
-                <li>• “Stress test” de tu presupuesto para ver qué pasa si bajas deudas.</li>
-                <li>• Gráficos simples, sin letras pequeñas.</li>
-                <li>• Aprendemos de cada caso real para refinar el modelo.</li>
+                <li>
+                  • Te mostramos qué pasa si bajas deudas, cambias plazo o
+                  aumentas entrada.
+                </li>
+                <li>
+                  • Usamos gráficos y mensajes simples, sin letras pequeñas.
+                </li>
+                <li>
+                  • El modelo se entrena con casos reales de familias en
+                  Ecuador.
+                </li>
               </ul>
             </div>
           </div>
@@ -648,16 +684,14 @@ export default function Landing({ onStart }) {
               </h3>
 
               <p className="text-sm text-slate-400 max-w-xl mb-6">
-                HabitaLibre nace en Ecuador, pensada para la realidad de
-                familias ecuatorianas. Operamos desde oficinas en la zona
-                financiera de Quito, con experiencia en proyectos VIS/VIP,
-                BIESS y banca privada.
+                HabitaLibre nace en Ecuador, para la realidad de familias
+                ecuatorianas. Operamos desde oficinas en la zona financiera de
+                Quito, con experiencia en proyectos VIS/VIP, BIESS y banca
+                privada.
               </p>
 
               <ul className="text-sm text-slate-300 space-y-2 mb-6">
-                <li>• Te atendemos por videollamada o reunión presencial.</li>
                 <li>• Documentación alineada a requisitos de bancos y BIESS.</li>
-                <li>• Acompañamiento opcional hasta la firma de tu crédito.</li>
               </ul>
 
               <div className="mt-4 rounded-2xl bg-slate-900/80 border border-slate-700/80 p-4 flex items-start gap-3">
@@ -668,8 +702,8 @@ export default function Landing({ onStart }) {
                   </p>
                   <p className="text-slate-400 mb-3">
                     Tus datos se usan solo para construir tu simulación y, si
-                    nos lo autorizas, ayudarte a contactar bancos o proyectos
-                    de vivienda. No vendemos tu información.
+                    nos lo autorizas, ayudarte a contactar bancos o proyectos de
+                    vivienda. No vendemos tu información.
                   </p>
                   <button
                     onClick={() => openLegal("politica")}
@@ -722,12 +756,12 @@ export default function Landing({ onStart }) {
 
                   <div className="mt-4 text-[12px] text-slate-300">
                     <p className="mb-1 font-semibold">
-                      Un lugar donde se cruzan proyectos, bancos y familias.
+                      Aquí se conectan proyectos, bancos y familias.
                     </p>
                     <p className="text-slate-400">
-                      Aquí afinamos el HL-Score®, recibimos a aliados y
-                      acompañamos a personas que están dando el paso hacia su
-                      vivienda propia.
+                      En estas oficinas afinamos el HL-Score®, recibimos a
+                      aliados y acompañamos a personas que están dando el paso
+                      hacia su vivienda propia.
                     </p>
                   </div>
                 </div>
@@ -825,9 +859,7 @@ export default function Landing({ onStart }) {
                   JP
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-slate-50">
-                    Jorge P.
-                  </p>
+                  <p className="text-sm font-semibold text-slate-50">Jorge P.</p>
                   <p className="text-[11px] text-slate-400">
                     Cambio de banco · Refinanciamiento
                   </p>
@@ -876,12 +908,22 @@ export default function Landing({ onStart }) {
         </div>
       </footer>
 
+      {/* CTA FIJO MOBILE – maximizar simulaciones iniciadas */}
+      {!activeLegalSection && (
+        <button
+          onClick={handleStart}
+          className="md:hidden fixed bottom-4 inset-x-4 z-40 inline-flex items-center justify-center gap-2 rounded-full bg-emerald-400 text-slate-950 font-semibold text-sm py-3 shadow-[0_18px_40px_rgba(16,185,129,0.45)]"
+        >
+          <span>Iniciar simulación</span>
+          <span className="text-[11px] font-normal text-slate-900/80">
+            2 min · Sin afectar tu buró
+          </span>
+        </button>
+      )}
+
       {/* LEGAL MODAL */}
       {activeLegalSection && (
-        <div
-          className="hl-modal-overlay"
-          onClick={closeLegal}
-        >
+        <div className="hl-modal-overlay" onClick={closeLegal}>
           <div
             className="hl-modal-panel bg-slate-950 border border-slate-800"
             onClick={(e) => e.stopPropagation()}
@@ -1045,3 +1087,4 @@ export default function Landing({ onStart }) {
     </main>
   );
 }
+
