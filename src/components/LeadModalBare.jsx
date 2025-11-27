@@ -122,10 +122,20 @@ export default function LeadModalBare() {
       : "bg-slate-50/60 border border-slate-200/70");
 
   return (
-    <div className="hl-modal-overlay">
+    <div
+      className="
+        fixed inset-0 z-[60]
+        flex items-center justify-center
+        bg-slate-950/80
+        px-3
+      "
+    >
       <div
         className={
-          "hl-modal-panel relative w-full max-w-md mx-4 sm:mx-auto px-4 py-6 md:px-6 md:py-7 rounded-2xl bg-white shadow-xl transition-transform duration-200 " +
+          "relative w-full max-w-md max-h-[90vh] overflow-y-auto " +
+          "mx-auto px-4 py-6 md:px-6 md:py-7 " +
+          "rounded-2xl bg-white shadow-xl " +
+          "transition-transform duration-200 " +
           (shake ? "hl-shake" : "")
         }
       >
