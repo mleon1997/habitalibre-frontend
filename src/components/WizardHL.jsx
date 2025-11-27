@@ -1,6 +1,7 @@
 // src/components/WizardHL.jsx
 import React, { useMemo, useState, useEffect } from "react";
 import { precalificar } from "../lib/api";
+import { useLeadCapture } from "../context/LeadCaptureContext.jsx";
 
 const TOTAL_STEPS = 4;
 
@@ -119,7 +120,7 @@ function SliderField({
         className={`
           w-full cursor-pointer touch-pan-y accent-violet-400
 
-          /* WebKit (Chrome, Safari, Edge Chromium) */
+          /* WebKit */
           [&::-webkit-slider-thumb]:appearance-none
           [&::-webkit-slider-thumb]:h-4
           [&::-webkit-slider-thumb]:w-4
@@ -150,6 +151,8 @@ function SliderField({
 }
 
 export default function WizardHL({ onResult }) {
+  const { openLead } = useLeadCapture();
+
   const [step, setStep] = useState(1);
 
   // ====== Estados ======
@@ -271,18 +274,25 @@ export default function WizardHL({ onResult }) {
   }
 
   async function handleCalcular() {
+    console.log("[WizardHL] Click en Ver resultados");
     const e = validate(4);
-    if (e) return setErr(e);
+    if (e) {
+      setErr(e);
+      return;
+    }
 
     setLoading(true);
     try {
       const payload = buildEntrada();
+      console.log("[WizardHL] Payload enviado a precalificar:", payload);
       const res = await precalificar(payload);
+      console.log("[WizardHL] Respuesta de precalificar:", res);
 
-      // 👉 En esta versión NO abrimos el lead directamente.
-      // Solo mandamos el resultado (más el payload) al contenedor.
-      const withEcho = { ...res, _echo: payload };
-      onResult?.(withEcho);
+      // 👉 Guardamos en contexto y abrimos el modal de lead
+      openLead(res);
+
+      // Compatibilidad por si algún contenedor usa onResult
+      onResult?.(res);
     } catch (ex) {
       console.error(ex);
       setErr("No se pudo calcular tu resultado ahora.");

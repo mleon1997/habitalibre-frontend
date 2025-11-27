@@ -13,11 +13,13 @@ export function LeadCaptureProvider({ children }) {
   const [lastResult, setLastResult] = useState(null);
 
   const openLead = useCallback((result) => {
+    console.log("[LeadCapture] openLead llamado con:", result);
     setLastResult(result || null);
     setModalOpen(true);
   }, []);
 
   const closeLead = useCallback(() => {
+    console.log("[LeadCapture] closeLead");
     setModalOpen(false);
   }, []);
 
