@@ -21,9 +21,9 @@ export default function LeadModalBare() {
   const [shake, setShake] = useState(false);
 
   const needsConsentError =
-    err && err.includes("Debes aceptar ambas casillas");
+    !!err && err.indexOf("Debes aceptar ambas casillas") !== -1;
 
-  // 👉 Si el modal NO está abierto, no rendereamos nada
+  // Si el modal no está abierto, no renderizamos nada
   if (!modalOpen) return null;
 
   async function handleSubmit(e) {
@@ -52,26 +52,23 @@ export default function LeadModalBare() {
       let sustentoIndependiente = null;
 
       if (lastResult && typeof lastResult === "object") {
-        // Producto principal / etiqueta amigable
         producto =
           lastResult.productoPrincipal ||
           lastResult.producto ||
           lastResult.mejorProducto ||
-          lastResult.mejorOpcion?.nombre ||
+          (lastResult.mejorOpcion && lastResult.mejorOpcion.nombre) ||
           null;
 
-        // Score HL
         scoreHL =
-          lastResult.scoreHL ??
-          lastResult.scoreHl ??
-          lastResult.scoreHabitaLibre ??
-          lastResult.score ??
+          lastResult.scoreHL ||
+          lastResult.scoreHl ||
+          lastResult.scoreHabitaLibre ||
+          lastResult.score ||
           null;
 
-        // Sustento independiente
         sustentoIndependiente =
-          lastResult.perfil?.sustentoIndependiente ??
-          lastResult.entrada?.sustentoIndependiente ??
+          (lastResult.perfil && lastResult.perfil.sustentoIndependiente) ||
+          (lastResult.entrada && lastResult.entrada.sustentoIndependiente) ||
           null;
       }
 
@@ -91,7 +88,7 @@ export default function LeadModalBare() {
 
       console.log("[API] POST /api/leads Payload:", payload);
 
-      const resp = await fetch(`${API_BASE_URL}/api/leads`, {
+      const resp = await fetch(API_BASE_URL + "/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -102,7 +99,7 @@ export default function LeadModalBare() {
 
       if (!resp.ok) {
         setErr(
-          data?.msg ||
+          (data && data.msg) ||
             "No pudimos guardar tus datos. Intenta nuevamente en unos minutos."
         );
         return;
@@ -118,15 +115,19 @@ export default function LeadModalBare() {
     }
   }
 
+  const consentBoxClass =
+    "space-y-2 text-[13px] text-slate-700 rounded-xl px-3 py-3 -mx-1 " +
+    (needsConsentError
+      ? "border border-red-300 bg-red-50/70"
+      : "bg-slate-50/60 border border-slate-200/70");
+
   return (
     <div className="hl-modal-overlay">
       <div
-        className={[
-          "hl-modal-panel relative w-full max-w-md mx-4 sm:mx-auto",
-          "px-4 py-6 md:px-6 md:py-7 rounded-2xl bg-white shadow-xl",
-          "transition-transform duration-200",
-          shake ? "hl-shake" : "",
-        ].join(" ")}
+        className={
+          "hl-modal-panel relative w-full max-w-md mx-4 sm:mx-auto px-4 py-6 md:px-6 md:py-7 rounded-2xl bg-white shadow-xl transition-transform duration-200 " +
+          (shake ? "hl-shake" : "")
+        }
       >
         {/* Botón cerrar */}
         <button
@@ -221,14 +222,7 @@ export default function LeadModalBare() {
           </div>
 
           {/* Checkboxes */}
-          <div
-            className={[
-              "space-y-2 text-[13px] text-slate-700 rounded-xl px-3 py-3 -mx-1",
-              needsConsentError
-                ? "border border-red-300 bg-red-50/70"
-                : "bg-slate-50/60 border border-slate-200/70",
-            ].join(" ")}
-          >
+          <div className={consentBoxClass}>
             <label className="flex items-start gap-3">
               <input
                 type="checkbox"
@@ -297,7 +291,7 @@ export default function LeadModalBare() {
               crédito.
             </p>
 
-            <div className="flex flex-col md:flex-row justify-between gap-3">
+            <div className="flex flex-col md:flex-row justify_between gap-3">
               <button
                 type="button"
                 onClick={closeLead}
