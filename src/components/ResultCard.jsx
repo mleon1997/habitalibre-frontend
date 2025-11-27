@@ -213,12 +213,12 @@ function ResultCard({ data }) {
         <h3 className="text-lg font-semibold text-slate-50 mb-2">
           🔒 Resultado bloqueado
         </h3>
-        <p className="text-slate-400 mb-4">
-          Déjanos tus datos para ver el detalle completo y recibir tu reporte en
-          PDF por correo.
+        <p className="text-slate-400 mb-4 text-sm">
+          Déjanos tus datos para ver el detalle completo y recibir tu reporte
+          en PDF en tu correo. Es gratis y sin compromiso.
         </p>
         <button className="btn-primary" onClick={() => openLead(data)}>
-          Ver mi resultado
+          Ver mi resultado completo
         </button>
         <p className="mt-3 text-xs text-slate-500">
           Sin costo • Sin compromiso • Datos protegidos
@@ -314,39 +314,38 @@ function ResultCard({ data }) {
   return (
     <div className="space-y-4">
       {/* Headline principal */}
-      <div className="p-4 rounded-2xl border border-slate-700/40 bg-slate-900/70 backdrop-blur-sm shadow-[0_0_40px_rgba(0,0,0,0.45)]">
+      <div className="p-4 rounded-2xl border border-slate-700/40 bg-slate-900/80 backdrop-blur-sm shadow-[0_0_40px_rgba(15,23,42,0.85)]">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">
               Resumen de precalificación
             </p>
 
             {sinOferta ? (
-              <h3 className="text-base font-semibold text-slate-50 mt-1">
+              <h3 className="text-base font-semibold text-slate-50 mt-1.5">
                 Hoy un crédito hipotecario no sería sostenible con tu perfil
                 actual
               </h3>
             ) : (
-              <h3 className="text-base font-semibold text-slate-50 mt-1">
-                🎉 ¡Estás pre-calificado para un{" "}
-                <span className="text-indigo-300">{producto}</span>!
+              <h3 className="text-base font-semibold text-slate-50 mt-1.5">
+                🎉 Estás en rango para un{" "}
+                <span className="text-indigo-300">{producto}</span>
               </h3>
             )}
 
             {sinOferta ? (
-              <p className="text-[11px] text-slate-400 mt-1">
+              <p className="text-[11px] text-slate-400 mt-1.5">
                 Con tus ingresos y deudas actuales, un crédito hipotecario no
                 sería sostenible ni para ti ni para los bancos. No es un “no”
                 definitivo, es un “todavía no”. En los bloques de abajo verás
                 por dónde empezar para fortalecer tu perfil.
               </p>
             ) : (
-              <p className="text-[11px] text-slate-400 mt-1">
+              <p className="text-[11px] text-slate-400 mt-1.5">
                 Con la información que ingresaste estimamos el rango de vivienda
-                y de crédito que podrían aprobarte. Te acabamos de enviar a tu
-                correo un reporte en PDF con el detalle, stress test de tasa,
-                tabla de amortización y un plan de acción para mejorar aún más
-                tus probabilidades.
+                y de crédito que podrían aprobarte. En tu reporte verás stress
+                test de tasa, tabla de amortización y un plan concreto para
+                mejorar aún más tus probabilidades.
               </p>
             )}
           </div>
@@ -355,7 +354,7 @@ function ResultCard({ data }) {
             {typeof score === "number" && (
               <div className="text-right">
                 <p className="text-[10px] uppercase text-slate-500 leading-tight">
-                  Score HL
+                  HL-Score®
                 </p>
                 <p className="text-sm font-semibold text-slate-50">
                   {score}/100
@@ -375,7 +374,7 @@ function ResultCard({ data }) {
         {!sinOferta && (
           <>
             <div className="mt-3 grid grid-cols-2 gap-3">
-              <div className="bg-slate-900/70 rounded-xl border border-slate-700/50 px-3 py-2">
+              <div className="bg-slate-900/80 rounded-xl border border-slate-700/50 px-3 py-2">
                 <p className="text-[11px] uppercase tracking-wide text-slate-400 mb-0.5">
                   Vivienda máx. estimada
                 </p>
@@ -383,7 +382,7 @@ function ResultCard({ data }) {
                   {fmtMoney(precioMaxVivienda, 0)}
                 </p>
               </div>
-              <div className="bg-slate-900/70 rounded-xl border border-slate-700/50 px-3 py-2">
+              <div className="bg-slate-900/80 rounded-xl border border-slate-700/50 px-3 py-2">
                 <p className="text-[11px] uppercase tracking-wide text-slate-400 mb-0.5">
                   Monto de préstamo aprox.
                 </p>
@@ -393,9 +392,8 @@ function ResultCard({ data }) {
               </div>
             </div>
             <p className="mt-2 text-[11px] text-slate-400 max-w-md">
-              Con este rango podrías aspirar a un departamento de 1–2
-              dormitorios en proyectos VIS/VIP o segmento medio, según la zona
-              y el proyecto.
+              Con este rango podrías aspirar, según la zona, a un departamento
+              de 1–2 dormitorios en proyectos VIS/VIP o segmento medio.
             </p>
           </>
         )}
@@ -475,14 +473,14 @@ function ResultCard({ data }) {
           <OptionRow
             label="Crédito privado"
             opt={opciones.Privada}
-            note="Bancos/financieras privadas, más flexibles pero tasa mayor."
+            note="Bancos/financieras privadas, más flexibles pero con tasa mayor."
             destacado={isPriv}
           />
         </div>
       </div>
 
       {/* Plan de acción (acciones clave) */}
-      <div className="rounded-2xl border border-indigo-500/20 bg-indigo-900/25 p-3">
+      <div className="rounded-2xl border border-indigo-500/25 bg-indigo-900/25 p-3">
         <p className="text-[11px] font-semibold text-indigo-200 mb-1 uppercase tracking-wide">
           Cómo aumentar tus probabilidades de aprobación
         </p>
@@ -524,7 +522,7 @@ function ResultCard({ data }) {
               <span>
                 Tu perfil es competitivo. Te recomendamos solicitar
                 precalificación en 2–3 entidades y comparar TCEA, no solo la
-                tasa.
+                tasa nominal.
               </span>
             </li>
           )}

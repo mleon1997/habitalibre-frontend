@@ -18,7 +18,7 @@ export default function SimulatorForm({ onResult }) {
   const [estabilidad, setEstabilidad] = useState("2");
   const [tieneVivienda, setTieneVivienda] = useState(false);
   const [afiliadoIESS, setAfiliadoIESS] = useState(false);
-  const [declaracionBuro, setDeclaracionBuro] = useState("ninguno");
+  const [declaracionBuro] = useState("ninguno"); // se mantiene interno por ahora
   const [horizonteCompra, setHorizonteCompra] = useState("");
 
   const [aportesTotales, setAportesTotales] = useState("0");
@@ -38,6 +38,7 @@ export default function SimulatorForm({ onResult }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    // ping suave al backend
     fetch(`${API_BASE}/api/health`).catch(() => {});
   }, []);
 
@@ -103,9 +104,9 @@ export default function SimulatorForm({ onResult }) {
     }
 
     const cuotaPreview = loan > 0 ? pmt(tasaAnual / 12, nMeses, loan) : 0;
-    const subPreview = `${Math.round(nMeses / 12)} años · ${(tasaAnual * 100).toFixed(
-      2
-    )}% anual`;
+    const subPreview = `${Math.round(
+      nMeses / 12
+    )} años · ${(tasaAnual * 100).toFixed(2)}% anual`;
 
     return {
       loan,
@@ -232,20 +233,22 @@ export default function SimulatorForm({ onResult }) {
   }
 
   return (
-    <>
-      <h2 className="text-xl font-semibold text-slate-800">
-        Simulador inteligente de crédito
-      </h2>
-      <p className="text-slate-500 text-sm mb-4">
-        Calcula tu capacidad y descubre tu mejor opción hipotecaria con
-        HabitaLibre.
-      </p>
+    <form onSubmit={handleCalcular} className="space-y-6">
+      <div>
+        <h2 className="text-xl md:text-2xl font-semibold text-slate-50">
+          Simulador inteligente de crédito
+        </h2>
+        <p className="text-slate-400 text-xs md:text-sm mt-1">
+          Calcula tu capacidad y descubre tu mejor opción hipotecaria con
+          HabitaLibre. No afectamos tu buró ni pedimos claves bancarias.
+        </p>
+      </div>
 
       {/* INGRESOS */}
       <Section title="💼 Ingresos y deudas">
         <Field label="Estado civil">
           <select
-            className="w-full rounded-xl border px-3 py-2"
+            className="hl-input"
             value={estadoCivil}
             onChange={(e) => setEstadoCivil(e.target.value)}
           >
@@ -259,6 +262,10 @@ export default function SimulatorForm({ onResult }) {
 
         <Field label="Aplicar con pareja (coconstituyente)">
           <SelectBool value={aplicarConPareja} onChange={setAplicarConPareja} />
+        </Field>
+
+        <Field label="Edad del titular">
+          <InputNumber value={edad} onChange={setEdad} />
         </Field>
 
         <Field label="Ingreso neto mensual del titular (USD)">
@@ -283,7 +290,7 @@ export default function SimulatorForm({ onResult }) {
           />
         </Field>
 
-        <Field label="Años de estabilidad">
+        <Field label="Años de estabilidad en tu actividad principal">
           <InputNumber value={estabilidad} onChange={setEstabilidad} />
         </Field>
       </Section>
@@ -309,7 +316,7 @@ export default function SimulatorForm({ onResult }) {
 
         <Field label="¿Es tu primera vivienda?">
           <select
-            className="w-full rounded-xl border px-3 py-2"
+            className="hl-input"
             value={esPrimeraVivienda}
             onChange={(e) => setEsPrimeraVivienda(e.target.value)}
           >
@@ -320,7 +327,7 @@ export default function SimulatorForm({ onResult }) {
 
         <Field label="Estado de la vivienda">
           <select
-            className="w-full rounded-xl border px-3 py-2"
+            className="hl-input"
             value={estadoVivienda}
             onChange={(e) => setEstadoVivienda(e.target.value)}
           >
@@ -331,7 +338,7 @@ export default function SimulatorForm({ onResult }) {
 
         <Field label="¿Cuándo quisieras adquirir tu vivienda?">
           <select
-            className="w-full rounded-xl border px-3 py-2"
+            className="hl-input"
             value={horizonteCompra}
             onChange={(e) => setHorizonteCompra(e.target.value)}
           >
@@ -371,37 +378,43 @@ export default function SimulatorForm({ onResult }) {
         <Field label="Nombre">
           <input
             type="text"
-            className="w-full rounded-xl border px-3 py-2"
+            className="hl-input"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
+            placeholder="Nombre y apellido"
           />
         </Field>
 
         <Field label="Email">
           <input
             type="email"
-            className="w-full rounded-xl border px-3 py-2"
+            className="hl-input"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            placeholder="tucorreo@ejemplo.com"
           />
         </Field>
 
         <Field label="Ciudad">
           <input
             type="text"
-            className="w-full rounded-xl border px-3 py-2"
+            className="hl-input"
             value={ciudad}
             onChange={(e) => setCiudad(e.target.value)}
+            placeholder="Quito, Guayaquil, etc."
           />
         </Field>
       </Section>
 
       {/* PREVIEW */}
       <Section title="🔎 Preclasificación rápida">
-        <div className="grid grid-cols-3 gap-3">
-          <div className="col-span-3 sm:col-span-2">
-            <Banner tone="indigo" title="Preclasificación">
-              Perfil tentativo: <b>{derived.tentativo}</b>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="sm:col-span-3">
+            <Banner title="Preclasificación HabitaLibre">
+              Perfil tentativo:{" "}
+              <span className="font-semibold text-slate-900">
+                {derived.tentativo}
+              </span>
             </Banner>
           </div>
 
@@ -412,29 +425,29 @@ export default function SimulatorForm({ onResult }) {
           />
 
           <MiniCard
-            label={`Capacidad de pago (${afiliadoIESS ? "40%" : "35%"})`}
+            label={`Capacidad de pago (${afiliadoIESS ? "40%" DTI : "35%" DTI})`}
             value={`$ ${money(derived.cap)}`}
-            sub="(ingreso usado – deudas) × DTI"
+            sub="(ingreso usado – deudas) × DTI estimado"
           />
 
           <MiniCard
             label="LTV estimado"
             value={`${Math.round((derived.ltv || 0) * 100)}%`}
+            sub="Relación entre préstamo y valor de la vivienda"
           />
         </div>
       </Section>
 
       <button
-        type="button"
-        onClick={handleCalcular}
+        type="submit"
         disabled={loading}
-        className="mt-3 w-full rounded-xl py-3 bg-indigo-600 text-white font-medium hover:opacity-95"
+        className="mt-2 w-full rounded-2xl py-3.5 bg-emerald-400 text-slate-950 font-semibold text-sm shadow-[0_18px_40px_rgba(16,185,129,0.55)] hover:bg-emerald-300 transition disabled:opacity-60 disabled:cursor-not-allowed"
       >
-        {loading ? "Analizando tu perfil…" : "Calcular"}
+        {loading ? "Analizando tu perfil…" : "Ver mi resultado hipotecario"}
       </button>
 
       {error && <ErrorText>{error}</ErrorText>}
-    </>
+    </form>
   );
 }
 
@@ -442,17 +455,19 @@ export default function SimulatorForm({ onResult }) {
 
 function Section({ title, children }) {
   return (
-    <div className="mb-6 pb-6 border-b">
-      <div className="text-lg font-semibold mb-3">{title}</div>
+    <section className="mb-6 pb-5 border-b border-slate-800 last:border-b-0 last:pb-0">
+      <div className="text-sm md:text-base font-semibold mb-3 text-slate-100">
+        {title}
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{children}</div>
-    </div>
+    </section>
   );
 }
 
 function Field({ label, children }) {
   return (
-    <label className="flex flex-col gap-1 text-sm">
-      <span className="font-medium">{label}</span>
+    <label className="flex flex-col gap-1 text-xs md:text-sm text-slate-200">
+      <span className="font-medium text-slate-100">{label}</span>
       {children}
     </label>
   );
@@ -469,7 +484,7 @@ function InputMoney({ value, onChange }) {
     <input
       type="text"
       inputMode="numeric"
-      className="w-full rounded-xl border px-3 py-2"
+      className="hl-input"
       value={value}
       onChange={handleChange}
       placeholder="0"
@@ -482,9 +497,10 @@ function InputNumber({ value, onChange }) {
     <input
       type="text"
       inputMode="numeric"
-      className="w-full rounded-xl border px-3 py-2"
+      className="hl-input"
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      placeholder="0"
     />
   );
 }
@@ -492,7 +508,7 @@ function InputNumber({ value, onChange }) {
 function SelectBool({ value, onChange }) {
   return (
     <select
-      className="w-full rounded-xl border px-3 py-2"
+      className="hl-input"
       value={value ? "Sí" : "No"}
       onChange={(e) => onChange(e.target.value === "Sí")}
     >
@@ -505,7 +521,7 @@ function SelectBool({ value, onChange }) {
 function Select({ value, onChange, options }) {
   return (
     <select
-      className="w-full rounded-xl border px-3 py-2"
+      className="hl-input"
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
@@ -518,27 +534,44 @@ function Select({ value, onChange, options }) {
 
 function Banner({ title, children }) {
   return (
-    <div className="rounded-xl bg-indigo-50 p-3 border border-indigo-100">
-      <div className="text-indigo-700 text-sm font-semibold">{title}</div>
-      <div className="text-xs text-slate-700 mt-1">{children}</div>
+    <div className="rounded-2xl bg-indigo-500/10 border border-indigo-400/30 px-4 py-3">
+      <div className="text-[11px] md:text-xs font-semibold text-indigo-200">
+        {title}
+      </div>
+      <div className="text-xs md:text-[13px] text-slate-100 mt-1">
+        {children}
+      </div>
     </div>
   );
 }
 
 function MiniCard({ label, value, sub }) {
   return (
-    <div className="rounded-xl border p-3 bg-white shadow-sm">
-      <div className="text-xs text-slate-500">{label}</div>
-      <div className="text-lg font-semibold text-slate-800">{value}</div>
-      {sub && <div className="text-[11px] text-slate-500">{sub}</div>}
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3 shadow-sm">
+      <div className="text-[11px] text-slate-400 mb-0.5">{label}</div>
+      <div className="text-lg font-semibold text-slate-50 mb-0.5">
+        {value}
+      </div>
+      {sub && (
+        <div className="text-[10px] text-slate-500 leading-snug">{sub}</div>
+      )}
     </div>
   );
 }
 
 function Warn({ children }) {
-  return <div className="text-xs text-amber-600 mt-1">{children}</div>;
+  return (
+    <div className="mt-1 text-[11px] text-amber-400 flex items-start gap-1.5">
+      <span className="mt-[1px]">⚠️</span>
+      <span>{children}</span>
+    </div>
+  );
 }
 
 function ErrorText({ children }) {
-  return <div className="mt-3 text-sm text-red-600">{children}</div>;
+  return (
+    <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs md:text-sm text-red-200">
+      {children}
+    </div>
+  );
 }

@@ -18,6 +18,10 @@ export default function LeadModalBare() {
   const [aceptaCompartir, setAceptaCompartir] = useState(false);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+  const [shake, setShake] = useState(false);
+
+  const needsConsentError =
+    err && err.includes("Debes aceptar ambas casillas");
 
   // 👉 Si el modal NO está abierto, no rendereamos nada
   if (!modalOpen) return null;
@@ -28,10 +32,15 @@ export default function LeadModalBare() {
 
     if (!nombre.trim() || !email.trim()) {
       setErr("Por favor completa tu nombre y email.");
+      setShake(true);
+      setTimeout(() => setShake(false), 350);
       return;
     }
-    if (!aceptaTerminos) {
-      setErr("Debes aceptar los términos y privacidad para continuar.");
+
+    if (!aceptaTerminos || !aceptaCompartir) {
+      setErr("Debes aceptar ambas casillas para continuar.");
+      setShake(true);
+      setTimeout(() => setShake(false), 350);
       return;
     }
 
@@ -40,8 +49,10 @@ export default function LeadModalBare() {
 
       let producto = null;
       let scoreHL = null;
+      let sustentoIndependiente = null;
 
       if (lastResult && typeof lastResult === "object") {
+        // Producto principal / etiqueta amigable
         producto =
           lastResult.productoPrincipal ||
           lastResult.producto ||
@@ -49,11 +60,18 @@ export default function LeadModalBare() {
           lastResult.mejorOpcion?.nombre ||
           null;
 
+        // Score HL
         scoreHL =
           lastResult.scoreHL ??
           lastResult.scoreHl ??
           lastResult.scoreHabitaLibre ??
           lastResult.score ??
+          null;
+
+        // Sustento independiente
+        sustentoIndependiente =
+          lastResult.perfil?.sustentoIndependiente ??
+          lastResult.entrada?.sustentoIndependiente ??
           null;
       }
 
@@ -68,6 +86,7 @@ export default function LeadModalBare() {
         resultado: lastResult,
         producto,
         scoreHL,
+        sustentoIndependiente,
       };
 
       console.log("[API] POST /api/leads Payload:", payload);
@@ -101,44 +120,56 @@ export default function LeadModalBare() {
 
   return (
     <div className="hl-modal-overlay">
-      <div className="hl-modal-panel relative">
+      <div
+        className={[
+          "hl-modal-panel relative w-full max-w-md mx-4 sm:mx-auto",
+          "px-4 py-6 md:px-6 md:py-7 rounded-2xl bg-white shadow-xl",
+          "transition-transform duration-200",
+          shake ? "hl-shake" : "",
+        ].join(" ")}
+      >
         {/* Botón cerrar */}
         <button
           type="button"
           onClick={closeLead}
-          className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700"
         >
           ✕
         </button>
 
-        <form onSubmit={handleSubmit} className="space-y-5 pt-4">
-          <div className="space-y-1">
+        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+          {/* Encabezado */}
+          <div className="space-y-1 pr-6">
             <p className="text-[11px] font-semibold tracking-[.25em] text-slate-400">
               ESTÁS A 1 PASO DE VER TU RESULTADO
             </p>
-            <h2 className="text-2xl md:text-[28px] font-semibold text-slate-900 leading-snug">
+            <h2 className="text-xl md:text-[24px] font-semibold text-slate-900 leading-snug">
               Déjanos tus datos y te mostramos tu mejor opción de crédito al
               instante
             </h2>
+            <p className="text-[11px] text-slate-500 mt-1">
+              No afecta tu buró, no pedimos claves bancarias y puedes pedir que
+              eliminemos tus datos cuando quieras.
+            </p>
           </div>
 
           {/* Nombre + Email */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="label">Nombre completo</label>
+              <label className="label text-xs">Nombre completo</label>
               <input
                 type="text"
-                className="input"
+                className="input text-[14px]"
                 placeholder="Ej. Juan Pérez"
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
               />
             </div>
             <div>
-              <label className="label">Email</label>
+              <label className="label text-xs">Email</label>
               <input
                 type="email"
-                className="input"
+                className="input text-[14px]"
                 placeholder="email@dominio.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -147,15 +178,12 @@ export default function LeadModalBare() {
           </div>
 
           {/* Teléfono + Ciudad */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="label">
-                Teléfono{" "}
-                <span className="text-xs text-slate-400">(opcional)</span>
-              </label>
+              <label className="label text-xs">Teléfono</label>
               <input
                 type="tel"
-                className="input"
+                className="input text-[14px]"
                 placeholder="+593 ..."
                 value={telefono}
                 onChange={(e) => setTelefono(e.target.value)}
@@ -163,13 +191,10 @@ export default function LeadModalBare() {
             </div>
 
             <div>
-              <label className="label">
-                Ciudad{" "}
-                <span className="text-xs text-slate-400">(opcional)</span>
-              </label>
+              <label className="label text-xs">Ciudad</label>
               <input
                 type="text"
-                className="input"
+                className="input text-[14px]"
                 placeholder="Quito, Guayaquil, etc."
                 value={ciudad}
                 onChange={(e) => setCiudad(e.target.value)}
@@ -179,11 +204,11 @@ export default function LeadModalBare() {
 
           {/* Horizonte */}
           <div>
-            <label className="label">
+            <label className="label text-xs">
               ¿Cuándo quisieras adquirir tu vivienda?
             </label>
             <select
-              className="input"
+              className="input text-[14px]"
               value={horizonteCompra}
               onChange={(e) => setHorizonteCompra(e.target.value)}
             >
@@ -196,36 +221,65 @@ export default function LeadModalBare() {
           </div>
 
           {/* Checkboxes */}
-          <div className="space-y-2 text-[13px] text-slate-700">
-            <label className="flex items-start gap-2">
+          <div
+            className={[
+              "space-y-2 text-[13px] text-slate-700 rounded-xl px-3 py-3 -mx-1",
+              needsConsentError
+                ? "border border-red-300 bg-red-50/70"
+                : "bg-slate-50/60 border border-slate-200/70",
+            ].join(" ")}
+          >
+            <label className="flex items-start gap-3">
               <input
                 type="checkbox"
-                className="mt-1 h-4 w-4"
+                className="mt-1.5 h-4 w-4"
                 checked={aceptaTerminos}
                 onChange={(e) => setAceptaTerminos(e.target.checked)}
               />
-              <span>
-                Acepto términos y privacidad de HabitaLibre para contactarme y
-                continuar el proceso.
+              <span className="leading-relaxed">
+                Acepto los{" "}
+                <a
+                  href="#/terminos"
+                  className="underline underline-offset-2 text-slate-900 hover:text-slate-700"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Términos de Uso
+                </a>{" "}
+                y la{" "}
+                <a
+                  href="#/privacidad"
+                  className="underline underline-offset-2 text-slate-900 hover:text-slate-700"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Política de Privacidad
+                </a>{" "}
+                de HabitaLibre para contactarme y continuar el proceso.
               </span>
             </label>
 
-            <label className="flex items-start gap-2">
+            <label className="flex items-start gap-3">
               <input
                 type="checkbox"
-                className="mt-1 h-4 w-4"
+                className="mt-1.5 h-4 w-4"
                 checked={aceptaCompartir}
                 onChange={(e) => setAceptaCompartir(e.target.checked)}
               />
-              <span>
-                Autorizo compartir mis datos con entidades aliadas solo para
-                evaluación de crédito (opcional).
+              <span className="leading-relaxed">
+                Autorizo que HabitaLibre comparta mis datos y el resultado de mi
+                simulación con{" "}
+                <strong>
+                  bancos, cooperativas y desarrolladores inmobiliarios aliados
+                </strong>{" "}
+                para analizar y ofrecerme opciones hipotecarias y contactarme
+                sobre mi proceso.
               </span>
             </label>
 
-            <p className="text-[11px] text-slate-400 mt-1">
-              Nunca vendemos tus datos. Puedes pedir que los eliminemos en
-              cualquier momento.
+            <p className="text-[11px] text-slate-500 mt-1">
+              Para continuar y ver tu resultado completo debes aceptar ambas
+              casillas. Nunca vendemos tus datos. Puedes pedir que los
+              eliminemos en cualquier momento escribiendo a{" "}
+              <strong>hola@habitalibre.com</strong>.
             </p>
           </div>
 
@@ -236,23 +290,30 @@ export default function LeadModalBare() {
             </div>
           )}
 
-          {/* Botones */}
-          <div className="mt-3 flex flex-col md:flex-row justify-between gap-3">
-            <button
-              type="button"
-              onClick={closeLead}
-              className="btn-secondary w-full md:w-auto"
-            >
-              Ver más tarde
-            </button>
+          {/* Microcopy de confianza + botones */}
+          <div className="mt-2 space-y-3">
+            <p className="text-[11px] text-slate-400 text-center md:text-right">
+              Tu información se procesa de forma segura. No afecta tu buró de
+              crédito.
+            </p>
 
-            <button
-              type="submit"
-              className="btn-primary w-full md:w-auto"
-              disabled={loading}
-            >
-              {loading ? "Enviando..." : "Ver mi resultado completo"}
-            </button>
+            <div className="flex flex-col md:flex-row justify-between gap-3">
+              <button
+                type="button"
+                onClick={closeLead}
+                className="btn-secondary w-full md:w-auto"
+              >
+                Ver más tarde
+              </button>
+
+              <button
+                type="submit"
+                className="btn-primary w-full md:w-auto"
+                disabled={loading}
+              >
+                {loading ? "Enviando..." : "Ver mi resultado completo"}
+              </button>
+            </div>
           </div>
         </form>
       </div>

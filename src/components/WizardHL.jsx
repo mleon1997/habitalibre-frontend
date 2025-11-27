@@ -1,7 +1,6 @@
- // src/components/WizardHL.jsx
+// src/components/WizardHL.jsx
 import React, { useMemo, useState, useEffect } from "react";
 import { precalificar } from "../lib/api";
-import { useLeadCapture } from "../context/LeadCaptureContext.jsx";
 
 const TOTAL_STEPS = 4;
 
@@ -76,7 +75,6 @@ function NumericInput({
 /* ===========================================================
    SLIDER UNIFICADO
    - Misma experiencia para TODOS los sliders
-   - Se puede hacer slide con mouse o dedo
 =========================================================== */
 function SliderField({
   label,
@@ -152,8 +150,6 @@ function SliderField({
 }
 
 export default function WizardHL({ onResult }) {
-  const { openLead } = useLeadCapture();
-
   const [step, setStep] = useState(1);
 
   // ====== Estados ======
@@ -283,11 +279,10 @@ export default function WizardHL({ onResult }) {
       const payload = buildEntrada();
       const res = await precalificar(payload);
 
-      // 👉 Guardamos en contexto y abrimos el modal de lead
-      openLead(res);
-
-      // Compatibilidad por si algún contenedor usa onResult
-      onResult?.(res);
+      // 👉 En esta versión NO abrimos el lead directamente.
+      // Solo mandamos el resultado (más el payload) al contenedor.
+      const withEcho = { ...res, _echo: payload };
+      onResult?.(withEcho);
     } catch (ex) {
       console.error(ex);
       setErr("No se pudo calcular tu resultado ahora.");
@@ -726,6 +721,19 @@ export default function WizardHL({ onResult }) {
             >
               {loading ? "Analizando perfil…" : "Ver resultados"}
             </button>
+          </div>
+
+          {/* AVISO LEGAL */}
+          <div className="mt-4 flex items-start gap-2">
+            <span className="text-slate-500 text-lg">⚖️</span>
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Las simulaciones generadas por HabitaLibre son estimaciones
+              referenciales basadas en los datos que ingresas. No constituyen
+              una oferta formal de crédito, una aprobación hipotecaria ni
+              asesoría financiera personalizada. La aprobación y las condiciones
+              finales dependen exclusivamente de la evaluación oficial de cada
+              entidad financiera.
+            </p>
           </div>
         </div>
       )}

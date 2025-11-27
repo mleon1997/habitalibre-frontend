@@ -19,6 +19,9 @@ import { LeadCaptureProvider } from "./context/LeadCaptureContext.jsx";
 
 import "./App.css";
 import AdminLeads from "./pages/AdminLeads.jsx";
+import PoliticaPrivacidad from "./pages/PoliticaPrivacidad.jsx";
+import TerminosUso from "./pages/TerminosUso.jsx";
+import PoliticaCookies from "./pages/PoliticaCookies.jsx";
 
 function SimuladorPage() {
   return (
@@ -54,7 +57,12 @@ export default function App() {
           {/* Gracias */}
           <Route path="/gracias" element={<Gracias />} />
 
-          {/* Fallback */}
+          {/* Páginas legales */}
+          <Route path="/privacidad" element={<PoliticaPrivacidad />} />
+          <Route path="/terminos" element={<TerminosUso />} />
+          <Route path="/cookies" element={<PoliticaCookies />} />
+
+          {/* Fallback SIEMPRE al final */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
 

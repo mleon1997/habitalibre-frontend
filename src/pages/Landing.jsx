@@ -93,7 +93,7 @@ export default function Landing({ onStart }) {
             </div>
           </div>
 
-          {/* NAV LINKS */}
+          {/* NAV LINKS - DESKTOP */}
           <nav className="hidden md:flex items-center gap-8 text-sm">
             <a
               href="#como-funciona"
@@ -139,6 +139,14 @@ export default function Landing({ onStart }) {
               Iniciar simulación
             </button>
           </nav>
+
+          {/* CTA MOBILE */}
+          <button
+            onClick={() => handleStart("navbar_mobile")}
+            className="md:hidden px-4 py-2 rounded-full bg-emerald-400 text-slate-950 text-xs font-semibold shadow-[0_12px_30px_rgba(16,185,129,0.55)] active:scale-[.97] transition"
+          >
+            Simular ahora
+          </button>
         </div>
       </header>
 
@@ -385,7 +393,7 @@ export default function Landing({ onStart }) {
       {/* CÓMO FUNCIONA */}
       <motion.section
         id="como-funciona"
-        className="border-t border-slate-800 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-950"
+        className="border-t border-slate-800 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-950 scroll-mt-20"
         {...fadeUp}
       >
         <div className="mx-auto max-w-6xl px-4 py-12 md:py-16">
@@ -497,13 +505,23 @@ export default function Landing({ onStart }) {
               </p>
             </div>
           </div>
+
+          {/* CTA MOBILE sección Cómo funciona */}
+          <div className="mt-8 flex justify-center md:hidden">
+            <button
+              onClick={() => handleStart("como_funciona_mobile")}
+              className="inline-flex items-center justify-center px-6 py-2.5 rounded-full bg-emerald-400 text-slate-950 text-sm font-semibold shadow-[0_16px_40px_rgba(16,185,129,0.55)] active:scale-[.97] transition"
+            >
+              Simular mi capacidad ahora
+            </button>
+          </div>
         </div>
       </motion.section>
 
       {/* BENEFICIOS */}
       <motion.section
         id="beneficios"
-        className="border-t border-slate-800 bg-slate-950 pb-14"
+        className="border-t border-slate-800 bg-slate-950 pb-14 scroll-mt-20"
         {...fadeUp}
       >
         <div className="mx-auto max-w-6xl px-4 pt-10 md:pt-12">
@@ -605,13 +623,23 @@ export default function Landing({ onStart }) {
               </ul>
             </div>
           </div>
+
+          {/* CTA MOBILE sección Beneficios */}
+          <div className="mt-8 flex justify-center md:hidden">
+            <button
+              onClick={() => handleStart("beneficios_mobile")}
+              className="inline-flex items-center justify-center px-6 py-2.5 rounded-full bg-blue-500 text-slate-950 text-sm font-semibold shadow-[0_16px_40px_rgba(37,99,235,0.55)] active:scale-[.97] transition"
+            >
+              Probar mi simulación gratis
+            </button>
+          </div>
         </div>
       </motion.section>
 
       {/* NOSOTROS – HL-SCORE */}
       <motion.section
         id="nosotros"
-        className="border-t border-slate-800 bg-slate-950"
+        className="border-t border-slate-800 bg-slate-950 scroll-mt-20"
         {...fadeUp}
       >
         <div className="mx-auto max-w-6xl px-4 py-16">
@@ -800,7 +828,7 @@ export default function Landing({ onStart }) {
       {/* TESTIMONIOS */}
       <motion.section
         id="testimonios"
-        className="border-t border-slate-800 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-950/95"
+        className="border-t border-slate-800 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-950/95 scroll-mt-20"
         {...fadeUp}
       >
         <div className="mx-auto max-w-6xl px-4 py-12 md:py-16">
@@ -932,6 +960,13 @@ export default function Landing({ onStart }) {
             >
               Términos de Uso
             </button>
+
+            <a
+              href="#/cookies"
+              className="text-slate-400 hover:text-slate-200 transition underline-offset-4 hover:underline"
+            >
+              Cookies
+            </a>
           </div>
         </div>
       </footer>
@@ -962,8 +997,9 @@ export default function Landing({ onStart }) {
             {activeLegalSection === "politica" && (
               <div className="text-slate-300 text-sm leading-relaxed space-y-4">
                 <h2 className="text-xl font-semibold text-slate-50">
-                  Política de Privacidad
+                  Centro de Confianza HabitaLibre
                 </h2>
+
                 <p className="text-xs text-slate-500">
                   Queremos que tengas claridad total sobre cómo usamos tu
                   información.
@@ -975,9 +1011,9 @@ export default function Landing({ onStart }) {
                       1. Qué datos pedimos
                     </h3>
                     <p>
-                      Solo solicitamos datos necesarios para simular tu
-                      capacidad hipotecaria: ingresos, deudas, tipo de relación
-                      con el IESS y algunos datos de contacto para enviarte tu
+                      Solo solicitamos los datos necesarios para simular tu
+                      capacidad hipotecaria: ingresos, deudas, relación con el
+                      IESS y tu información de contacto para enviarte tu
                       resultado.
                     </p>
                   </div>
@@ -987,10 +1023,11 @@ export default function Landing({ onStart }) {
                       2. Cómo usamos tu información
                     </h3>
                     <p>
-                      Usamos tus datos para calcular tu HL-Score®, mostrarte
-                      escenarios de crédito y, si tú lo autorizas, ayudarte a
-                      contactar bancos o proyectos de vivienda. No vendemos tu
-                      información.
+                      Calculamos tu HL-Score®, te mostramos escenarios de crédito
+                      personalizados y, solo si tú lo autorizas, compartimos tus
+                      datos con bancos, cooperativas o desarrolladores
+                      inmobiliarios aliados para acompañarte en tu proceso de
+                      compra de vivienda.
                     </p>
                   </div>
 
@@ -999,17 +1036,25 @@ export default function Landing({ onStart }) {
                       3. Seguridad y almacenamiento
                     </h3>
                     <p>
-                      Implementamos buenas prácticas de seguridad para proteger
-                      tu información y la conservamos solo el tiempo necesario
-                      para acompañarte en tu proceso o lo que exija la norma
-                      aplicable.
+                      Protegemos tu información con prácticas de seguridad
+                      modernas y la conservamos únicamente mientras sea
+                      necesaria para tu proceso o lo que exija la ley.
                     </p>
                   </div>
                 </div>
 
                 <p className="text-[11px] text-slate-500">
-                  Si en algún momento quieres que eliminemos tus datos, puedes
-                  escribirnos y procesaremos tu solicitud.
+                  Puedes solicitar la eliminación de tus datos en cualquier
+                  momento. Lee la versión completa en nuestra{" "}
+                  <a
+                    href="#/privacidad"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline underline-offset-2 text-slate-300 hover:text-slate-100"
+                  >
+                    Política de Privacidad
+                  </a>
+                  .
                 </p>
               </div>
             )}
@@ -1033,9 +1078,10 @@ export default function Landing({ onStart }) {
                     <p>
                       HabitaLibre es una herramienta educativa y de orientación
                       financiera inicial. Los resultados son estimaciones
-                      referenciales y no constituyen una oferta formal de
-                      crédito, compromiso de aprobación ni asesoría financiera,
-                      legal o tributaria personalizada.
+                      referenciales basadas en los datos que tú ingresas y no
+                      constituyen una oferta formal de crédito, una aprobación
+                      hipotecaria, ni asesoría financiera, legal o tributaria
+                      personalizada.
                     </p>
                   </div>
 
@@ -1044,11 +1090,11 @@ export default function Landing({ onStart }) {
                       2. Responsabilidad sobre la información ingresada
                     </h3>
                     <p>
-                      Las estimaciones dependen de la veracidad y actualización
-                      de los datos que tú proporcionas. No somos responsables
-                      por decisiones tomadas exclusivamente con base en la
-                      simulación sin contraste posterior con las políticas y
-                      evaluación de riesgo de cada entidad financiera.
+                      La precisión de las estimaciones depende de la veracidad y
+                      actualización de los datos que proporcionas. Las
+                      decisiones tomadas únicamente sobre la base del simulador
+                      deben ser contrastadas con las políticas y evaluaciones
+                      internas de cada institución financiera.
                     </p>
                   </div>
 
@@ -1057,10 +1103,11 @@ export default function Landing({ onStart }) {
                       3. Relación con bancos y terceros
                     </h3>
                     <p>
-                      HabitaLibre no representa a ningún banco en particular.
-                      Cuando, con tu autorización, compartimos tu caso con
-                      instituciones financieras o desarrolladores aliados, la
-                      evaluación final dependerá exclusivamente de sus políticas
+                      HabitaLibre no representa a ningún banco o cooperativa en
+                      particular. Con tu autorización expresa, podemos compartir
+                      tu caso con entidades financieras o desarrolladores
+                      inmobiliarios aliados para análisis o contacto, pero la
+                      aprobación final dependerá exclusivamente de sus políticas
                       internas, análisis de riesgo y documentación que ellos
                       requieran.
                     </p>
@@ -1071,10 +1118,12 @@ export default function Landing({ onStart }) {
                       4. Uso permitido y limitaciones
                     </h3>
                     <p>
-                      El simulador está destinado a uso personal. No se permite
-                      su uso automatizado, con fines ilícitos o para reproducir,
-                      copiar o revender el servicio sin autorización previa por
-                      escrito de HabitaLibre.
+                      El simulador está destinado a uso personal e informativo.
+                      No se permite su uso automatizado, fraudulento, con fines
+                      ilícitos o para reproducir, copiar o revender el servicio
+                      sin autorización previa por escrito de HabitaLibre. El
+                      algoritmo HL-Score® y el diseño de la plataforma son
+                      propiedad intelectual de HabitaLibre.
                     </p>
                   </div>
 
@@ -1083,16 +1132,25 @@ export default function Landing({ onStart }) {
                       5. Modificaciones
                     </h3>
                     <p>
-                      Podemos actualizar estos Términos de Uso y la Política de
-                      Privacidad para reflejar cambios normativos o mejoras del
-                      servicio. Publicaremos la versión vigente en este mismo
-                      apartado, indicando la fecha de actualización.
+                      Podemos actualizar estos Términos de Uso para reflejar
+                      cambios normativos o mejoras del servicio. Publicaremos la
+                      versión vigente y su fecha de actualización en nuestros
+                      canales oficiales.
                     </p>
                   </div>
                 </div>
 
                 <p className="text-[11px] text-slate-500">
-                  Última actualización: Enero 2025.
+                  Última actualización: 27 de noviembre de 2025.
+                  <br />
+                  Puedes leer la versión completa en nuestros{" "}
+                  <a
+                    href="#/terminos"
+                    className="underline underline-offset-2 text-slate-300 hover:text-slate-100"
+                  >
+                    Términos de Uso completos
+                  </a>
+                  .
                 </p>
               </div>
             )}
@@ -1102,3 +1160,4 @@ export default function Landing({ onStart }) {
     </main>
   );
 }
+
