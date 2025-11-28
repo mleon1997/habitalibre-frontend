@@ -1,6 +1,6 @@
 // src/pages/AdminLeads.jsx
 import React, { useEffect, useState } from "react";
-import AdminLogin from "../components/AdminLogin.jsx"; // 🔐 Pantalla de login admin
+import AdminLogin from "../components/AdminLogin.jsx";
 
 // =====================================================
 // BACKEND HabitaLibre (Render)
@@ -21,9 +21,12 @@ const AdminLeads = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // 🔐 token admin
+  // 🔐 token + email admin
   const [token, setToken] = useState(
     () => localStorage.getItem("hl_admin_token") || ""
+  );
+  const [adminEmail, setAdminEmail] = useState(
+    () => localStorage.getItem("hl_admin_email") || ""
   );
 
   const pageSize = 10; // leads por página
@@ -66,9 +69,10 @@ const AdminLeads = () => {
       });
 
       if (res.status === 401 || res.status === 403) {
-        // Token inválido / expirado → logout forzado
         localStorage.removeItem("hl_admin_token");
+        localStorage.removeItem("hl_admin_email");
         setToken("");
+        setAdminEmail("");
         throw new Error("No autorizado: tu sesión ha expirado.");
       }
 
@@ -119,6 +123,13 @@ const AdminLeads = () => {
 
   const handleSiguiente = () => {
     if (pagina < totalPaginas) fetchLeads(pagina + 1);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("hl_admin_token");
+    localStorage.removeItem("hl_admin_email");
+    setToken("");
+    setAdminEmail("");
   };
 
   const mostrarDesde = totalLeads === 0 ? 0 : (pagina - 1) * pageSize + 1;
@@ -176,28 +187,72 @@ const AdminLeads = () => {
 
   // 🔐 Gate: si no hay token → mostrar login admin
   if (!token) {
-    return <AdminLogin onSuccess={setToken} />;
+    return (
+      <AdminLogin
+        onSuccess={(newToken, emailFromLogin) => {
+          setToken(newToken);
+          setAdminEmail(emailFromLogin);
+        }}
+      />
+    );
   }
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-8 md:px-10">
       {/* Header */}
       <div className="max-w-6xl mx-auto mb-6">
-        <h1 className="text-2xl font-semibold text-slate-900">
-          Dashboard de Leads
-        </h1>
-        <p className="text-sm text-slate-500">
-          Vista interna. Solo para uso del equipo HabitaLibre.
-        </p>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-900">
+              Dashboard de Leads
+            </h1>
+            <p className="text-sm text-slate-500">
+              Vista interna. Solo para uso del equipo HabitaLibre.
+            </p>
 
-        <div className="mt-2 flex items-center justify-between text-sm text-slate-500">
-          <span>
-            Total leads:{" "}
-            <span className="font-semibold text-slate-900">{totalLeads}</span>
-          </span>
-          <span>
-            Página {pagina} de {totalPaginas}
-          </span>
+            <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-500">
+              <span>
+                Total leads:{" "}
+                <span className="font-semibold text-slate-900">
+                  {totalLeads}
+                </span>
+              </span>
+              <span className="hidden md:inline text-slate-300">•</span>
+              <span>
+                Página {pagina} de {totalPaginas}
+              </span>
+              {loading && (
+                <>
+                  <span className="hidden md:inline text-slate-300">•</span>
+                  <span className="flex items-center gap-1 text-sky-600">
+                    <span className="inline-block h-2 w-2 rounded-full bg-sky-500 animate-pulse" />
+                    Actualizando…
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 self-start">
+            {adminEmail && (
+              <div className="hidden sm:flex items-center gap-2 rounded-full bg-slate-100 border border-slate-200 px-3 py-1">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                <span className="text-xs text-slate-600">
+                  Sesión iniciada como{" "}
+                  <span className="font-medium text-slate-900">
+                    {adminEmail}
+                  </span>
+                </span>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="h-9 px-4 rounded-full border border-slate-300 bg-white text-xs font-medium text-slate-700 hover:bg-slate-100"
+            >
+              Cerrar sesión
+            </button>
+          </div>
         </div>
       </div>
 

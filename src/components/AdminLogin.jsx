@@ -34,7 +34,6 @@ export default function AdminLogin({ onSuccess }) {
       if (ct.includes("application/json")) {
         data = await res.json();
       } else {
-        // Si viene HTML/texto, lo leemos como text para no romper con "Unexpected token"
         const text = await res.text();
         console.error("[AdminLogin] Respuesta NO JSON:", text);
         throw new Error(
@@ -54,11 +53,12 @@ export default function AdminLogin({ onSuccess }) {
         throw new Error("Respuesta sin token de autenticación");
       }
 
-      // Guardar token en localStorage
+      // Guardar token + email en localStorage
       localStorage.setItem("hl_admin_token", token);
+      localStorage.setItem("hl_admin_email", email);
 
       // Avisar al padre (AdminLeads) que ya estamos logueados
-      if (onSuccess) onSuccess(token);
+      if (onSuccess) onSuccess(token, email);
     } catch (err) {
       console.error("Error login admin:", err);
       setError(err.message || "Error iniciando sesión");
