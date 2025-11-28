@@ -523,6 +523,256 @@ export default function Landing({ onStart }) {
         </div>
       </motion.section>
 
+      {/* 4 RAZONES DE RECHAZO */}
+      <motion.section
+        id="rechazos"
+        className="border-t border-slate-800 bg-slate-950 scroll-mt-20"
+        {...fadeUp}
+      >
+        <div className="mx-auto max-w-6xl px-4 py-12 md:py-16">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-[11px] text-slate-300 mb-3">
+                <SparklesIcon className="h-3.5 w-3.5 text-emerald-400" />
+                <span>Lo que normalmente no te explican</span>
+              </div>
+              <h2 className="text-xl md:text-2xl font-semibold text-slate-50">
+                4 razones típicas de rechazo
+              </h2>
+              <p className="mt-2 text-sm text-slate-400 max-w-xl">
+                La mayoría de veces el banco dice “no” por detalles técnicos
+                (DTI, LTV, aportes al IESS, formalidad de ingresos) que se
+                pueden trabajar. HabitaLibre identifica cuál es tu bloqueo y te
+                muestra cómo corregirlo.
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-slate-900/70 border border-slate-800 px-4 py-3 text-xs text-slate-300 max-w-xs">
+              <p className="font-semibold text-slate-50 mb-1">
+                Nuestro enfoque
+              </p>
+              <p className="text-slate-400">
+                No es “te aprobaron / te rechazaron”. Es:{" "}
+                <span className="text-emerald-300 font-semibold">
+                  qué cambiar
+                </span>{" "}
+                para que tu perfil sí pueda ser viable.
+              </p>
+            </div>
+          </div>
+
+          {/* Cards */}
+          <div className="grid gap-5 md:grid-cols-2 text-sm">
+            {/* Razón 1 */}
+            <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-5">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-9 w-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
+                  <BanknotesIcon className="h-5 w-5 text-emerald-400" />
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
+                    Motivo 1
+                  </p>
+                  <p className="font-semibold text-slate-50">
+                    La cuota no cabe en tu ingreso (DTI alto)
+                  </p>
+                </div>
+              </div>
+              <div className="text-[12px] text-slate-400 space-y-2">
+                <div>
+                  <p className="font-semibold text-slate-200 mb-0.5">
+                    Por qué el banco rechaza:
+                  </p>
+                  <p>
+                    Si el porcentaje de tu ingreso ya comprometido en deudas
+                    supera ~40–45%, el sistema de riesgo automáticamente bloquea
+                    la operación.
+                  </p>
+                </div>
+                <div>
+                  <p className="font-semibold text-emerald-300 mb-0.5">
+                    Cómo HabitaLibre lo corrige:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Calculamos tu DTI real con tus deudas actuales.</li>
+                    <li>
+                      Te mostramos cuánto bajar en deudas o cuánto subir en
+                      ingresos para que la cuota sí sea sostenible.
+                    </li>
+                    <li>
+                      Ajustamos rango de vivienda y plazo para que el crédito
+                      vuelva a ser viable.
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Razón 2 */}
+            <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-5">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-9 w-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
+                  <PresentationChartLineIcon className="h-5 w-5 text-sky-400" />
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
+                    Motivo 2
+                  </p>
+                  <p className="font-semibold text-slate-50">
+                    La entrada es muy baja para el valor de la vivienda (LTV)
+                  </p>
+                </div>
+              </div>
+              <div className="text-[12px] text-slate-400 space-y-2">
+                <div>
+                  <p className="font-semibold text-slate-200 mb-0.5">
+                    Por qué el banco rechaza:
+                  </p>
+                  <p>
+                    Con poca entrada, el préstamo cubre casi todo el valor
+                    (LTV 90–95%+), el riesgo sube y muchas veces el banco
+                    prefiere no aprobar.
+                  </p>
+                </div>
+                <div>
+                  <p className="font-semibold text-emerald-300 mb-0.5">
+                    Cómo HabitaLibre lo corrige:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>
+                      Calculamos tu LTV y lo comparamos con rangos VIS/VIP,
+                      BIESS y banca privada.
+                    </li>
+                    <li>
+                      Te mostramos cuánta entrada adicional necesitas para bajar
+                      el riesgo.
+                    </li>
+                    <li>
+                      Te damos un rango de precio de vivienda más realista para
+                      tu situación actual.
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Razón 3 */}
+            <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-5">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-9 w-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
+                  <ClipboardDocumentListIcon className="h-5 w-5 text-fuchsia-400" />
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
+                    Motivo 3
+                  </p>
+                  <p className="font-semibold text-slate-50">
+                    No cumples los requisitos formales (BIESS / estabilidad)
+                  </p>
+                </div>
+              </div>
+              <div className="text-[12px] text-slate-400 space-y-2">
+                <div>
+                  <p className="font-semibold text-slate-200 mb-0.5">
+                    Por qué el banco rechaza:
+                  </p>
+                  <p>
+                    BIESS y los bancos piden cierto número de aportes,
+                    estabilidad laboral y documentación ordenada. Si algo falta,
+                    el sistema te bloquea aunque el ingreso sea bueno.
+                  </p>
+                </div>
+                <div>
+                  <p className="font-semibold text-emerald-300 mb-0.5">
+                    Cómo HabitaLibre lo corrige:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>
+                      Te indicamos cuántos aportes o meses de estabilidad te
+                      faltan.
+                    </li>
+                    <li>
+                      Te damos un timeline estimado para ser elegible a BIESS o
+                      cierto producto.
+                    </li>
+                    <li>
+                      Te mostramos opciones alternativas mientras completas esos
+                      requisitos.
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Razón 4 */}
+            <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-5">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-9 w-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
+                  <LockClosedIcon className="h-5 w-5 text-emerald-300" />
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
+                    Motivo 4
+                  </p>
+                  <p className="font-semibold text-slate-50">
+                    Ingresos informales o mal documentados
+                  </p>
+                </div>
+              </div>
+              <div className="text-[12px] text-slate-400 space-y-2">
+                <div>
+                  <p className="font-semibold text-slate-200 mb-0.5">
+                    Por qué el banco rechaza:
+                  </p>
+                  <p>
+                    Si eres independiente o tienes ingresos mixtos pero sin RUC,
+                    roles o declaraciones claras, el banco no puede justificar
+                    ese ingreso y lo descarta.
+                  </p>
+                </div>
+                <div>
+                  <p className="font-semibold text-emerald-300 mb-0.5">
+                    Cómo HabitaLibre lo corrige:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>
+                      Te damos un checklist según tu tipo de ingreso (empleado,
+                      independiente, mixto).
+                    </li>
+                    <li>
+                      Te mostramos cómo ordenar tus extractos y respaldos para
+                      que el banco sí los tome en cuenta.
+                    </li>
+                    <li>
+                      Te ayudamos a pasar de “rechazado hoy” a un perfil
+                      trabajable en los próximos meses.
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* CTA */}
+          <div className="mt-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <p className="text-[12px] text-slate-400 max-w-md">
+              Si ya intentaste con algún banco y no fue claro el motivo del
+              rechazo, HabitaLibre puede ayudarte a traducir tu caso a números
+              concretos y darte un plan de acción.
+            </p>
+            <button
+              onClick={() => handleStart("rechazos_section")}
+              className="inline-flex items-center justify-center px-6 py-2.5 rounded-full bg-emerald-400 text-slate-950 text-sm font-semibold shadow-[0_16px_40px_rgba(16,185,129,0.55)] active:scale-[.97] transition"
+            >
+              Entender mi caso con números
+              <span className="ml-1.5 text-base">→</span>
+            </button>
+          </div>
+        </div>
+      </motion.section>
+
+
       {/* BENEFICIOS */}
       <motion.section
         id="beneficios"
@@ -645,6 +895,8 @@ export default function Landing({ onStart }) {
           </div>
         </div>
       </motion.section>
+
+      
 
       {/* NOSOTROS – HL-SCORE */}
       <motion.section
