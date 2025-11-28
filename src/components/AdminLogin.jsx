@@ -1,13 +1,18 @@
 // src/components/AdminLogin.jsx
 import { useState } from "react";
 
+// Detectamos entorno y fijamos el backend correcto
+const IS_DEV = import.meta.env.DEV;
+
+const BASE_URL = IS_DEV
+  ? "http://localhost:4000" // cuando corres vite en local
+  : "https://habitalibre-backend.onrender.com"; // backend en Render
+
 export default function AdminLogin({ onSuccess }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  const baseURL = import.meta.env.VITE_API_BASE_URL || "";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -15,20 +20,39 @@ export default function AdminLogin({ onSuccess }) {
     setLoading(true);
 
     try {
-      const res = await fetch(`${baseURL}/api/auth/login`, {
+      console.log("[AdminLogin] POST a:", `${BASE_URL}/api/auth/login`);
+
+      const res = await fetch(`${BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await res.json();
+      const ct = res.headers.get("content-type") || "";
+      let data = null;
+
+      if (ct.includes("application/json")) {
+        data = await res.json();
+      } else {
+        // Si viene HTML/texto, lo leemos como text para no romper con "Unexpected token"
+        const text = await res.text();
+        console.error("[AdminLogin] Respuesta NO JSON:", text);
+        throw new Error(
+          `Respuesta no válida del servidor (no es JSON): ${text.slice(
+            0,
+            120
+          )}...`
+        );
+      }
 
       if (!res.ok) {
         throw new Error(data?.error || "Error iniciando sesión");
       }
 
       const token = data.token;
-      if (!token) throw new Error("Respuesta sin token");
+      if (!token) {
+        throw new Error("Respuesta sin token de autenticación");
+      }
 
       // Guardar token en localStorage
       localStorage.setItem("hl_admin_token", token);
