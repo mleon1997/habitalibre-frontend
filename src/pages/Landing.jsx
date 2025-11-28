@@ -183,7 +183,7 @@ export default function Landing({ onStart }) {
               </div>
 
               <p className="text-[11px] tracking-[0.2em] uppercase text-slate-400 mb-3">
-                ● Precalificación sin afectar tu buró
+                ● Sin afectar tu buró · resultado en menos de 2 minutos
               </p>
               <h1 className="text-3xl md:text-5xl font-semibold tracking-tight text-slate-50 mb-4">
                 Tu camino fácil a la
@@ -195,8 +195,9 @@ export default function Landing({ onStart }) {
               </h1>
               <p className="text-sm md:text-[15px] text-slate-300 max-w-xl mb-6">
                 En menos de 2 minutos ves cuánto podrías comprar hoy y con qué
-                tipo de crédito avanzar: VIS, VIP, BIESS o banca privada. Sin ir
-                al banco, sin papeleo y sin consultas a tu buró.
+                tipo de crédito avanzar (VIS, VIP, BIESS o banca privada).
+                Recibes un resumen claro en tu correo, sin ir al banco, sin
+                papeleo y sin consultas a tu buró.
               </p>
               {/* CTA buttons */}
               <div className="flex flex-wrap gap-3 mb-4">
@@ -378,6 +379,10 @@ export default function Landing({ onStart }) {
                   </div>
                   <span>Ver mi capacidad real</span>
                 </button>
+
+                <p className="mt-2 text-[10px] text-slate-400 text-center">
+                  Simulación gratuita, sin compromiso con ningún banco.
+                </p>
 
                 <p className="text-[9px] text-slate-500 mt-3 leading-snug">
                   *Tasa y condiciones referenciales. Tu resultado real se
@@ -567,8 +572,13 @@ export default function Landing({ onStart }) {
                 hoy.
               </p>
               <ul className="text-[11px] text-slate-400 space-y-1.5">
-                <li>• Te damos un rango de precio realista, no una cifra aislada.</li>
-                <li>• Score hipotecario que te dice qué tan listo estás para el banco.</li>
+                <li>
+                  • Te damos un rango de precio realista, no una cifra aislada.
+                </li>
+                <li>
+                  • Score hipotecario que te dice qué tan listo estás para el
+                  banco.
+                </li>
               </ul>
             </div>
 
@@ -1160,4 +1170,3 @@ export default function Landing({ onStart }) {
     </main>
   );
 }
-
