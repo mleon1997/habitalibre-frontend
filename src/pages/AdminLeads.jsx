@@ -1,6 +1,6 @@
 // src/pages/AdminLeads.jsx
 import React, { useEffect, useState } from "react";
-import AdminLogin from "../components/AdminLogin.jsx"; // 🔐 NUEVO
+import AdminLogin from "../components/AdminLogin.jsx"; // 🔐 Pantalla de login admin
 
 // =====================================================
 // BACKEND HabitaLibre (Render)
@@ -21,9 +21,10 @@ const AdminLeads = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // 🔐 token admin
   const [token, setToken] = useState(
     () => localStorage.getItem("hl_admin_token") || ""
-  ); // 🔐 NUEVO
+  );
 
   const pageSize = 10; // leads por página
 
@@ -32,14 +33,13 @@ const AdminLeads = () => {
       setLoading(true);
       setError("");
 
-      // 🔐 Leemos token cada vez (por si cambió)
       const currentToken = localStorage.getItem("hl_admin_token");
       if (!currentToken) {
         setError("No autorizado: inicia sesión nuevamente.");
         setLeads([]);
         setTotalLeads(0);
         setTotalPaginas(1);
-        setToken(""); // fuerza mostrar login
+        setToken("");
         return;
       }
 
@@ -66,7 +66,7 @@ const AdminLeads = () => {
       });
 
       if (res.status === 401 || res.status === 403) {
-        // Token inválido/expirado → logout forzado
+        // Token inválido / expirado → logout forzado
         localStorage.removeItem("hl_admin_token");
         setToken("");
         throw new Error("No autorizado: tu sesión ha expirado.");
@@ -93,7 +93,7 @@ const AdminLeads = () => {
     }
   };
 
-  // Cargar leads solo si hay token
+  // Cargar leads solo cuando haya token
   useEffect(() => {
     if (!token) return;
     fetchLeads(1);
@@ -174,7 +174,7 @@ const AdminLeads = () => {
     return <span className="text-xs text-slate-400">-</span>;
   };
 
-  // 🔐 Gate: si no hay token, mostramos login admin
+  // 🔐 Gate: si no hay token → mostrar login admin
   if (!token) {
     return <AdminLogin onSuccess={setToken} />;
   }
@@ -193,9 +193,7 @@ const AdminLeads = () => {
         <div className="mt-2 flex items-center justify-between text-sm text-slate-500">
           <span>
             Total leads:{" "}
-            <span className="font-semibold text-slate-900">
-              {totalLeads}
-            </span>
+            <span className="font-semibold text-slate-900">{totalLeads}</span>
           </span>
           <span>
             Página {pagina} de {totalPaginas}
