@@ -145,7 +145,7 @@ export default function Landing({ onStart }) {
             onClick={() => handleStart("navbar_mobile")}
             className="md:hidden px-4 py-2 rounded-full bg-emerald-400 text-slate-950 text-xs font-semibold shadow-[0_12px_30px_rgba(16,185,129,0.55)] active:scale-[.97] transition"
           >
-            Simular ahora
+            Precalificar ahora
           </button>
         </div>
       </header>
@@ -205,7 +205,7 @@ export default function Landing({ onStart }) {
                   onClick={() => handleStart("hero_primary")}
                   className="inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-emerald-400 text-slate-950 font-semibold text-sm shadow-[0_18px_40px_rgba(16,185,129,0.45)] hover:bg-emerald-300 transition"
                 >
-                  Simular ahora
+                  Precalificar ahora
                   <span className="ml-1.5 text-base">→</span>
                 </button>
 
