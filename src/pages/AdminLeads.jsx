@@ -1,5 +1,6 @@
 // src/pages/AdminLeads.jsx
 import React, { useEffect, useState } from "react";
+import AdminLogin from "../components/AdminLogin.jsx"; // 🔐 NUEVO
 
 // =====================================================
 // BACKEND HabitaLibre (Render)
@@ -11,7 +12,7 @@ const AdminLeads = () => {
   const [telefono, setTelefono] = useState("");
   const [ciudad, setCiudad] = useState("");
   const [tiempoCompra, setTiempoCompra] = useState(""); // filtro horizonte
-  const [sustentoFiltro, setSustentoFiltro] = useState(""); // 👈 nuevo filtro
+  const [sustentoFiltro, setSustentoFiltro] = useState(""); // filtro sustento
 
   const [leads, setLeads] = useState([]);
   const [totalLeads, setTotalLeads] = useState(0);
@@ -20,12 +21,27 @@ const AdminLeads = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const [token, setToken] = useState(
+    () => localStorage.getItem("hl_admin_token") || ""
+  ); // 🔐 NUEVO
+
   const pageSize = 10; // leads por página
 
   const fetchLeads = async (paginaNueva = 1) => {
     try {
       setLoading(true);
       setError("");
+
+      // 🔐 Leemos token cada vez (por si cambió)
+      const currentToken = localStorage.getItem("hl_admin_token");
+      if (!currentToken) {
+        setError("No autorizado: inicia sesión nuevamente.");
+        setLeads([]);
+        setTotalLeads(0);
+        setTotalPaginas(1);
+        setToken(""); // fuerza mostrar login
+        return;
+      }
 
       const params = new URLSearchParams();
 
@@ -35,7 +51,7 @@ const AdminLeads = () => {
       if (tiempoCompra.trim())
         params.append("tiempoCompra", tiempoCompra.trim());
       if (sustentoFiltro.trim())
-        params.append("sustentoIndependiente", sustentoFiltro.trim()); // 👈 enviamos al backend
+        params.append("sustentoIndependiente", sustentoFiltro.trim());
 
       params.append("pagina", paginaNueva);
       params.append("limit", pageSize);
@@ -43,7 +59,18 @@ const AdminLeads = () => {
       const url = `${API_BASE_URL}/api/leads?${params.toString()}`;
       console.log("🌐 Fetch leads a:", url);
 
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${currentToken}`, // 🔐 CLAVE
+        },
+      });
+
+      if (res.status === 401 || res.status === 403) {
+        // Token inválido/expirado → logout forzado
+        localStorage.removeItem("hl_admin_token");
+        setToken("");
+        throw new Error("No autorizado: tu sesión ha expirado.");
+      }
 
       if (!res.ok) {
         throw new Error(`No se pudo cargar los leads (status ${res.status})`);
@@ -66,10 +93,12 @@ const AdminLeads = () => {
     }
   };
 
+  // Cargar leads solo si hay token
   useEffect(() => {
+    if (!token) return;
     fetchLeads(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [token]);
 
   const handleBuscar = () => {
     fetchLeads(1);
@@ -80,7 +109,7 @@ const AdminLeads = () => {
     setTelefono("");
     setCiudad("");
     setTiempoCompra("");
-    setSustentoFiltro(""); // 👈 resetear filtro nuevo
+    setSustentoFiltro("");
     fetchLeads(1);
   };
 
@@ -144,6 +173,11 @@ const AdminLeads = () => {
 
     return <span className="text-xs text-slate-400">-</span>;
   };
+
+  // 🔐 Gate: si no hay token, mostramos login admin
+  if (!token) {
+    return <AdminLogin onSuccess={setToken} />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-8 md:px-10">
@@ -230,7 +264,7 @@ const AdminLeads = () => {
               </select>
             </div>
 
-            {/* ⭐ Nuevo filtro: sustento ingresos */}
+            {/* Filtro: sustento ingresos */}
             <div className="flex flex-col">
               <label className="text-xs font-medium text-slate-500 mb-1">
                 Sustento ingresos
@@ -293,7 +327,6 @@ const AdminLeads = () => {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
                     Ciudad
                   </th>
-                  {/* ⭐ Nueva columna */}
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
                     Sustento ingresos
                   </th>
@@ -348,7 +381,6 @@ const AdminLeads = () => {
                     <td className="px-4 py-3 text-sm text-slate-700">
                       {lead.ciudad || "-"}
                     </td>
-                    {/* 👇 Nuevo chip de sustento */}
                     <td className="px-4 py-3 text-sm">
                       {chipSustento(lead.sustentoIndependiente)}
                     </td>
