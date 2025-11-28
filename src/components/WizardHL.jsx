@@ -74,8 +74,7 @@ function NumericInput({
 }
 
 /* ===========================================================
-   SLIDER UNIFICADO
-   - Misma experiencia para TODOS los sliders
+   SLIDER UNIFICADO (slider + input numérico)
 =========================================================== */
 function SliderField({
   label,
@@ -95,6 +94,23 @@ function SliderField({
     onChange(String(v));
   };
 
+  const handleInputChange = (e) => {
+    // Permitimos escribir montos exactos aunque el slider tenga rango muy grande
+    let raw = e.target.value.replace(/[^0-9]/g, "");
+    if (raw === "") {
+      onChange("0");
+      return;
+    }
+
+    let n = Number(raw);
+    if (!Number.isFinite(n)) return;
+
+    if (typeof min === "number" && n < min) n = min;
+    if (typeof max === "number" && n > max) n = max;
+
+    onChange(String(n));
+  };
+
   return (
     <div className="mb-4">
       {label && (
@@ -103,6 +119,7 @@ function SliderField({
         </label>
       )}
 
+      {/* Etiquetas arriba */}
       <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
         <span>{format(num)}</span>
         <span className="opacity-70">
@@ -110,38 +127,44 @@ function SliderField({
         </span>
       </div>
 
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={num}
-        onChange={handleChange}
-        className={`
-          w-full cursor-pointer touch-pan-y accent-violet-400
+      {/* Slider + input numérico exacto */}
+      <div className="flex items-center gap-3">
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={num}
+          onChange={handleChange}
+          className="
+            flex-1 cursor-pointer touch-pan-y accent-violet-400
 
-          /* WebKit */
-          [&::-webkit-slider-thumb]:appearance-none
-          [&::-webkit-slider-thumb]:h-4
-          [&::-webkit-slider-thumb]:w-4
-          [&::-webkit-slider-thumb]:rounded-full
-          [&::-webkit-slider-thumb]:bg-white
-          [&::-webkit-slider-thumb]:border
-          [&::-webkit-slider-thumb]:border-violet-500
-          [&::-webkit-slider-thumb]:shadow
-          [&::-webkit-slider-thumb]:cursor-pointer
+            [&::-webkit-slider-thumb]:appearance-none
+            [&::-webkit-slider-thumb]:h-4
+            [&::-webkit-slider-thumb]:w-4
+            [&::-webkit-slider-thumb]:rounded-full
+            [&::-webkit-slider-thumb]:bg-white
+            [&::-webkit-slider-thumb]:border
+            [&::-webkit-slider-thumb]:border-violet-500
+            [&::-webkit-slider-thumb]:shadow
 
-          /* Firefox */
-          [&::-moz-range-thumb]:h-4
-          [&::-moz-range-thumb]:w-4
-          [&::-moz-range-thumb]:rounded-full
-          [&::-moz-range-thumb]:bg-white
-          [&::-moz-range-thumb]:border
-          [&::-moz-range-thumb]:border-violet-500
-          [&::-moz-range-thumb]:shadow
-          [&::-moz-range-thumb]:cursor-pointer
-        `}
-      />
+            [&::-moz-range-thumb]:h-4
+            [&::-moz-range-thumb]:w-4
+            [&::-moz-range-thumb]:rounded-full
+            [&::-moz-range-thumb]:bg-white
+            [&::-moz-range-thumb]:border
+            [&::-moz-range-thumb]:border-violet-500
+            [&::-moz-range-thumb]:shadow
+          "
+        />
+
+        <input
+          type="text"
+          value={format(num)}
+          onChange={handleInputChange}
+          className="w-28 rounded-xl border border-slate-700 bg-slate-900/60 px-2 py-1 text-right text-[12px] text-slate-50"
+        />
+      </div>
 
       {helper && (
         <p className="mt-1 text-[11px] text-slate-400 leading-snug">{helper}</p>
@@ -204,6 +227,13 @@ export default function WizardHL({ onResult }) {
     const v = toNum(valor);
     const e = toNum(entrada);
     return { loan: Math.max(0, v - e) };
+  }, [valor, entrada]);
+
+  const entradaPct = useMemo(() => {
+    const v = toNum(valor);
+    const e = toNum(entrada);
+    if (!v) return 0;
+    return Math.round((e / v) * 100);
   }, [valor, entrada]);
 
   // VALIDACIONES (para avanzar de paso)
@@ -561,42 +591,91 @@ export default function WizardHL({ onResult }) {
         </div>
       )}
 
-      {/* Paso 3 */}
+      {/* Paso 3 – Vivienda */}
       {step === 3 && (
         <div>
           <h3 className="mb-3 text-sm font-semibold text-slate-100">
             🏠 Vivienda
           </h3>
 
-          <SliderField
-            label="Valor aproximado de la vivienda (USD)"
-            min={30000}
-            max={500000}
-            step={1000}
-            value={valor}
-            onChange={setValor}
-            format={(v) =>
-              `$${Number(v || 0).toLocaleString("en-US", {
-                maximumFractionDigits: 0,
-              })}`
-            }
-          />
+          {/* Resumen rápido arriba */}
+          <div className="mb-4 grid grid-cols-2 gap-3 text-[11px]">
+            <div className="rounded-xl border border-slate-700/70 bg-slate-900/70 px-3 py-2">
+              <p className="text-slate-400 mb-0.5">Valor objetivo</p>
+              <p className="text-slate-50 font-semibold text-sm">
+                $
+                {toNum(valor).toLocaleString("en-US", {
+                  maximumFractionDigits: 0,
+                })}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-700/70 bg-slate-900/70 px-3 py-2">
+              <p className="text-slate-400 mb-0.5">Entrada aprox.</p>
+              <p className="text-slate-50 font-semibold text-sm">
+                $
+                {toNum(entrada).toLocaleString("en-US", {
+                  maximumFractionDigits: 0,
+                })}{" "}
+                <span className="text-xs text-emerald-300">
+                  ({entradaPct || 0}%)
+                </span>
+              </p>
+            </div>
+          </div>
 
-         <SliderField
-  label="Entrada disponible (USD)"
-  helper="Incluye ahorros, cesantía, fondos de reserva u otros."
-  min={0}
-  max={500000}           // sin límite por porcentaje
-  step={500}             // más fácil para montos bajos (< 2.000)
-  value={entrada}
-  onChange={setEntrada}
-  format={(v) =>
-    `$${Number(v || 0).toLocaleString("en-US", {
-      maximumFractionDigits: 0,
-    })}`
-  }
-/>
+          {/* Campos valor + entrada en layout más limpio */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
+            <div>
+              <SliderField
+                label="Valor aproximado de la vivienda (USD)"
+                min={30000}
+                max={500000}
+                step={1000}
+                value={valor}
+                onChange={setValor}
+                format={(v) =>
+                  `$${Number(v || 0).toLocaleString("en-US", {
+                    maximumFractionDigits: 0,
+                  })}`
+                }
+              />
+            </div>
 
+            <div>
+              <SliderField
+                label="Entrada disponible (USD)"
+                helper="Incluye ahorros, cesantía, fondos de reserva u otros."
+                min={0}
+                max={500000}
+                step={500}
+                value={entrada}
+                onChange={setEntrada}
+                format={(v) =>
+                  `$${Number(v || 0).toLocaleString("en-US", {
+                    maximumFractionDigits: 0,
+                  })}`
+                }
+              />
+            </div>
+          </div>
+
+          {/* Mensajes suaves según la relación entrada / valor */}
+          {toNum(entrada) > toNum(valor) && (
+            <p className="mb-3 text-[11px] text-amber-300">
+              Tu entrada es mayor que el valor de la vivienda. Puedes reducirla
+              o ajustar el valor objetivo si lo deseas.
+            </p>
+          )}
+
+          {entradaPct > 0 && entradaPct < 5 && (
+            <p className="mb-3 text-[11px] text-slate-400">
+              Estás partiendo con una entrada baja (&lt; 5%). En el reporte te
+              mostraremos qué pasa si aumentas un poco la entrada o ajustas
+              plazo.
+            </p>
+          )}
+
+          {/* Resto de campos de vivienda */}
           <Field label="¿Tienes actualmente una vivienda?">
             <select
               className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50"
