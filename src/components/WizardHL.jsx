@@ -582,20 +582,20 @@ export default function WizardHL({ onResult }) {
             }
           />
 
-          <SliderField
-            label="Entrada disponible (USD)"
-            helper="Incluye ahorros, cesantía, fondos de reserva u otros."
-            min={0}
-            max={500000}
-            step={1000}
-            value={entrada}
-            onChange={setEntrada}
-            format={(v) =>
-              `$${Number(v || 0).toLocaleString("en-US", {
-                maximumFractionDigits: 0,
-              })}`
-            }
-          />
+         <SliderField
+  label="Entrada disponible (USD)"
+  helper="Incluye ahorros, cesantía, fondos de reserva u otros."
+  min={0}
+  max={500000}           // sin límite por porcentaje
+  step={500}             // más fácil para montos bajos (< 2.000)
+  value={entrada}
+  onChange={setEntrada}
+  format={(v) =>
+    `$${Number(v || 0).toLocaleString("en-US", {
+      maximumFractionDigits: 0,
+    })}`
+  }
+/>
 
           <Field label="¿Tienes actualmente una vivienda?">
             <select
