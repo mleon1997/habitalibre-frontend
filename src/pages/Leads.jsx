@@ -1,15 +1,22 @@
 // src/pages/Leads.jsx
 import React, { useEffect, useState, useMemo } from "react";
 import { listarLeads } from "../lib/api";
+import AdminLogin from "../components/AdminLogin.jsx"; // ⬅️ NUEVO
 
 export default function Leads() {
+  const [token, setToken] = useState(
+    () => localStorage.getItem("hl_admin_token") || ""
+  );
   const [leads, setLeads] = useState([]);
   const [busqueda, setBusqueda] = useState("");
   const [cargando, setCargando] = useState(false);
 
+  // Si no hay token, no intentamos cargar leads todavía
   useEffect(() => {
+    if (!token) return;
     cargarLeads();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   async function cargarLeads() {
     try {
@@ -18,9 +25,20 @@ export default function Leads() {
       setLeads(data || []);
     } catch (err) {
       console.error("Error cargando leads:", err);
+
+      // Si el backend respondió 401/403, forzamos logout y mostramos login
+      if (err?.message?.includes("No autorizado")) {
+        localStorage.removeItem("hl_admin_token");
+        setToken("");
+      }
     } finally {
       setCargando(false);
     }
+  }
+
+  // 🔐 Gate: si no hay token, mostramos el login admin
+  if (!token) {
+    return <AdminLogin onSuccess={setToken} />;
   }
 
   // Filtrado rápido por nombre, email o ciudad

@@ -75,32 +75,42 @@ export async function crearLead(payload) {
 // ======================================================================
 
 export async function listarLeads() {
-  const res = await fetch(`${API_BASE}/api/leads`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
+  await wake();
 
-  if (!res.ok) {
-    throw new Error("No se pudieron cargar los leads");
+  const token = localStorage.getItem("hl_admin_token");
+  if (!token) {
+    throw new Error("No autorizado: falta token admin");
   }
 
-  return await res.json();
+  return request(
+    "/api/leads",
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+    30000
+  );
 }
 
 export async function updateLead(id, payload) {
-  const res = await fetch(`${API_BASE}/api/leads/${id}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload || {}),
-  });
+  await wake();
 
-  if (!res.ok) {
-    throw new Error("No se pudo actualizar el lead");
+  const token = localStorage.getItem("hl_admin_token");
+  if (!token) {
+    throw new Error("No autorizado: falta token admin");
   }
 
-  return await res.json();
+  return request(
+    `/api/leads/${id}`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: payload || {},
+    },
+    30000
+  );
 }
