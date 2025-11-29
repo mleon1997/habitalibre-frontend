@@ -1,4 +1,4 @@
-// src/pages/AdminLeads.jsx
+ // src/pages/AdminLeads.jsx
 import React, { useEffect, useState } from "react";
 import AdminLogin from "../components/AdminLogin.jsx";
 import { EnvelopeIcon } from "@heroicons/react/24/outline";
@@ -112,6 +112,15 @@ const AdminLeads = () => {
         {score}
       </span>
     );
+  };
+
+  // Código único “bonito” para el lead
+  const obtenerCodigoLead = (lead) => {
+    if (!lead) return "-";
+    if (lead.codigoUnico) return lead.codigoUnico;
+    if (lead.codigoLead) return lead.codigoLead;
+    if (lead._id) return `HL-${lead._id.slice(-6).toUpperCase()}`;
+    return "-";
   };
 
   // =====================================================
@@ -470,6 +479,9 @@ const AdminLeads = () => {
                     Fecha
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
+                    Código HL
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
                     Nombre
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
@@ -503,7 +515,7 @@ const AdminLeads = () => {
                 {!loading && leads.length === 0 && (
                   <tr>
                     <td
-                      colSpan={10}
+                      colSpan={11}
                       className="px-4 py-6 text-center text-sm text-slate-400"
                     >
                       No hay leads para los filtros seleccionados.
@@ -526,6 +538,10 @@ const AdminLeads = () => {
                             minute: "2-digit",
                           })
                         : "-"}
+                    </td>
+
+                    <td className="px-4 py-3 text-xs font-semibold text-slate-700">
+                      {obtenerCodigoLead(lead)}
                     </td>
 
                     <td className="px-4 py-3 text-sm text-slate-900">
@@ -557,7 +573,7 @@ const AdminLeads = () => {
                     </td>
 
                     <td className="px-4 py-3 text-sm font-semibold text-slate-900">
-                      {lead.scoreHL != null ? lead.scoreHL : "-"}
+                      {lead.scoreHL != null ? chipScore(lead.scoreHL) : "-"}
                     </td>
 
                     {/* ⭐ ACCIONES */}
@@ -627,7 +643,7 @@ const AdminLeads = () => {
                 {loading && (
                   <tr>
                     <td
-                      colSpan={10}
+                      colSpan={11}
                       className="px-4 py-6 text-center text-sm text-slate-400"
                     >
                       Cargando leads…
@@ -702,3 +718,4 @@ function KpiCard({ label, value, subtitle }) {
 }
 
 export default AdminLeads;
+
