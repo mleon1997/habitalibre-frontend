@@ -317,7 +317,7 @@ export default function Landing({ onStart }) {
                       Tasa referencial
                     </p>
                     <p className="text-slate-100 font-semibold text-sm">
-                      8,75%*
+                      4,87%*
                     </p>
                     <p className="text-slate-500 text-[9px] mt-0.5">
                       Varía por banco y producto.
