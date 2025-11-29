@@ -1,7 +1,7 @@
 // src/pages/Leads.jsx
 import React, { useEffect, useState, useMemo } from "react";
 import { listarLeads } from "../lib/api";
-import AdminLogin from "../components/AdminLogin.jsx"; // ⬅️ NUEVO
+import AdminLogin from "../components/AdminLogin.jsx"; // ⬅️ Login admin
 
 export default function Leads() {
   const [token, setToken] = useState(
@@ -22,6 +22,11 @@ export default function Leads() {
     try {
       setCargando(true);
       const data = await listarLeads();
+
+      // Si tu API devuelve { leads: [...] }, descomenta esta línea:
+      // setLeads(data?.leads || []);
+
+      // Si ya devuelve un array directo, deja esta:
       setLeads(data || []);
     } catch (err) {
       console.error("Error cargando leads:", err);
@@ -41,16 +46,22 @@ export default function Leads() {
     return <AdminLogin onSuccess={setToken} />;
   }
 
-  // Filtrado rápido por nombre, email o ciudad
+  // Filtrado rápido por nombre, email, ciudad o código HL
   const leadsFiltrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     if (!q) return leads;
-    return leads.filter(
-      (l) =>
-        l.nombre?.toLowerCase().includes(q) ||
-        l.email?.toLowerCase().includes(q) ||
-        l.ciudad?.toLowerCase().includes(q)
-    );
+    return leads.filter((l) => {
+      const nombre = l.nombre?.toLowerCase() || "";
+      const email = l.email?.toLowerCase() || "";
+      const ciudad = l.ciudad?.toLowerCase() || "";
+      const codigo = l.codigoUnico?.toLowerCase() || "";
+      return (
+        nombre.includes(q) ||
+        email.includes(q) ||
+        ciudad.includes(q) ||
+        codigo.includes(q)
+      );
+    });
   }, [busqueda, leads]);
 
   return (
@@ -74,7 +85,7 @@ export default function Leads() {
       <div className="mb-4 flex items-center">
         <input
           type="text"
-          placeholder="Buscar por nombre, email o ciudad..."
+          placeholder="Buscar por nombre, email, ciudad o código HL..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
           className="w-full max-w-md rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-indigo-100"
@@ -87,6 +98,7 @@ export default function Leads() {
           <thead className="bg-gray-100 text-gray-600 uppercase text-[11px]">
             <tr>
               <th className="px-4 py-2 text-left">Nombre</th>
+              <th className="px-4 py-2 text-left">Código HL</th>{/* ⭐ NUEVO */}
               <th className="px-4 py-2 text-left">Email</th>
               <th className="px-4 py-2 text-left">Teléfono</th>
               <th className="px-4 py-2 text-left">Ciudad</th>
@@ -100,7 +112,7 @@ export default function Leads() {
           <tbody>
             {leadsFiltrados.length === 0 && (
               <tr>
-                <td colSpan="9" className="px-4 py-6 text-center text-gray-400">
+                <td colSpan="10" className="px-4 py-6 text-center text-gray-400">
                   {cargando ? "Cargando leads..." : "No se encontraron leads."}
                 </td>
               </tr>
@@ -112,6 +124,9 @@ export default function Leads() {
               >
                 <td className="px-4 py-2 font-medium text-gray-800">
                   {lead.nombre || "—"}
+                </td>
+                <td className="px-4 py-2 text-xs font-mono text-gray-700">
+                  {lead.codigoUnico || "—"}
                 </td>
                 <td className="px-4 py-2">{lead.email || "—"}</td>
                 <td className="px-4 py-2">{lead.telefono || "—"}</td>
@@ -133,11 +148,13 @@ export default function Leads() {
                   {lead.resultado?.puntajeHabitaLibre?.score ?? "—"}
                 </td>
                 <td className="px-4 py-2 text-xs text-gray-500">
-                  {new Date(lead.createdAt).toLocaleDateString("es-EC", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })}
+                  {lead.createdAt
+                    ? new Date(lead.createdAt).toLocaleDateString("es-EC", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })
+                    : "—"}
                 </td>
               </tr>
             ))}
@@ -161,10 +178,16 @@ function Badge({ tipo }) {
     landing: "bg-emerald-100 text-emerald-700",
     referidos: "bg-amber-100 text-amber-700",
   };
-  const cls = map[tipo?.toLowerCase()] || "bg-gray-100 text-gray-600";
+  const key = (tipo || "").toLowerCase();
+  const cls = map[key] || "bg-gray-100 text-gray-600";
+  const label =
+    typeof tipo === "string" && tipo.length > 0
+      ? tipo.charAt(0).toUpperCase() + tipo.slice(1)
+      : "—";
+
   return (
     <span className={`px-2 py-0.5 rounded-full text-[11px] ${cls}`}>
-      {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
+      {label}
     </span>
   );
 }
