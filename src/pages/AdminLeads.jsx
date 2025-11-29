@@ -1,6 +1,7 @@
 // src/pages/AdminLeads.jsx
 import React, { useEffect, useState } from "react";
 import AdminLogin from "../components/AdminLogin.jsx";
+import { PhoneIcon, EnvelopeIcon } from "@heroicons/react/24/outline"; // 👈 IMPORTADO
 
 // =====================================================
 // BACKEND HabitaLibre (Render)
@@ -392,7 +393,7 @@ const AdminLeads = () => {
               </label>
               <input
                 type="text"
-                placeholder="Quito, Guayaquil…"
+                placeholder("Quito, Guayaquil…")
                 value={ciudad}
                 onChange={(e) => setCiudad(e.target.value)}
                 className="h-9 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white"
@@ -462,161 +463,163 @@ const AdminLeads = () => {
           <div className="overflow-x-auto max-h-[65vh]">
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50 border-b border-slate-200">
-  <tr>
-    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
-      Fecha
-    </th>
-    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
-      Nombre
-    </th>
-    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
-      Email
-    </th>
-    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
-      Teléfono
-    </th>
-    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
-      Ciudad
-    </th>
-    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
-      Sustento ingresos
-    </th>
-    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
-      Horizonte
-    </th>
-    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
-      Producto
-    </th>
-    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
-      Score HL
-    </th>
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
+                    Fecha
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
+                    Nombre
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
+                    Email
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
+                    Teléfono
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
+                    Ciudad
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
+                    Sustento ingresos
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
+                    Horizonte
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
+                    Producto
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
+                    Score HL
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
 
-    {/* ⭐ NUEVA COLUMNA */}
-    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
-      Acciones
-    </th>
-  </tr>
-</thead>
+              <tbody>
+                {!loading && leads.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={10}
+                      className="px-4 py-6 text-center text-sm text-slate-400"
+                    >
+                      No hay leads para los filtros seleccionados.
+                    </td>
+                  </tr>
+                )}
 
-<tbody>
-  {!loading && leads.length === 0 && (
-    <tr>
-      <td
-        colSpan={10}
-        className="px-4 py-6 text-center text-sm text-slate-400"
-      >
-        No hay leads para los filtros seleccionados.
-      </td>
-    </tr>
-  )}
+                {leads.map((lead) => (
+                  <tr
+                    key={lead._id}
+                    className="border-t border-slate-100 hover:bg-slate-50/80"
+                  >
+                    <td className="px-4 py-3 text-xs text-slate-500">
+                      {lead.createdAt
+                        ? new Date(lead.createdAt).toLocaleString("es-EC", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : "-"}
+                    </td>
 
-  {leads.map((lead) => (
-    <tr
-      key={lead._id}
-      className="border-t border-slate-100 hover:bg-slate-50/80"
-    >
-      <td className="px-4 py-3 text-xs text-slate-500">
-        {lead.createdAt
-          ? new Date(lead.createdAt).toLocaleString("es-EC", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })
-          : "-"}
-      </td>
+                    <td className="px-4 py-3 text-sm text-slate-900">
+                      {lead.nombre || lead.nombreCompleto || "-"}
+                    </td>
 
-      <td className="px-4 py-3 text-sm text-slate-900">
-        {lead.nombre || lead.nombreCompleto || "-"}
-      </td>
+                    <td className="px-4 py-3 text-sm text-slate-700">
+                      {lead.email || "-"}
+                    </td>
 
-      <td className="px-4 py-3 text-sm text-slate-700">{lead.email || "-"}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700">
+                      {lead.telefono || "-"}
+                    </td>
 
-      <td className="px-4 py-3 text-sm text-slate-700">
-        {lead.telefono || "-"}
-      </td>
+                    <td className="px-4 py-3 text-sm text-slate-700">
+                      {lead.ciudad || "-"}
+                    </td>
 
-      <td className="px-4 py-3 text-sm text-slate-700">
-        {lead.ciudad || "-"}
-      </td>
+                    <td className="px-4 py-3 text-sm">
+                      {chipSustento(lead.sustentoIndependiente)}
+                    </td>
 
-      <td className="px-4 py-3 text-sm">
-        {chipSustento(lead.sustentoIndependiente)}
-      </td>
+                    <td className="px-4 py-3 text-sm text-slate-700">
+                      {formatTiempoCompra(lead.tiempoCompra)}
+                    </td>
 
-      <td className="px-4 py-3 text-sm text-slate-700">
-        {formatTiempoCompra(lead.tiempoCompra)}
-      </td>
+                    <td className="px-4 py-3 text-sm text-slate-700">
+                      {lead.producto || lead.tipoProducto || "-"}
+                    </td>
 
-      <td className="px-4 py-3 text-sm text-slate-700">
-        {lead.producto || lead.tipoProducto || "-"}
-      </td>
+                    <td className="px-4 py-3 text-sm font-semibold text-slate-900">
+                      {lead.scoreHL != null ? lead.scoreHL : "-"}
+                    </td>
 
-      <td className="px-4 py-3 text-sm font-semibold text-slate-900">
-        {lead.scoreHL != null ? lead.scoreHL : "-"}
-      </td>
+                    {/* ⭐ ACCIONES */}
+                    <td className="px-4 py-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        {/* WhatsApp */}
+                        {lead.telefono && (
+                          <a
+                            href={`https://wa.me/${lead.telefono}?text=Hola%20${encodeURIComponent(
+                              lead.nombre || ""
+                            )},%20soy%20HabitaLibre.%20Vimos%20tu%20simulación.`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 rounded-lg bg-green-100 hover:bg-green-200 transition"
+                            title="Enviar WhatsApp"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 448 512"
+                              className="w-4 h-4 text-green-600"
+                              fill="currentColor"
+                            >
+                              <path d="M380.9 97.1C339-... recortado ..." />
+                            </svg>
+                          </a>
+                        )}
 
-      {/* ⭐ ACCIONES */}
-      <td className="px-4 py-3 text-sm">
-        <div className="flex items-center gap-2">
-          {/* WhatsApp */}
-          {lead.telefono && (
-            <a
-              href={`https://wa.me/${lead.telefono}?text=Hola%20${encodeURIComponent(
-                lead.nombre || ""
-              )},%20soy%20HabitaLibre.%20Vimos%20tu%20simulación.`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-1.5 rounded-lg bg-green-100 hover:bg-green-200 transition"
-              title="Enviar WhatsApp"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 448 512"
-                className="w-4 h-4 text-green-600"
-                fill="currentColor"
-              >
-                <path d="M380.9 97.1C339-... recortado ..." />
-              </svg>
-            </a>
-          )}
+                        {/* Llamar */}
+                        {lead.telefono && (
+                          <a
+                            href={`tel:${lead.telefono}`}
+                            className="p-1.5 rounded-lg bg-sky-100 hover:bg-sky-200 transition"
+                            title="Llamar"
+                          >
+                            <PhoneIcon className="w-4 h-4 text-sky-600" />
+                          </a>
+                        )}
 
-          {/* Llamar */}
-          {lead.telefono && (
-            <a
-              href={`tel:${lead.telefono}`}
-              className="p-1.5 rounded-lg bg-sky-100 hover:bg-sky-200 transition"
-              title="Llamar"
-            >
-              <PhoneIcon className="w-4 h-4 text-sky-600" />
-            </a>
-          )}
+                        {/* Email */}
+                        {lead.email && (
+                          <a
+                            href={`mailto:${lead.email}`}
+                            className="p-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 transition"
+                            title="Enviar email"
+                          >
+                            <EnvelopeIcon className="w-4 h-4 text-amber-600" />
+                          </a>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
 
-          {/* Email */}
-          {lead.email && (
-            <a
-              href={`mailto:${lead.email}`}
-              className="p-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 transition"
-              title="Enviar email"
-            >
-              <EnvelopeIcon className="w-4 h-4 text-amber-600" />
-            </a>
-          )}
-        </div>
-      </td>
-    </tr>
-  ))}
-
-  {loading && (
-    <tr>
-      <td colSpan={10} className="px-4 py-6 text-center text-sm text-slate-400">
-        Cargando leads…
-      </td>
-    </tr>
-  )}
-</tbody>
-
+                {loading && (
+                  <tr>
+                    <td
+                      colSpan={10}
+                      className="px-4 py-6 text-center text-sm text-slate-400"
+                    >
+                      Cargando leads…
+                    </td>
+                  </tr>
+                )}
+              </tbody>
             </table>
           </div>
 
