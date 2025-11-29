@@ -1,7 +1,8 @@
 // src/pages/AdminLeads.jsx
 import React, { useEffect, useState } from "react";
 import AdminLogin from "../components/AdminLogin.jsx";
-import { PhoneIcon, EnvelopeIcon } from "@heroicons/react/24/outline"; // 👈 IMPORTADO
+import { PhoneIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
+
 
 // =====================================================
 // BACKEND HabitaLibre (Render)
@@ -591,6 +592,7 @@ const AdminLeads = () => {
                             title="Llamar"
                           >
                             <PhoneIcon className="w-4 h-4 text-sky-600" />
+
                           </a>
                         )}
 
