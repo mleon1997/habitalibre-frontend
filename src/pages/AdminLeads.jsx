@@ -3,7 +3,6 @@ import React, { useEffect, useState } from "react";
 import AdminLogin from "../components/AdminLogin.jsx";
 import { PhoneIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
 
-
 // =====================================================
 // BACKEND HabitaLibre (Render)
 // =====================================================
@@ -340,7 +339,9 @@ const AdminLeads = () => {
           <KpiCard
             label="Leads hoy"
             value={stats.hoy}
-            subtitle={loadingStats ? "Calculando…" : "Ingresados en las últimas 24h"}
+            subtitle={
+              loadingStats ? "Calculando…" : "Ingresados en las últimas 24h"
+            }
           />
           <KpiCard
             label="Esta semana"
@@ -394,7 +395,7 @@ const AdminLeads = () => {
               </label>
               <input
                 type="text"
-                placeholder("Quito, Guayaquil…")
+                placeholder="Quito, Guayaquil…"
                 value={ciudad}
                 onChange={(e) => setCiudad(e.target.value)}
                 className="h-9 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white"
@@ -579,7 +580,7 @@ const AdminLeads = () => {
                               className="w-4 h-4 text-green-600"
                               fill="currentColor"
                             >
-                              <path d="M380.9 97.1C339-... recortado ..." />
+                              <path d="M380.9 97.1C339-3.6 280.4-15.4 224.2-15.4c-59.2 0-114.5 22.9-156.5 64.9C25.7 95.4 2.8 150.7 2.8 209.9c0 45.3 13.4 89.5 38.8 127.6L0 480l145-40.7c36.1 19.7 76.6 30 118.3 30h.1c59 0 114.3-22.9 156.4-64.9 42-42 65-97.3 65-156.5-.1-59.2-23-114.5-65-156.5zM224.2 438.6c-36.6 0-72.4-9.8-103.6-28.3l-7.4-4.4-85.9 24.1L52 344.3l-4.8-7.8c-23.6-38.2-36.1-82.3-36.1-127.1 0-130.1 106-236.1 236.1-236.1 63.1 0 122.3 24.6 166.7 69.1 44.4 44.4 68.8 103.6 68.8 166.7 0 130.1-106 236.1-236 236.1zm130.2-176.4c-7.1-3.5-42.3-20.9-48.8-23.2-6.5-2.4-11.2-3.5-15.9 3.5-4.7 7.1-18.2 23.2-22.3 27.9-4.1 4.7-8.2 5.3-15.3 1.8-7.1-3.5-30.1-11.1-57.3-35.4-21.2-18.9-35.5-42.3-39.6-49.4-4.1-7.1-.4-10.9 3.1-14.3 3.2-3.2 7.1-8.2 10.6-12.4 3.5-4.1 4.7-7.1 7.1-11.8 2.4-4.7 1.2-8.8-.6-12.4-1.8-3.5-15.9-38.3-21.8-52.5-5.7-13.8-11.5-11.9-15.9-12.1-4.1-.2-8.8-.2-13.5-.2s-12.4 1.8-18.9 8.8c-6.5 7.1-24.7 24.1-24.7 58.8 0 34.7 25.3 68.2 28.8 72.9 3.5 4.7 49.8 76.1 120.7 106.7 16.9 7.3 30.1 11.7 40.3 15 16.9 5.4 32.3 4.6 44.5 2.8 13.6-2 42.3-17.3 48.2-34.1 5.9-16.8 5.9-31.2 4.1-34.1-1.8-2.9-6.5-4.7-13.6-8.2z" />
                             </svg>
                           </a>
                         )}
@@ -592,7 +593,6 @@ const AdminLeads = () => {
                             title="Llamar"
                           >
                             <PhoneIcon className="w-4 h-4 text-sky-600" />
-
                           </a>
                         )}
 
