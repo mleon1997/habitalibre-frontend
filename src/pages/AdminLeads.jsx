@@ -1,7 +1,7 @@
 // src/pages/AdminLeads.jsx
 import React, { useEffect, useState } from "react";
 import AdminLogin from "../components/AdminLogin.jsx";
-import { PhoneIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
+import { EnvelopeIcon } from "@heroicons/react/24/outline";
 
 // =====================================================
 // BACKEND HabitaLibre (Render)
@@ -585,14 +585,27 @@ const AdminLeads = () => {
                           </a>
                         )}
 
-                        {/* Llamar */}
+                        {/* Llamar – SVG en lugar de PhoneIcon */}
                         {lead.telefono && (
                           <a
                             href={`tel:${lead.telefono}`}
                             className="p-1.5 rounded-lg bg-sky-100 hover:bg-sky-200 transition"
                             title="Llamar"
                           >
-                            <PhoneIcon className="w-4 h-4 text-sky-600" />
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              className="w-4 h-4 text-sky-600"
+                              stroke="currentColor"
+                              strokeWidth="1.7"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M2.25 4.5l4.5-2.25L9 6 6.75 7.5a11.25 11.25 0 005.25 5.25L13.5 10.5 18 11.25l-2.25 4.5c-.15.3-.42.54-.75.63-1.26.36-4.98-.66-7.5-3.18C4.98 10.68 3.96 6.96 4.32 5.7c.09-.33.33-.6.63-.75z"
+                              />
+                            </svg>
                           </a>
                         )}
 
