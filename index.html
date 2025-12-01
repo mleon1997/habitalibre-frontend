@@ -14,16 +14,83 @@
 
     <link rel="canonical" href="https://habitalibre.com/" />
 
-    <!-- Open Graph / Redes sociales -->
+    <!-- Open Graph (para WhatsApp/IG/Facebook) -->
     <meta property="og:title" content="HabitaLibre – Hipoteca exprés en 2 minutos" />
     <meta
       property="og:description"
-      content="Precalifícate para tu hipoteca en 2 minutos, sin afectar tu buró. VIS, VIP, BIESS o banca privada."
+      content="Precalifícate en 2 minutos para créditos VIS, VIP, BIESS y banca privada sin afectar tu buró."
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://habitalibre.com/" />
-    <!-- Ajusta la ruta si tu preview se llama diferente -->
     <meta property="og:image" content="https://habitalibre.com/preview.jpg" />
+
+    <!-- ============================================================
+         Schema.org – WebApplication (Calculadora Hipotecaria)
+    ============================================================ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Calculadora de hipoteca HabitaLibre",
+      "url": "https://habitalibre.com/",
+      "applicationCategory": "FinanceApplication",
+      "operatingSystem": "Web browser",
+      "inLanguage": "es-EC",
+      "description": "Calculadora hipotecaria en línea que te precalifica en menos de 2 minutos y te ayuda a saber cuánto puedes comprar y con qué tipo de crédito: VIS, VIP, BIESS o banca privada.",
+      "publisher": {
+        "@type": "Organization",
+        "name": "HabitaLibre",
+        "url": "https://habitalibre.com/"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "category": "Financing",
+        "description": "Precalificación hipotecaria gratuita en línea para créditos VIS, VIP, BIESS y banca privada en Ecuador."
+      },
+      "featureList": [
+        "Precalificación hipotecaria en menos de 2 minutos",
+        "Simulación de cuota mensual según ingreso",
+        "Identificación de si calificas a VIS, VIP, BIESS o banca privada",
+        "Reporte descargable para presentar al banco o promotor"
+      ]
+    }
+    </script>
+
+    <!-- ============================================================
+         Schema.org – Organization (Marca HabitaLibre)
+    ============================================================ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "HabitaLibre",
+      "url": "https://habitalibre.com/",
+      "legalName": "HabitaLibre",
+      "logo": "https://habitalibre.com/hl-logo.png",
+      "description": "Plataforma digital en Ecuador que te ayuda a conseguir tu vivienda propia: precalificación hipotecaria exprés para créditos VIS, VIP, BIESS y banca privada, 100% online y sin afectar tu buró.",
+      "foundingDate": "2025",
+      "foundingLocation": "Quito, Ecuador",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Quito",
+        "addressRegion": "Pichincha",
+        "addressCountry": "EC"
+      },
+      "contactPoint": [
+        {
+          "@type": "ContactPoint",
+          "contactType": "customer support",
+          "email": "hello@habitalibre.com",
+          "availableLanguage": ["es"]
+        }
+      ],
+      "sameAs": [
+        "https://www.instagram.com/habitalibre.ec"
+      ]
+    }
+    </script>
 
     <!-- Google Tag Manager -->
     <script>
@@ -42,7 +109,9 @@
       })(window, document, "script", "dataLayer", "GTM-5WQHH9QD");
     </script>
     <!-- End Google Tag Manager -->
+
   </head>
+
   <body>
     <!-- Google Tag Manager (noscript) -->
     <noscript>
@@ -56,8 +125,8 @@
     <!-- End Google Tag Manager (noscript) -->
 
     <div id="root"></div>
-    <!-- Portal aislado: el modal vivirá aquí, fuera del árbol principal -->
     <div id="modal-root"></div>
+
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

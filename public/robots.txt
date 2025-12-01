@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+
+# Bloquear rutas internas que no deben indexarse
+Disallow: /login
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /api
+Disallow: /assets/
+Disallow: /private/
+Disallow: /404
+
+# Evitar indexación de parámetros basura
+Disallow: /*?
+
+# Sitemap oficial
+Sitemap: https://habitalibre.com/sitemap.xml
