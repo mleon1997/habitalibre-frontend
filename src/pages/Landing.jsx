@@ -1194,6 +1194,135 @@ export default function Landing({ onStart }) {
         </div>
       </motion.section>
 
+            {/* FAQ – Preguntas frecuentes */}
+      <motion.section
+        id="faq"
+        className="border-t border-slate-800 bg-slate-950 scroll-mt-20"
+        {...fadeUp}
+      >
+        <div className="mx-auto max-w-6xl px-4 py-12 md:py-16">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-[11px] text-slate-300 mb-3">
+                <SparklesIcon className="h-3.5 w-3.5 text-emerald-400" />
+                <span>Resolvemos tus dudas clave</span>
+              </div>
+              <h2 className="text-xl md:text-2xl font-semibold text-slate-50">
+                Preguntas frecuentes
+              </h2>
+              <p className="mt-2 text-sm text-slate-400 max-w-xl">
+                Antes de avanzar con tu hipoteca, es normal tener preguntas.
+                Aquí respondemos las más comunes sobre cómo funciona HabitaLibre.
+              </p>
+            </div>
+          </div>
+
+          {/* FAQ items */}
+          <div className="space-y-3 text-sm">
+            <details className="group rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3">
+              <summary className="flex items-center justify-between cursor-pointer list-none">
+                <span className="font-medium text-slate-100">
+                  ¿HabitaLibre afecta mi buró de crédito?
+                </span>
+                <span className="ml-3 text-slate-500 group-open:rotate-180 transition-transform">
+                  ▾
+                </span>
+              </summary>
+              <p className="mt-2 text-xs text-slate-300">
+                No. La precalificación de HabitaLibre es referencial y se realiza
+                sin consultar tu buró de crédito, por lo que no genera impactos
+                negativos. Puedes simular tu hipoteca todas las veces que quieras
+                sin afectar tu historial.
+              </p>
+            </details>
+
+            <details className="group rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3">
+              <summary className="flex items-center justify-between cursor-pointer list-none">
+                <span className="font-medium text-slate-100">
+                  ¿Con qué tipos de crédito trabaja HabitaLibre?
+                </span>
+                <span className="ml-3 text-slate-500 group-open:rotate-180 transition-transform">
+                  ▾
+                </span>
+              </summary>
+              <p className="mt-2 text-xs text-slate-300">
+                Hoy te ayudamos a estimar si calificas para un crédito hipotecario
+                VIS, VIP, BIESS o banca privada tradicional en Ecuador. El
+                simulador sugiere qué tipo de crédito se adapta mejor a tu perfil.
+              </p>
+            </details>
+
+            <details className="group rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3">
+              <summary className="flex items-center justify-between cursor-pointer list-none">
+                <span className="font-medium text-slate-100">
+                  ¿Tiene algún costo usar HabitaLibre?
+                </span>
+                <span className="ml-3 text-slate-500 group-open:rotate-180 transition-transform">
+                  ▾
+                </span>
+              </summary>
+              <p className="mt-2 text-xs text-slate-300">
+                No. Usar HabitaLibre y obtener tu precalificación es totalmente
+                gratuito.
+              </p>
+            </details>
+
+            <details className="group rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3">
+              <summary className="flex items-center justify-between cursor-pointer list-none">
+                <span className="font-medium text-slate-100">
+                  ¿Qué información necesito para precalificarme?
+                </span>
+                <span className="ml-3 text-slate-500 group-open:rotate-180 transition-transform">
+                  ▾
+                </span>
+              </summary>
+              <p className="mt-2 text-xs text-slate-300">
+                Solo necesitas ingresar tu ingreso mensual, si tienes deudas
+                vigentes, el plazo aproximado del crédito que te interesa y algunos
+                datos básicos de contacto. No solicitamos claves bancarias ni
+                información sensible.
+              </p>
+            </details>
+
+            <details className="group rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3">
+              <summary className="flex items-center justify-between cursor-pointer list-none">
+                <span className="font-medium text-slate-100">
+                  ¿La precalificación es una aprobación definitiva del banco?
+                </span>
+                <span className="ml-3 text-slate-500 group-open:rotate-180 transition-transform">
+                  ▾
+                </span>
+              </summary>
+              <p className="mt-2 text-xs text-slate-300">
+                No. La precalificación de HabitaLibre es una estimación orientativa
+                basada en criterios habituales de los bancos en Ecuador. La
+                aprobación definitiva del crédito siempre depende de cada entidad
+                financiera tras analizar tu documentación completa.
+              </p>
+            </details>
+
+            <details className="group rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3">
+              <summary className="flex items-center justify-between cursor-pointer list-none">
+                <span className="font-medium text-slate-100">
+                  ¿Puedo usar el resultado para negociar con un promotor o banco?
+                </span>
+                <span className="ml-3 text-slate-500 group-open:rotate-180 transition-transform">
+                  ▾
+                </span>
+              </summary>
+              <p className="mt-2 text-xs text-slate-300">
+                Sí. El reporte de HabitaLibre resume tu capacidad de compra y el
+                tipo de crédito más probable, por lo que es una base útil para
+                conversar con promotores de vivienda y bancos sobre opciones
+                concretas.
+              </p>
+            </details>
+          </div>
+        </div>
+      </motion.section>
+
+
       {/* FOOTER – Disclaimer + Links */}
       <footer className="border-t border-slate-800 bg-slate-950 py-7 mt-4">
         <div className="mx-auto max-w-6xl px-4 text-center text-[11px] text-slate-500 leading-relaxed">
