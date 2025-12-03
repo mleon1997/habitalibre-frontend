@@ -60,6 +60,9 @@ export default function Landing({ onStart }) {
     viewport: { once: true, amount: 0.3 },
   };
 
+
+
+
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50">
       {/* NAVBAR */}
@@ -1322,6 +1325,34 @@ export default function Landing({ onStart }) {
         </div>
       </motion.section>
 
+        {/* FOOTER */}
+<footer className="mt-20 py-10 border-t border-slate-800 text-center text-slate-400">
+  <p className="mb-4 text-sm">Síguenos en nuestras redes</p>
+
+  <div className="flex justify-center gap-6 text-slate-300">
+    {/* Instagram */}
+    <a
+      href="https://www.instagram.com/habitalibre.ec/"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="hover:text-white transition"
+    >
+      <i className="fa-brands fa-instagram text-2xl"></i>
+    </a>
+
+    {/* Facebook */}
+    <a
+      href="https://www.facebook.com/profile.php?id=61584282855630"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="hover:text-white transition"
+    >
+      <i className="fa-brands fa-facebook text-2xl"></i>
+    </a>
+  </div>
+</footer>
+
+
 
       {/* FOOTER – Disclaimer + Links */}
       <footer className="border-t border-slate-800 bg-slate-950 py-7 mt-4">
@@ -1361,6 +1392,8 @@ export default function Landing({ onStart }) {
           </div>
         </div>
       </footer>
+
+      
 
       {/* LEGAL MODAL */}
       {activeLegalSection && (
