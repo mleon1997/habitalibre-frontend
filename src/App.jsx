@@ -22,6 +22,8 @@ import AdminLeads from "./pages/AdminLeads.jsx";
 import PoliticaPrivacidad from "./pages/PoliticaPrivacidad.jsx";
 import TerminosUso from "./pages/TerminosUso.jsx";
 import PoliticaCookies from "./pages/PoliticaCookies.jsx";
+import LandingAds from "./pages/LandingAds.jsx";
+
 
 function SimuladorPage() {
   return (
@@ -48,6 +50,10 @@ export default function App() {
           {/* Admin viejo */}
           <Route path="/admin" element={<Admin />} />
 
+          {/* Landing corta para Ads */}
+<Route path="/ads" element={<LandingAds />} />
+
+
           {/* Dashboard interno de leads */}
           <Route path="/admin/leads" element={<AdminLeads />} />
 
@@ -61,6 +67,7 @@ export default function App() {
           <Route path="/privacidad" element={<PoliticaPrivacidad />} />
           <Route path="/terminos" element={<TerminosUso />} />
           <Route path="/cookies" element={<PoliticaCookies />} />
+
 
           {/* Fallback SIEMPRE al final */}
           <Route path="*" element={<Navigate to="/" replace />} />
