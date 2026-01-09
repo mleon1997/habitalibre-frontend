@@ -1,11 +1,14 @@
 // src/components/WizardHL.jsx
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { precalificar } from "../lib/api";
 import { useLeadCapture } from "../context/LeadCaptureContext.jsx";
+import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
+import * as customerApi from "../lib/customerApi.js";
+import { saveJourneyLocal } from "../lib/journeyLocal.js";
 
 const TOTAL_STEPS = 4;
 
-// Opciones para horizonte de compra
 const HORIZONTE_OPCIONES = [
   { value: "0-3", label: "En los próximos 0–3 meses" },
   { value: "3-12", label: "En 3–12 meses" },
@@ -13,79 +16,14 @@ const HORIZONTE_OPCIONES = [
   { value: "explorando", label: "Solo estoy explorando" },
 ];
 
-/* ===========================================================
-   INPUT NUMÉRICO (solo para campos especiales si lo necesitas)
-=========================================================== */
-function NumericInput({
-  value,
-  onChangeFinal,
-  placeholder,
-  min,
-  max,
-  integer = false,
-}) {
-  const [inner, setInner] = useState(value ?? "");
-
-  useEffect(() => {
-    setInner(value ?? "");
-  }, [value]);
-
-  const handleChange = (e) => {
-    const raw = e.target.value;
-
-    if (raw === "") {
-      setInner("");
-      onChangeFinal("");
-      return;
-    }
-
-    let num = Number(raw);
-    if (!Number.isFinite(num)) return;
-
-    if (typeof min === "number" && num < min) num = min;
-    if (typeof max === "number" && num > max) num = max;
-    if (integer) num = Math.round(num);
-
-    const finalStr = String(num);
-    setInner(finalStr);
-    onChangeFinal(finalStr);
-  };
-
-  const handleKeyDown = (e) => {
-    if (["e", "E", "+", "-"].includes(e.key)) {
-      e.preventDefault();
-    }
-  };
-
-  return (
-    <input
-      type="number"
-      inputMode="numeric"
-      value={inner}
-      placeholder={placeholder}
-      onChange={handleChange}
-      onKeyDown={handleKeyDown}
-      min={min}
-      max={max}
-      step={integer ? 1 : "0.01"}
-      className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50 placeholder-slate-500 outline-none ring-0 transition focus:border-violet-400 focus:ring-2 focus:ring-violet-500/40"
-    />
-  );
-}
+// Keys locales
+const LS_LAST_RESULT = "hl_last_result";
+const LS_PENDING_JOURNEY = "hl_pending_journey";
 
 /* ===========================================================
-   SLIDER UNIFICADO (slider + input numérico)
+   SLIDER UNIFICADO
 =========================================================== */
-function SliderField({
-  label,
-  helper,
-  min,
-  max,
-  step = 1,
-  value,
-  onChange,
-  format = (v) => v,
-}) {
+function SliderField({ label, helper, min, max, step = 1, value, onChange, format = (v) => v }) {
   const num = Number(value) || 0;
 
   const handleChange = (e) => {
@@ -95,31 +33,22 @@ function SliderField({
   };
 
   const handleInputChange = (e) => {
-    // Permitimos escribir montos exactos aunque el slider tenga rango muy grande
     let raw = e.target.value.replace(/[^0-9]/g, "");
     if (raw === "") {
       onChange("0");
       return;
     }
-
     let n = Number(raw);
     if (!Number.isFinite(n)) return;
-
     if (typeof min === "number" && n < min) n = min;
     if (typeof max === "number" && n > max) n = max;
-
     onChange(String(n));
   };
 
   return (
     <div className="mb-4">
-      {label && (
-        <label className="mb-1 block text-xs font-medium text-slate-200">
-          {label}
-        </label>
-      )}
+      {label && <label className="mb-1 block text-xs font-medium text-slate-200">{label}</label>}
 
-      {/* Etiquetas arriba */}
       <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
         <span>{format(num)}</span>
         <span className="opacity-70">
@@ -127,7 +56,6 @@ function SliderField({
         </span>
       </div>
 
-      {/* Slider + input numérico exacto */}
       <div className="flex items-center gap-3">
         <input
           type="range"
@@ -136,26 +64,7 @@ function SliderField({
           step={step}
           value={num}
           onChange={handleChange}
-          className="
-            flex-1 cursor-pointer touch-pan-y accent-violet-400
-
-            [&::-webkit-slider-thumb]:appearance-none
-            [&::-webkit-slider-thumb]:h-4
-            [&::-webkit-slider-thumb]:w-4
-            [&::-webkit-slider-thumb]:rounded-full
-            [&::-webkit-slider-thumb]:bg-white
-            [&::-webkit-slider-thumb]:border
-            [&::-webkit-slider-thumb]:border-violet-500
-            [&::-webkit-slider-thumb]:shadow
-
-            [&::-moz-range-thumb]:h-4
-            [&::-moz-range-thumb]:w-4
-            [&::-moz-range-thumb]:rounded-full
-            [&::-moz-range-thumb]:bg-white
-            [&::-moz-range-thumb]:border
-            [&::-moz-range-thumb]:border-violet-500
-            [&::-moz-range-thumb]:shadow
-          "
+          className="flex-1 cursor-pointer touch-pan-y accent-violet-400"
         />
 
         <input
@@ -166,15 +75,18 @@ function SliderField({
         />
       </div>
 
-      {helper && (
-        <p className="mt-1 text-[11px] text-slate-400 leading-snug">{helper}</p>
-      )}
+      {helper && <p className="mt-1 text-[11px] text-slate-400">{helper}</p>}
     </div>
   );
 }
 
-export default function WizardHL({ onResult }) {
+export default function WizardHL({ mode = "quick", onboarding = false }) {
+  const navigate = useNavigate();
   const { openLead } = useLeadCapture();
+  const { isAuthed } = useCustomerAuth();
+
+  // ✅ fuente única de verdad
+  const isJourneyMode = String(mode || "").toLowerCase() === "journey";
 
   const [step, setStep] = useState(1);
 
@@ -185,10 +97,7 @@ export default function WizardHL({ onResult }) {
 
   const [tipoIngreso, setTipoIngreso] = useState("Dependiente");
   const [aniosEstabilidad, setAniosEstabilidad] = useState("2");
-
-  // Cómo sustenta ingresos si es independiente/mixto
-  const [sustentoIndependiente, setSustentoIndependiente] =
-    useState("declaracion");
+  const [sustentoIndependiente, setSustentoIndependiente] = useState("declaracion");
 
   const [tieneVivienda, setTieneVivienda] = useState("no");
   const [primeraVivienda, setPrimeraVivienda] = useState("sí");
@@ -205,7 +114,6 @@ export default function WizardHL({ onResult }) {
   const [aportesTotales, setAportesTotales] = useState("0");
   const [aportesConsecutivos, setAportesConsecutivos] = useState("0");
 
-  // 🌟 Horizonte
   const [horizonteCompra, setHorizonteCompra] = useState("");
 
   const [loading, setLoading] = useState(false);
@@ -217,11 +125,8 @@ export default function WizardHL({ onResult }) {
   };
 
   const afiliadoBool = afiliadoIESS === "sí";
-  const esParejaFormal =
-    estadoCivil === "casado" || estadoCivil === "union_de_hecho";
-
-  const ingresoUsado =
-    toNum(ingreso) + (esParejaFormal ? toNum(ingresoPareja) : 0);
+  const esParejaFormal = estadoCivil === "casado" || estadoCivil === "union_de_hecho";
+  const ingresoUsado = toNum(ingreso) + (esParejaFormal ? toNum(ingresoPareja) : 0);
 
   const preview = useMemo(() => {
     const v = toNum(valor);
@@ -236,24 +141,18 @@ export default function WizardHL({ onResult }) {
     return Math.round((e / v) * 100);
   }, [valor, entrada]);
 
-  // VALIDACIONES (para avanzar de paso)
   function validate(s) {
-    if (
-      s === 1 &&
-      (tipoIngreso === "Dependiente" || tipoIngreso === "Mixto") &&
-      toNum(aniosEstabilidad) < 1
-    ) {
+    if (s === 1 && (tipoIngreso === "Dependiente" || tipoIngreso === "Mixto") && toNum(aniosEstabilidad) < 1)
       return "Mínimo 1 año en tu empleo actual o actividad principal.";
-    }
 
-    if (s === 2 && ingresoUsado < 400)
-      return "El ingreso considerado (tuyo + pareja si aplica) debe ser al menos $400.";
-    if (s === 3 && toNum(valor) < 30000)
-      return "El valor mínimo de vivienda que analizamos es $30.000.";
-    if (s === 3 && !horizonteCompra)
-      return "Elige en qué plazo te gustaría adquirir tu vivienda.";
-    if (s === 4 && (toNum(edad) < 21 || toNum(edad) > 75))
-      return "La edad debe estar entre 21 y 75 años.";
+    if (s === 2 && ingresoUsado < 400) return "El ingreso considerado (tuyo + pareja si aplica) debe ser al menos $400.";
+
+    if (s === 3 && toNum(valor) < 30000) return "El valor mínimo de vivienda que analizamos es $30.000.";
+
+    if (s === 3 && !horizonteCompra) return "Elige en qué plazo te gustaría adquirir tu vivienda.";
+
+    if (s === 4 && (toNum(edad) < 21 || toNum(edad) > 75)) return "La edad debe estar entre 21 y 75 años.";
+
     return null;
   }
 
@@ -269,7 +168,6 @@ export default function WizardHL({ onResult }) {
     setStep((s) => Math.max(1, s - 1));
   };
 
-  // PAYLOAD PARA EL BACKEND
   function buildEntrada() {
     return {
       nacionalidad,
@@ -278,11 +176,11 @@ export default function WizardHL({ onResult }) {
 
       tipoIngreso,
       aniosEstabilidad: toNum(aniosEstabilidad),
-
-      // Enviamos cómo sustenta ingresos si aplica
       sustentoIndependiente,
 
+      // backend espera afiliadoIess (tu /precalificar)
       afiliadoIess: afiliadoBool,
+
       tieneVivienda: tieneVivienda === "sí",
       primeraVivienda: primeraVivienda === "sí",
       tipoVivienda,
@@ -298,34 +196,93 @@ export default function WizardHL({ onResult }) {
       iessAportesConsecutivos: toNum(aportesConsecutivos),
 
       tiempoCompra: horizonteCompra || null,
-
-      origen: "simulador",
+      origen: isJourneyMode ? "journey" : "simulador",
     };
   }
 
+  function persistLastResult(resultado) {
+    try {
+      localStorage.setItem(
+        LS_LAST_RESULT,
+        JSON.stringify({
+          resultado,
+          updatedAt: new Date().toISOString(),
+        })
+      );
+    } catch {}
+  }
+
   async function handleCalcular() {
-    console.log("[WizardHL] Click en Ver resultados");
+    if (loading) return;
+
     const e = validate(4);
-    if (e) {
-      setErr(e);
-      return;
-    }
+    if (e) return setErr(e);
 
     setLoading(true);
+    setErr("");
+
     try {
-      const payload = buildEntrada();
-      console.log("[WizardHL] Payload enviado a precalificar:", payload);
-      const res = await precalificar(payload);
-      console.log("[WizardHL] Respuesta de precalificar:", res);
+      const entradaPayload = buildEntrada();
+      const result = await precalificar(entradaPayload);
 
-      // 👉 Guardamos en contexto y abrimos el modal de lead
-      openLead(res);
+      // ✅ Siempre guarda last_result
+      persistLastResult(result);
 
-      // Compatibilidad por si algún contenedor usa onResult
-      onResult?.(res);
+      // =========================
+      // QUICK (simulador normal)
+      // =========================
+      if (!isJourneyMode) {
+        openLead(result);
+        return;
+      }
+
+      // =========================
+      // JOURNEY (camino)
+      // =========================
+
+      // ✅ SIEMPRE guardar snapshot local (para que Progreso tenga data sí o sí)
+      saveJourneyLocal({
+        input: entradaPayload,
+        resultado: result,
+        updatedAt: new Date().toISOString(),
+      });
+
+      // ✅ si NO hay sesión: guarda pending y manda a login
+      if (!isAuthed) {
+        try {
+          localStorage.setItem(
+            LS_PENDING_JOURNEY,
+            JSON.stringify({
+              entrada: entradaPayload,
+              resultado: result,
+              status: "precalificado",
+              ts: Date.now(),
+            })
+          );
+        } catch {}
+
+        navigate("/login", { state: { returnTo: "/progreso", from: "simular_journey" } });
+        return;
+      }
+
+      // ✅ si HAY sesión: guarda en backend (sync)
+      await customerApi.saveJourney({
+        entrada: entradaPayload,
+        resultado: result,
+        status: "precalificado",
+      });
+
+      navigate("/progreso");
     } catch (ex) {
       console.error(ex);
-      setErr("No se pudo calcular tu resultado ahora.");
+
+      if (isJourneyMode && String(ex?.message || "").includes("NO_TOKEN")) {
+        setErr("Inicia sesión para guardar tu progreso.");
+        navigate("/login", { state: { returnTo: "/progreso", from: "simular_journey" } });
+        return;
+      }
+
+      setErr(isJourneyMode ? "No se pudo guardar tu progreso." : "No se pudo calcular tu resultado ahora.");
     } finally {
       setLoading(false);
     }
@@ -333,41 +290,35 @@ export default function WizardHL({ onResult }) {
 
   const progress = (step / TOTAL_STEPS) * 100;
 
-  // Helpers visuales
   const Field = ({ label, children, helper }) => (
-    <div className="mb-4 relative">
-      <label className="mb-1 block text-xs font-medium text-slate-200">
-        {label}
-      </label>
+    <div className="mb-4">
+      <label className="mb-1 block text-xs font-medium text-slate-200">{label}</label>
       {children}
-      {helper && (
-        <p className="mt-1 text-[11px] text-slate-400 leading-snug">{helper}</p>
-      )}
+      {helper && <p className="mt-1 text-[11px] text-slate-400">{helper}</p>}
     </div>
   );
 
-  // ============================
-  // RENDER
-  // ============================
   return (
     <div className="text-slate-50 relative z-[10]">
-      {/* Header */}
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight">
-            Simulador HabitaLibre
-          </h2>
+          <h2 className="text-lg font-semibold tracking-tight">{isJourneyMode ? "Camino HabitaLibre" : "Simulador HabitaLibre"}</h2>
           <p className="text-[11px] text-slate-400">
-            Completa los pasos y te mostramos un resultado claro en menos de 2
-            minutos.
+            Completa los pasos y te mostramos un resultado claro en menos de 2 minutos.
           </p>
+
+          {onboarding && isJourneyMode ? (
+            <div className="mt-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-100">
+              Este “Camino” guarda tu progreso para que puedas volver cuando quieras.
+            </div>
+          ) : null}
         </div>
+
         <span className="rounded-full bg-slate-900/80 px-3 py-1 text-[11px] text-slate-300 ring-1 ring-slate-700/80">
           Paso {step}/{TOTAL_STEPS}
         </span>
       </div>
 
-      {/* Barra */}
       <div className="mb-5 h-1.5 w-full overflow-hidden rounded-full bg-slate-800/80">
         <div
           className="h-full bg-gradient-to-r from-violet-400 via-fuchsia-400 to-sky-400 transition-all"
@@ -375,7 +326,7 @@ export default function WizardHL({ onResult }) {
         />
       </div>
 
-      {/* Paso 1: Datos básicos */}
+      {/* PASO 1 */}
       {step === 1 && (
         <div>
           <Field label="Nacionalidad">
@@ -406,15 +357,7 @@ export default function WizardHL({ onResult }) {
             </select>
           </Field>
 
-          {/* Edad como slider */}
-          <SliderField
-            label="Edad"
-            min={21}
-            max={75}
-            value={edad}
-            onChange={setEdad}
-            format={(v) => `${v} años`}
-          />
+          <SliderField label="Edad" min={21} max={75} value={edad} onChange={setEdad} format={(v) => `${v} años`} />
 
           <Field label="Tipo de ingreso">
             <select
@@ -428,7 +371,6 @@ export default function WizardHL({ onResult }) {
             </select>
           </Field>
 
-          {/* Sólo Dependiente o Mixto → años de estabilidad */}
           {(tipoIngreso === "Dependiente" || tipoIngreso === "Mixto") && (
             <SliderField
               label="Años de estabilidad laboral"
@@ -441,22 +383,12 @@ export default function WizardHL({ onResult }) {
             />
           )}
 
-          {/* Independiente o Mixto → cómo sustenta ingresos */}
           {(tipoIngreso === "Independiente" || tipoIngreso === "Mixto") && (
-            <Field
-              label="¿Cómo sustentas tus ingresos?"
-              helper="Esto ayuda a saber si calificas mejor por IR o por historial bancario."
-            >
+            <Field label="¿Cómo sustentas tus ingresos?" helper="Esto ayuda a saber si calificas mejor por IR o por historial bancario.">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[13px]">
                 {[
-                  {
-                    value: "declaracion",
-                    label: "Declaración de Impuesto a la Renta",
-                  },
-                  {
-                    value: "movimientos",
-                    label: "Movimientos bancarios últimos 6 meses",
-                  },
+                  { value: "declaracion", label: "Declaración de Impuesto a la Renta" },
+                  { value: "movimientos", label: "Movimientos bancarios últimos 6 meses" },
                   { value: "ambos", label: "Ambos" },
                   { value: "informal", label: "Ninguno (ingreso informal)" },
                 ].map((opt) => {
@@ -482,9 +414,7 @@ export default function WizardHL({ onResult }) {
           )}
 
           {err && (
-            <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">
-              {err}
-            </div>
+            <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">{err}</div>
           )}
 
           <div className="mt-5 flex justify-end gap-3">
@@ -495,7 +425,7 @@ export default function WizardHL({ onResult }) {
         </div>
       )}
 
-      {/* Paso 2 */}
+      {/* PASO 2 */}
       {step === 2 && (
         <div className="space-y-6">
           <SliderField
@@ -504,11 +434,7 @@ export default function WizardHL({ onResult }) {
             max={20000}
             value={ingreso}
             onChange={setIngreso}
-            format={(v) =>
-              `$${Number(v || 0).toLocaleString("en-US", {
-                maximumFractionDigits: 0,
-              })}`
-            }
+            format={(v) => `$${Number(v || 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}`}
           />
 
           {["casado", "union_de_hecho"].includes(estadoCivil) && (
@@ -518,11 +444,7 @@ export default function WizardHL({ onResult }) {
               max={20000}
               value={ingresoPareja}
               onChange={setIngresoPareja}
-              format={(v) =>
-                `$${Number(v || 0).toLocaleString("en-US", {
-                  maximumFractionDigits: 0,
-                })}`
-              }
+              format={(v) => `$${Number(v || 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}`}
             />
           )}
 
@@ -532,11 +454,7 @@ export default function WizardHL({ onResult }) {
             max={15000}
             value={deudas}
             onChange={setDeudas}
-            format={(v) =>
-              `$${Number(v || 0).toLocaleString("en-US", {
-                maximumFractionDigits: 0,
-              })}`
-            }
+            format={(v) => `$${Number(v || 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}`}
           />
 
           <Field label="¿Estás afiliado al IESS?">
@@ -575,9 +493,7 @@ export default function WizardHL({ onResult }) {
           )}
 
           {err && (
-            <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">
-              {err}
-            </div>
+            <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">{err}</div>
           )}
 
           <div className="mt-5 flex justify-between gap-3">
@@ -591,91 +507,62 @@ export default function WizardHL({ onResult }) {
         </div>
       )}
 
-      {/* Paso 3 – Vivienda */}
+      {/* PASO 3 */}
       {step === 3 && (
         <div>
-          <h3 className="mb-3 text-sm font-semibold text-slate-100">
-            🏠 Vivienda
-          </h3>
+          <h3 className="mb-3 text-sm font-semibold text-slate-100">🏠 Vivienda</h3>
 
-          {/* Resumen rápido arriba */}
           <div className="mb-4 grid grid-cols-2 gap-3 text-[11px]">
             <div className="rounded-xl border border-slate-700/70 bg-slate-900/70 px-3 py-2">
               <p className="text-slate-400 mb-0.5">Valor objetivo</p>
               <p className="text-slate-50 font-semibold text-sm">
-                $
-                {toNum(valor).toLocaleString("en-US", {
-                  maximumFractionDigits: 0,
-                })}
+                ${toNum(valor).toLocaleString("en-US", { maximumFractionDigits: 0 })}
               </p>
             </div>
             <div className="rounded-xl border border-slate-700/70 bg-slate-900/70 px-3 py-2">
               <p className="text-slate-400 mb-0.5">Entrada aprox.</p>
               <p className="text-slate-50 font-semibold text-sm">
-                $
-                {toNum(entrada).toLocaleString("en-US", {
-                  maximumFractionDigits: 0,
-                })}{" "}
-                <span className="text-xs text-emerald-300">
-                  ({entradaPct || 0}%)
-                </span>
+                ${toNum(entrada).toLocaleString("en-US", { maximumFractionDigits: 0 })}{" "}
+                <span className="text-xs text-emerald-300">({entradaPct || 0}%)</span>
               </p>
             </div>
           </div>
 
-          {/* Campos valor + entrada en layout más limpio */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
-            <div>
-              <SliderField
-                label="Valor aproximado de la vivienda (USD)"
-                min={30000}
-                max={500000}
-                step={1000}
-                value={valor}
-                onChange={setValor}
-                format={(v) =>
-                  `$${Number(v || 0).toLocaleString("en-US", {
-                    maximumFractionDigits: 0,
-                  })}`
-                }
-              />
-            </div>
+            <SliderField
+              label="Valor aproximado de la vivienda (USD)"
+              min={30000}
+              max={500000}
+              step={1000}
+              value={valor}
+              onChange={setValor}
+              format={(v) => `$${Number(v || 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}`}
+            />
 
-            <div>
-              <SliderField
-                label="Entrada disponible (USD)"
-                helper="Incluye ahorros, cesantía, fondos de reserva u otros."
-                min={0}
-                max={500000}
-                step={500}
-                value={entrada}
-                onChange={setEntrada}
-                format={(v) =>
-                  `$${Number(v || 0).toLocaleString("en-US", {
-                    maximumFractionDigits: 0,
-                  })}`
-                }
-              />
-            </div>
+            <SliderField
+              label="Entrada disponible (USD)"
+              helper="Incluye ahorros, cesantía, fondos de reserva u otros."
+              min={0}
+              max={500000}
+              step={500}
+              value={entrada}
+              onChange={setEntrada}
+              format={(v) => `$${Number(v || 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}`}
+            />
           </div>
 
-          {/* Mensajes suaves según la relación entrada / valor */}
           {toNum(entrada) > toNum(valor) && (
             <p className="mb-3 text-[11px] text-amber-300">
-              Tu entrada es mayor que el valor de la vivienda. Puedes reducirla
-              o ajustar el valor objetivo si lo deseas.
+              Tu entrada es mayor que el valor de la vivienda. Puedes reducirla o ajustar el valor objetivo.
             </p>
           )}
 
           {entradaPct > 0 && entradaPct < 5 && (
             <p className="mb-3 text-[11px] text-slate-400">
-              Estás partiendo con una entrada baja (&lt; 5%). En el reporte te
-              mostraremos qué pasa si aumentas un poco la entrada o ajustas
-              plazo.
+              Estás partiendo con una entrada baja (&lt; 5%). En el reporte te mostraremos opciones.
             </p>
           )}
 
-          {/* Resto de campos de vivienda */}
           <Field label="¿Tienes actualmente una vivienda?">
             <select
               className="w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-50"
@@ -709,7 +596,6 @@ export default function WizardHL({ onResult }) {
             </select>
           </Field>
 
-          {/* 🌟 HORIZONTE COMO CHIPS SUPER VISIBLES */}
           <Field label="¿En qué plazo te gustaría adquirir tu vivienda?">
             <fieldset className="grid grid-cols-2 gap-2 text-[13px]">
               {HORIZONTE_OPCIONES.map((opt) => {
@@ -730,9 +616,7 @@ export default function WizardHL({ onResult }) {
                     <span
                       className={[
                         "ml-2 flex h-5 w-5 items-center justify-center rounded-full border text-[11px] font-bold",
-                        selected
-                          ? "border-slate-900 bg-slate-900 text-emerald-400"
-                          : "border-slate-600 text-slate-500",
+                        selected ? "border-slate-900 bg-slate-900 text-emerald-400" : "border-slate-600 text-slate-500",
                       ].join(" ")}
                     >
                       ✓
@@ -744,19 +628,13 @@ export default function WizardHL({ onResult }) {
 
             <p className="mt-1 text-[11px] text-slate-400">
               {horizonteCompra
-                ? `Has seleccionado: ${
-                    HORIZONTE_OPCIONES.find(
-                      (o) => o.value === horizonteCompra
-                    )?.label || ""
-                  }`
+                ? `Has seleccionado: ${HORIZONTE_OPCIONES.find((o) => o.value === horizonteCompra)?.label || ""}`
                 : "Selecciona una opción para continuar."}
             </p>
           </Field>
 
           {err && (
-            <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">
-              {err}
-            </div>
+            <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">{err}</div>
           )}
 
           <div className="mt-5 flex justify-between gap-3">
@@ -770,58 +648,46 @@ export default function WizardHL({ onResult }) {
         </div>
       )}
 
-      {/* Paso 4 */}
+      {/* PASO 4 */}
       {step === 4 && (
         <div>
-          <h3 className="mb-3 text-sm font-semibold text-slate-100">
-            ✅ Listo para ver tu resultado
-          </h3>
+          <h3 className="mb-3 text-sm font-semibold text-slate-100">✅ Listo para ver tu resultado</h3>
 
           <p className="text-[11px] text-slate-400 mb-3">
-            Revisaremos tu capacidad de pago, tipo de crédito (VIS/VIP/BIESS/
-            privado) y te mostraremos un resumen claro. No afecta tu buró.
+            Revisaremos tu capacidad de pago, tipo de crédito (VIS/VIP/BIESS/privado) y te mostraremos un resumen claro.
           </p>
 
           <div className="mb-3 text-[11px] text-slate-500">
             Monto referencial a analizar:
             <span className="font-semibold text-slate-100">
               {" "}
-              $
-              {preview.loan.toLocaleString("en-US", {
-                maximumFractionDigits: 0,
-              })}
+              ${preview.loan.toLocaleString("en-US", { maximumFractionDigits: 0 })}
             </span>
           </div>
 
-          {err && (
-            <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">
-              {err}
+          {isJourneyMode && (
+            <div className="mb-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-100">
+              En modo Camino, al ver resultados se guardará tu progreso en tu cuenta (si estás logueado).
             </div>
+          )}
+
+          {err && (
+            <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">{err}</div>
           )}
 
           <div className="mt-5 flex items-center justify-between gap-3">
             <button className="btn-ghost btn-sm" onClick={back}>
               Atrás
             </button>
-            <button
-              className="btn-primary btn-sm"
-              onClick={handleCalcular}
-              disabled={loading}
-            >
-              {loading ? "Analizando perfil…" : "Ver resultados"}
+            <button className="btn-primary btn-sm" onClick={handleCalcular} disabled={loading}>
+              {loading ? "Analizando…" : "Ver resultados"}
             </button>
           </div>
 
-          {/* AVISO LEGAL */}
           <div className="mt-4 flex items-start gap-2">
             <span className="text-slate-500 text-lg">⚖️</span>
             <p className="text-[11px] text-slate-500 leading-relaxed">
-              Las simulaciones generadas por HabitaLibre son estimaciones
-              referenciales basadas en los datos que ingresas. No constituyen
-              una oferta formal de crédito, una aprobación hipotecaria ni
-              asesoría financiera personalizada. La aprobación y las condiciones
-              finales dependen exclusivamente de la evaluación oficial de cada
-              entidad financiera.
+              Las simulaciones generadas por HabitaLibre son estimaciones referenciales. No constituyen aprobación ni oferta formal.
             </p>
           </div>
         </div>

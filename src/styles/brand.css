@@ -1,100 +1,49 @@
 /* ─────────────────────────────────────────────
-   🎨 HabitaLibre Brand System
-   Fintech visual identity – estilo Nubank / Revolut
+   🎨 HabitaLibre Brand System (Tokens + Helpers)
+   - Sin @import (PostCSS friendly)
+   - Compatible con Tailwind
 ────────────────────────────────────────────── */
-
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
 
 /* ─────────── COLORES PRINCIPALES ─────────── */
 :root {
-  --brand-primary: #2954FF;
-  --brand-secondary: #1E3EE6;
-  --brand-bg: #F8FAFC;
-  --brand-text: #1E293B;
-  --brand-accent: #10B981;
-  --brand-error: #EF4444;
-  --brand-shadow: rgba(0, 0, 0, 0.08);
+  --brand-primary: #2954ff;
+  --brand-secondary: #1e3ee6;
+
+  --brand-bg: #0b1020;         /* dark fintech base */
+  --brand-surface: #0f172a;    /* cards */
+  --brand-text: #e5e7eb;       /* text on dark */
+  --brand-muted: rgba(226, 232, 240, 0.7);
+
+  --brand-accent: #10b981;
+  --brand-error: #ef4444;
+
+  --brand-shadow: rgba(0, 0, 0, 0.35);
+  --brand-border: rgba(148, 163, 184, 0.14);
+
+  --ring-brand: rgba(41, 84, 255, 0.35);
 }
 
-/* ─────────── TIPOGRAFÍA ─────────── */
-body {
-  font-family: 'Inter', sans-serif;
-  color: var(--brand-text);
-  background-color: var(--brand-bg);
-  line-height: 1.6;
-  margin: 0;
-  padding: 0;
-}
+/* ─────────── HELPERS (opcionales) ─────────── */
+/* OJO: evita setear body/html aquí si ya lo haces en index.css con @apply */
 
-h1, h2, h3, h4 {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 600;
-  color: var(--brand-text);
-  margin-bottom: 0.5rem;
-}
-
-p {
-  margin-bottom: 1rem;
-}
-
-/* ─────────── BOTONES FINTECH ─────────── */
-.button-primary {
+.hl-hero-gradient {
   background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
   color: white;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 12px;
-  font-weight: 500;
-  font-family: 'Poppins', sans-serif;
-  transition: all 0.2s ease-in-out;
-  box-shadow: 0 4px 12px var(--brand-shadow);
-  cursor: pointer;
-}
-
-.button-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
-}
-
-/* ─────────── TARJETAS / SECCIONES ─────────── */
-.card {
-  background: white;
-  border-radius: 20px;
-  box-shadow: 0 4px 14px var(--brand-shadow);
-  padding: 24px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-}
-
-/* ─────────── HERO / CABECERA ─────────── */
-.hero-gradient {
-  background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
-  color: white;
-  padding: 80px 20px;
-  text-align: center;
   border-radius: 24px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 25px var(--brand-shadow);
 }
 
-.hero-gradient h1 {
-  font-size: 2.5rem;
-  margin-bottom: 1rem;
-  color: white;
+.hl-shadow-soft {
+  box-shadow: 0 6px 24px var(--brand-shadow);
 }
 
-/* ─────────── UTILIDADES ─────────── */
-.text-muted {
-  color: #64748B;
+.hl-surface {
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid var(--brand-border);
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
 }
 
-.shadow-soft {
-  box-shadow: 0 3px 10px var(--brand-shadow);
-}
-
-.rounded-xl {
-  border-radius: 1rem;
+.hl-text-muted {
+  color: var(--brand-muted);
 }

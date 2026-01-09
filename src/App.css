@@ -1,4 +1,17 @@
-/* src/App.css */
-body {
+/* =========================
+   RESET GLOBAL PRO (OBLIGATORIO)
+========================= */
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
   margin: 0;
+  padding: 0;
+}
+
+/* ❌ Esto rompe dashboards si existe */
+#root {
+  max-width: none !important;
 }

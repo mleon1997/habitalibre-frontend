@@ -1,10 +1,4 @@
-/* ===========================================================
-   1) IMPORTS — SIEMPRE PRIMERO
-=========================================================== */
 
-@import "@fontsource/plus-jakarta-sans/400.css";
-@import "@fontsource/plus-jakarta-sans/600.css";
-@import "@fontsource/plus-jakarta-sans/700.css";
 
 /* ===========================================================
    2) TAILWIND
@@ -13,6 +7,34 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ===========================================================
+   0) RESET LAYOUT (mata el template de Vite y evita “blancos”)
+   ⚠️ Nota: va DESPUÉS de los imports, para no romper PostCSS
+=========================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* IMPORTANTÍSIMO: evita el #root limitado a 1280px / padding */
+#root {
+  width: 100%;
+  min-height: 100%;
+  margin: 0 !important;
+  padding: 0 !important;
+  max-width: none !important;
+}
 
 /* ===========================================================
    3) VARIABLES GLOBALES
@@ -28,7 +50,7 @@
 
 html,
 body {
-  @apply bg-white text-slate-900 font-sans;
+  @apply bg-slate-950 text-slate-50 font-sans;
 }
 
 /* ===========================================================
@@ -66,18 +88,14 @@ body {
   }
 }
 
-
-
 /* ===========================================================
    6) FOCUS ACCESIBLE
-   (limitamos a elementos interactivos para evitar glitches)
 =========================================================== */
 
 *:focus-visible {
   outline: none;
 }
 
-/* Solo estos elementos muestran el anillo de focus */
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
@@ -105,7 +123,6 @@ textarea:focus-visible {
   animation: fadeInUp 0.25s ease-out;
 }
 
-/* Overlay del modal */
 .hl-modal-overlay {
   position: fixed;
   inset: 0;
@@ -115,12 +132,9 @@ textarea:focus-visible {
   justify-content: center;
   background: rgba(0, 0, 0, 0.5);
   overscroll-behavior: contain;
-
-  /* 👇 Deja pasar clics; solo el panel los captura */
   pointer-events: none;
 }
 
-/* Panel del modal */
 .hl-modal-panel {
   width: 100%;
   max-width: 40rem;
@@ -132,15 +146,10 @@ textarea:focus-visible {
     0 4px 6px -2px rgba(0, 0, 0, 0.05);
   padding: 1.5rem;
   animation: fadeInUp 0.25s ease-out both;
-
-  /* 👇 El panel sí recibe clics */
   pointer-events: auto;
-
-  /* Corrección del contraste */
   color: #0f172a;
 }
 
-/* Texto completo dentro del modal: visibles todos */
 .hl-modal-panel label,
 .hl-modal-panel p,
 .hl-modal-panel span,
@@ -149,13 +158,11 @@ textarea:focus-visible {
   color: #0f172a;
 }
 
-/* Placeholders */
 .hl-modal-panel input::placeholder,
 .hl-modal-panel textarea::placeholder {
   color: #9ca3af;
 }
 
-/* Mobile: modal desliza desde abajo */
 @media (max-width: 640px) {
   .hl-modal-overlay {
     align-items: flex-end;
@@ -167,6 +174,38 @@ textarea:focus-visible {
 }
 
 /* ===========================================================
+   7B) MODAL BACKDROP (Compat con ModalLead.jsx)
+   Tu componente usa .hl-backdrop, pero tu CSS tenía .hl-modal-overlay
+=========================================================== */
+
+.hl-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: rgba(0, 0, 0, 0.5);
+  overscroll-behavior: contain;
+
+  /* 👇 importante: permitir clicks (tu overlay actual tenía pointer-events: none) */
+  pointer-events: auto;
+
+  padding: 16px;
+}
+
+/* Mobile: que suba desde abajo como sheet */
+@media (max-width: 640px) {
+  .hl-backdrop {
+    align-items: flex-end;
+    padding: 12px;
+  }
+}
+
+
+/* ===========================================================
    8) FIX INPUTS NUMÉRICOS (Safari / Chrome)
 =========================================================== */
 
@@ -176,14 +215,11 @@ input[type="number"] {
   appearance: textfield;
 }
 
-/* Evitamos cambios raros de caja en cada tecla */
 input[type="number"]:focus {
   outline: none;
   box-shadow: 0 0 0 3px var(--ring-brand);
 }
 
-
-/* === Animación para el bloque de checkboxes del modal HL === */
 @keyframes hl-shake {
   0% { transform: translateX(0); }
   25% { transform: translateX(-4px); }
@@ -192,7 +228,6 @@ input[type="number"]:focus {
   100% { transform: translateX(0); }
 }
 
-/* Ejemplo de clase base para inputs HabitaLibre */
 .hl-input {
   @apply w-full rounded-2xl border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-50 placeholder-slate-500 outline-none focus:border-emerald-400 focus:ring-0;
 }
@@ -201,12 +236,10 @@ input[type="number"]:focus {
   animation: hl-shake 0.3s ease;
 }
 
-/* ✅ Nueva clase usada en el componente */
 .hl-shake {
   animation: hl-shake 0.35s ease-in-out;
 }
 
-/* Aseguramos tipografía estable en inputs */
 input,
 select,
 textarea {

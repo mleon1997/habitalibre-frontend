@@ -1,34 +1,45 @@
-// src/context/LeadCaptureContext.jsx
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useState,
-} from "react";
+import React, { createContext, useContext, useMemo, useState } from "react";
 
 const LeadCaptureContext = createContext(null);
 
 export function LeadCaptureProvider({ children }) {
-  const [modalOpen, setModalOpen] = useState(false);
-  const [lastResult, setLastResult] = useState(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [result, setResult] = useState(null);
 
-  const openLead = useCallback((result) => {
-    console.log("[LeadCapture] openLead llamado con:", result);
-    setLastResult(result || null);
-    setModalOpen(true);
-  }, []);
+  // ✅ cada apertura incrementa nonce para remontear el modal y evitar estados “pegados”
+  const [nonce, setNonce] = useState(0);
 
-  const closeLead = useCallback(() => {
-    console.log("[LeadCapture] closeLead");
-    setModalOpen(false);
-  }, []);
+  const openLead = (dataResultado) => {
+    // reset “duro” primero (evita parpadeos en StrictMode)
+    setIsOpen(false);
+    setResult(null);
 
-  const value = {
-    modalOpen,
-    lastResult,
-    openLead,
-    closeLead,
+    // abre en el siguiente tick
+    queueMicrotask(() => {
+      setNonce((n) => n + 1);
+      setResult(dataResultado || null);
+      setIsOpen(true);
+    });
   };
+
+  const closeLead = () => setIsOpen(false);
+
+  const resetLeadCapture = () => {
+    setIsOpen(false);
+    setResult(null);
+  };
+
+  const value = useMemo(
+    () => ({
+      isOpen,
+      result,
+      nonce,
+      openLead,
+      closeLead,
+      resetLeadCapture,
+    }),
+    [isOpen, result, nonce]
+  );
 
   return (
     <LeadCaptureContext.Provider value={value}>
@@ -39,10 +50,6 @@ export function LeadCaptureProvider({ children }) {
 
 export function useLeadCapture() {
   const ctx = useContext(LeadCaptureContext);
-  if (!ctx) {
-    throw new Error(
-      "useLeadCapture debe usarse dentro de un <LeadCaptureProvider>"
-    );
-  }
+  if (!ctx) throw new Error("useLeadCapture debe usarse dentro de LeadCaptureProvider");
   return ctx;
 }

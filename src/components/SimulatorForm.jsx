@@ -195,6 +195,7 @@ export default function SimulatorForm({ onResult }) {
       if (!data || data.ok === false)
         throw new Error(data?.error || "No se pudo calcular");
 
+      // ✅ FIX: al crear lead, manda el resultado REAL (incluye flags.sinOferta)
       if (email && /\S+@\S+\.\S+/.test(email)) {
         const leadPayload = {
           ...payload,
@@ -203,16 +204,36 @@ export default function SimulatorForm({ onResult }) {
           ciudad: ciudad?.trim() || "",
           origen: "simulador",
           resultado: {
-            capacidadPago: data?.resultado?.capacidadPago,
-            montoMaximo: data?.resultado?.montoMaximo,
-            precioMaxVivienda: data?.resultado?.precioMaxVivienda,
-            ltv: data?.resultado?.ltv,
-            tasaAnual: data?.resultado?.tasaAnual,
-            plazoMeses: data?.resultado?.plazoMeses,
-            dtiConHipoteca: data?.resultado?.dtiConHipoteca,
-            cuotaEstimada: data?.resultado?.cuotaEstimada,
-            cuotaStress: data?.resultado?.cuotaStress,
-            productoElegido: data?.resultado?.productoElegido,
+            // ✅ flags vienen del backend (FUENTE DE VERDAD)
+            flags: data?.flags || {},
+
+            // ✅ campos flat clave
+            productoElegido: data?.productoElegido ?? null,
+            tipoCreditoElegido: data?.productoElegido ?? null,
+
+            productoSugerido: data?.productoSugerido ?? null,
+            bancoSugerido: data?.bancoSugerido ?? null,
+
+            // ✅ capacidad preferida para evitar heurística rara en el backend
+            capacidadPagoPrograma:
+              data?.capacidadPagoPrograma ?? data?.capacidadPago ?? null,
+            capacidadPago: data?.capacidadPago ?? null,
+
+            cuotaEstimada: data?.cuotaEstimada ?? null,
+            cuotaStress: data?.cuotaStress ?? null,
+
+            tasaAnual: data?.tasaAnual ?? null,
+            plazoMeses: data?.plazoMeses ?? null,
+
+            ltv: data?.ltv ?? null,
+            dtiConHipoteca: data?.dtiConHipoteca ?? null,
+
+            montoMaximo: data?.montoMaximo ?? null,
+            precioMaxVivienda: data?.precioMaxVivienda ?? null,
+
+            escenarios: data?.escenariosHL ?? data?.escenarios ?? null,
+            puntajeHabitaLibre: data?.puntajeHabitaLibre ?? null,
+            scoreHL: data?.scoreHL ?? null,
           },
         };
 

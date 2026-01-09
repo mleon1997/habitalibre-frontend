@@ -21,9 +21,16 @@ import {
 import HIcon from "../assets/HICON.png";
 import HLogo from "../assets/HLOGO.png";
 import { trackEvent, trackPageView } from "../lib/analytics";
+import { useNavigate } from "react-router-dom";
+import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
+
 
 export default function Landing({ onStart }) {
   const [activeLegalSection, setActiveLegalSection] = useState(null);
+
+const navigate = useNavigate();
+const { token } = useCustomerAuth();
+
 
   // Page view
   useEffect(() => {
@@ -62,8 +69,8 @@ export default function Landing({ onStart }) {
 
 
 
-
   return (
+    
     <main className="min-h-screen bg-slate-950 text-slate-50">
       {/* NAVBAR */}
       <header className="border-b border-slate-800/70 bg-slate-950/90 backdrop-blur sticky top-0 z-50">
@@ -96,52 +103,43 @@ export default function Landing({ onStart }) {
             </div>
           </div>
 
-          {/* NAV LINKS - DESKTOP */}
-          <nav className="hidden md:flex items-center gap-8 text-sm">
-            <a
-              href="#como-funciona"
-              className="text-slate-300 hover:text-slate-50 transition"
-              onClick={() =>
-                trackEvent("nav_click", { target: "como_funciona" })
-              }
-            >
-              Cómo funciona
-            </a>
+        {/* NAV LINKS - DESKTOP */}
+<nav className="hidden md:flex items-center gap-8 text-sm">
+  <a href="#como-funciona" className="text-slate-300 hover:text-slate-50">
+    Cómo funciona
+  </a>
 
-            <a
-              href="#beneficios"
-              className="text-slate-300 hover:text-slate-50 transition"
-              onClick={() => trackEvent("nav_click", { target: "beneficios" })}
-            >
-              Beneficios
-            </a>
+  <a href="#beneficios" className="text-slate-300 hover:text-slate-50">
+    Beneficios
+  </a>
 
-            <a
-              href="#nosotros"
-              className="text-slate-300 hover:text-slate-50 transition"
-              onClick={() => trackEvent("nav_click", { target: "nosotros" })}
-            >
-              Nosotros
-            </a>
+  <a href="#nosotros" className="text-slate-300 hover:text-slate-50">
+    Nosotros
+  </a>
 
-            <a
-              href="#testimonios"
-              className="text-slate-300 hover:text-slate-50 transition"
-              onClick={() =>
-                trackEvent("nav_click", { target: "testimonios" })
-              }
-            >
-              Testimonios
-            </a>
+  <a href="#testimonios" className="text-slate-300 hover:text-slate-50">
+    Testimonios
+  </a>
 
-            <button
-              onClick={() => handleStart("navbar_primary")}
-              className="px-5 py-2.5 rounded-full bg-blue-500 hover:bg-blue-400 text-slate-950 
-                       font-semibold text-sm shadow-lg shadow-blue-500/40 transition"
-            >
-              Iniciar simulación
-            </button>
-          </nav>
+  {/* 👤 LOGIN / PROGRESO */}
+  <button
+    onClick={() => navigate(token ? "/progreso" : "/login")}
+    className="text-slate-200 hover:text-white transition text-sm"
+  >
+    {token ? "Mi progreso" : "Iniciar sesión"}
+  </button>
+
+  {/* CTA PRINCIPAL */}
+  <button
+    onClick={() => handleStart("navbar_primary")}
+    className="px-5 py-2.5 rounded-full bg-blue-500 hover:bg-blue-400
+               text-slate-950 font-semibold text-sm shadow-lg transition"
+  >
+    Iniciar simulación
+  </button>
+</nav>
+
+
 
           {/* CTA MOBILE */}
           <button

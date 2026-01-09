@@ -1,0 +1,39 @@
+// src/pages/SimuladorPage.jsx
+import React, { useEffect, useMemo, useRef } from "react";
+import { useLocation } from "react-router-dom";
+import WizardHL from "../components/WizardHL.jsx";
+import { useLeadCapture } from "../context/LeadCaptureContext.jsx";
+
+function useQuery() {
+  const { search } = useLocation();
+  return useMemo(() => new URLSearchParams(search), [search]);
+}
+
+export default function SimuladorPage() {
+  const { resetLeadCapture, isOpen } = useLeadCapture();
+  const q = useQuery();
+
+  // ✅ modo explícito por query param (default: quick)
+  const mode = (q.get("mode") || "quick").toLowerCase(); // "quick" | "journey"
+  const onboarding = q.get("onboarding") === "1";
+
+  const didReset = useRef(false);
+  useEffect(() => {
+    if (didReset.current) return;
+    didReset.current = true;
+
+    // ✅ si el modal está abierto, NO resetees (no lo mates)
+    if (isOpen) return;
+
+    // ✅ resetea por modo para evitar mezcla de estados
+    resetLeadCapture(`enter_simulador_${mode}`);
+  }, [resetLeadCapture, isOpen, mode]);
+
+  return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-3xl bg-slate-900/60 rounded-3xl shadow-[0_24px_80px_rgba(15,23,42,0.9)] border border-slate-800/80 px-5 py-6 md:px-8 md:py-8">
+        <WizardHL mode={mode} onboarding={onboarding} />
+      </div>
+    </div>
+  );
+}
