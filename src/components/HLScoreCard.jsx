@@ -25,7 +25,6 @@ function unwrap(v) {
 }
 
 function toNum(v) {
-  // admite número, string, o {total: n}
   const x = unwrap(v);
   const n = Number((x ?? "").toString().replace(/[^0-9.]/g, ""));
   return Number.isFinite(n) ? n : 0;
@@ -66,12 +65,10 @@ function firstText(arrOrAny, fallback) {
     const a0 = arrOrAny[0];
     if (typeof a0 === "string") return a0;
     if (a0 && typeof a0 === "object") {
-      // si viene {texto} / {title} / {desc}
       return safeStr(a0.texto || a0.title || a0.desc || a0.label, fallback);
     }
     return fallback;
   }
-  // si por error vino un objeto en vez de array
   if (arrOrAny && typeof arrOrAny === "object") {
     return safeStr(arrOrAny.texto || arrOrAny.title || arrOrAny.desc || arrOrAny.label, fallback);
   }
@@ -84,7 +81,6 @@ function normalizeRatioMaybePct(x, { maxRatio = 2 } = {}) {
   if (x == null) return null;
   const n = Number(x);
   if (!Number.isFinite(n)) return null;
-  // si viene como 58.7 => 0.587
   if (n > maxRatio) return n / 100;
   return n;
 }
@@ -93,7 +89,6 @@ function normalizeRatioMaybePct(x, { maxRatio = 2 } = {}) {
    Adapter: soporta data normalizado (buildDataFromSnap) y/o snap
 ========================================================= */
 function getTipoCredito(fullData) {
-  // fullData puede ser normalizado o snap
   const root = fullData || {};
   const d = fullData?.input ? fullData.input : fullData;
   const r = fullData?.resultado ? fullData.resultado : fullData?.resultado || {};
@@ -132,8 +127,13 @@ function mapDataToScoreInput(fullData) {
   const d = fullData?.input ? fullData.input : fullData;
   const r = fullData?.resultado ? fullData.resultado : fullData?.resultado || {};
 
-  // ✅ primero root (normalizado), luego input
-  const ingresoTotal = toNum(root?.ingresoTotal ?? d?.perfil?.ingresoTotal ?? d?.ingresoTotal ?? d?.ingreso ?? d?.ingresoNetoMensual);
+  const ingresoTotal = toNum(
+    root?.ingresoTotal ??
+      d?.perfil?.ingresoTotal ??
+      d?.ingresoTotal ??
+      d?.ingreso ??
+      d?.ingresoNetoMensual
+  );
   const deudas = toNum(root?.deudas ?? d?.otrasDeudasMensuales ?? d?.deudas);
 
   const valor = toNum(root?.valor ?? d?.valorVivienda ?? d?.valor);
@@ -142,7 +142,7 @@ function mapDataToScoreInput(fullData) {
   // --- LTV ---
   const ltvFromRoot = normalizeRatioMaybePct(toNumNullable(root?.ltv));
   const ltvFromInput = normalizeRatioMaybePct(toNumNullable(d?.ltv));
-  const ltvFromPct = normalizeRatioMaybePct(toNumNullable(root?.ltvPct), { maxRatio: 200 }); // ltvPct viene 83 -> 0.83
+  const ltvFromPct = normalizeRatioMaybePct(toNumNullable(root?.ltvPct), { maxRatio: 200 });
 
   const ltv =
     ltvFromRoot != null
@@ -155,7 +155,6 @@ function mapDataToScoreInput(fullData) {
       ? clamp((valor - entrada) / valor, 0, 1)
       : 0.95;
 
-  // cuota puede venir de normalizado (root.cuotaEstimada) o resultado backend (r.cuotaEstimada)
   const cuotaEstimada = toNum(root?.cuotaEstimada ?? d?.cuotaEstimada ?? r?.cuotaEstimada);
   const dtiAprox = ingresoTotal > 0 ? clamp((deudas + cuotaEstimada) / ingresoTotal, 0, 2) : 0.6;
 
@@ -167,15 +166,15 @@ function mapDataToScoreInput(fullData) {
     toNumNullable(r?.dtiConHipoteca) ??
     toNumNullable(r?.dti);
 
-  // si dtiRaw vino como porcentaje (58.7), normaliza
-  const dtiNorm =
-    dtiRaw != null
-      ? normalizeRatioMaybePct(dtiRaw, { maxRatio: 2 })
-      : null;
-
+  const dtiNorm = dtiRaw != null ? normalizeRatioMaybePct(dtiRaw, { maxRatio: 2 }) : null;
   const dtiConHipoteca = dtiNorm != null ? clamp(dtiNorm, 0, 2) : dtiAprox;
 
-  const edad = toNumNullable(root?.edad) ?? toNumNullable(d?.perfil?.edad) ?? toNumNullable(d?.edad) ?? 32;
+  const edad =
+    toNumNullable(root?.edad) ??
+    toNumNullable(d?.perfil?.edad) ??
+    toNumNullable(d?.edad) ??
+    32;
+
   const tipoIngreso = root?.tipoIngreso ?? d?.perfil?.tipoIngreso ?? d?.tipoIngreso ?? "Dependiente";
   const declaracionBuro = root?.declaracionBuro ?? d?.perfil?.declaracionBuro ?? d?.declaracionBuro ?? "ninguno";
 
@@ -183,12 +182,17 @@ function mapDataToScoreInput(fullData) {
   const esExtranjero = String(nacionalidad).toLowerCase().trim() === "extranjero";
 
   const aportesIESS = toNum(root?.aportesTotales ?? d?.perfil?.iessAportesTotales ?? d?.iessAportesTotales);
-  const ultimas13Continuas = toNum(root?.aportesConsecutivos ?? d?.perfil?.iessAportesConsecutivos ?? d?.iessAportesConsecutivos) >= 13;
+  const ultimas13Continuas =
+    toNum(root?.aportesConsecutivos ?? d?.perfil?.iessAportesConsecutivos ?? d?.iessAportesConsecutivos) >= 13;
 
   return {
     dtiConHipoteca,
     ltv,
-    aniosEstabilidad: toNumNullable(root?.aniosEstabilidad) ?? toNumNullable(d?.perfil?.aniosEstabilidad) ?? toNumNullable(d?.aniosEstabilidad) ?? 1,
+    aniosEstabilidad:
+      toNumNullable(root?.aniosEstabilidad) ??
+      toNumNullable(d?.perfil?.aniosEstabilidad) ??
+      toNumNullable(d?.aniosEstabilidad) ??
+      1,
     edad,
     tipoIngreso,
     declaracionBuro,
@@ -221,19 +225,48 @@ function humanTipoCredito(tipo) {
   return tipo || "—";
 }
 
-function inferTasaRango(tipo) {
+/* =========================================================
+   ✅ TASA: una sola, no rango
+========================================================= */
+function inferTasaSingle(tipo) {
   const t = String(tipo || "").toLowerCase();
-  if (t.includes("biess")) return { min: 4.8, max: 6.5 };
-  if (t.includes("vip")) return { min: 4.8, max: 7.0 };
-  if (t.includes("vis")) return { min: 5.0, max: 7.8 };
-  return { min: 8.5, max: 10.8 };
+  if (t.includes("biess")) return 6.9;
+  if (t.includes("vip")) return 4.99;
+  if (t.includes("vis")) return 4.99;
+  return 9.9;
 }
 
+function getTasaPctFromData({ root, d, r, tipoCredito }) {
+  const tasaPct = toNumNullable(root?.tasaPct) ?? toNumNullable(d?.tasaPct) ?? toNumNullable(r?.tasaPct);
+  if (tasaPct != null && tasaPct > 0) return tasaPct;
+
+  const tasaAnual = toNumNullable(root?.tasaAnual) ?? toNumNullable(d?.tasaAnual) ?? toNumNullable(r?.tasaAnual);
+  if (tasaAnual != null && tasaAnual > 0) return tasaAnual * 100;
+
+  const tasaMin = toNumNullable(root?.tasaMin ?? d?.rutaRecomendada?.tasaMin ?? r?.rutaRecomendada?.tasaMin);
+  const tasaMax = toNumNullable(root?.tasaMax ?? d?.rutaRecomendada?.tasaMax ?? r?.rutaRecomendada?.tasaMax);
+  if (tasaMin != null && tasaMax != null && tasaMin > 0 && tasaMax > 0) return (tasaMin + tasaMax) / 2;
+
+  return inferTasaSingle(tipoCredito);
+}
+
+/* =========================================================
+   UI helpers
+========================================================= */
 function LabelWithInfo({ label, info }) {
   return (
     <div className="flex items-center gap-2">
       <p className="text-xs text-slate-400">{label}</p>
-      {info ? <Tooltip label={`Info: ${label}`} content={info} side="top" /> : null}
+      {info ? (
+        <Tooltip
+          label={`Info: ${label}`}
+          content={info}
+          side="top"
+          triggerAs="span"
+          // ✅ mejor hit-area en mobile
+          buttonClassName="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-600/40 bg-slate-900/40 text-slate-200 hover:text-white hover:border-slate-500/60 transition"
+        />
+      ) : null}
     </div>
   );
 }
@@ -244,7 +277,6 @@ export default function HLScoreCard({ data, onGoSimular, onOpenAmortizacion, onO
     const res = scoreHabitaLibre(input);
     const ux = uxLabelFromScore(res);
 
-    // fuente: si es snap usa input; pero para montos prefiere root normalizado
     const root = data || {};
     const d = data?.input ? data.input : data;
     const r = data?.resultado ? data.resultado : data?.resultado || {};
@@ -257,15 +289,16 @@ export default function HLScoreCard({ data, onGoSimular, onOpenAmortizacion, onO
     const dti = Math.round((input.dtiConHipoteca || 0) * 100);
     const ltv = Math.round((input.ltv || 0) * 100);
 
-    // 🔒 topRec seguro (si viene array de strings u objetos)
-    const topRec = firstText(root?.accionesClave || d?.accionesClave || res?.recomendaciones, "Compara escenarios y arma tu carpeta.");
+    const topRec = firstText(
+      root?.accionesClave || d?.accionesClave || res?.recomendaciones,
+      "Compara escenarios y arma tu carpeta."
+    );
 
     const montoFinanciar = Math.max(0, valor - entrada);
     const tipoHuman = humanTipoCredito(input.tipoCredito);
 
-    const tasaMin = toNumNullable(root?.tasaMin ?? d?.rutaRecomendada?.tasaMin ?? r?.rutaRecomendada?.tasaMin);
-    const tasaMax = toNumNullable(root?.tasaMax ?? d?.rutaRecomendada?.tasaMax ?? r?.rutaRecomendada?.tasaMax);
-    const tasaRango = tasaMin > 0 && tasaMax > 0 ? { min: tasaMin, max: tasaMax } : inferTasaRango(input.tipoCredito);
+    const tasaPct = getTasaPctFromData({ root, d, r, tipoCredito: input.tipoCredito });
+    const tasaFuente = safeStr(root?.tasaFuente ?? d?.tasaFuente ?? r?.tasaFuente, "");
 
     const plazoAnios = toNumNullable(root?.plazoAnios ?? d?.plazoAnios ?? r?.plazoAnios ?? r?.plazo) ?? 25;
 
@@ -280,48 +313,52 @@ export default function HLScoreCard({ data, onGoSimular, onOpenAmortizacion, onO
       entrada,
       montoFinanciar,
       tipoHuman,
-      tasaRango,
+      tasaPct,
+      tasaFuente,
       plazoAnios,
     };
   }, [data]);
 
-  const { ux, entradaPct, dti, ltv, topRec, input, valor, entrada, montoFinanciar, tipoHuman, tasaRango, plazoAnios } = scoreView;
+  const { ux, entradaPct, dti, ltv, topRec, input, valor, entrada, montoFinanciar, tipoHuman, tasaPct, tasaFuente, plazoAnios } =
+    scoreView;
 
   const hasMoney = valor > 0;
 
-  // Tooltips ultra-cortos
   const infoRuta = "Tipo de crédito que hoy está más abierto para ti, según tu perfil.";
   const infoEntrada = "Tu aporte inicial. Más entrada = más probabilidad y mejor cuota.";
   const infoDTI = "Porcentaje de tu ingreso mensual que se va en deudas (incluye hipoteca).";
   const infoLTV = "Porcentaje del valor de la vivienda que financia el banco.";
-  const infoTasa = "Rango típico. La tasa real depende del banco, seguro y validación de ingresos.";
+  const infoTasa = "Tasa usada para calcular tu cuota estimada. La tasa final puede variar según banco, seguros y validación.";
   const infoMonto = "Valor aproximado que se financiaría: valor de vivienda – entrada.";
   const infoAmort = "Cómo se divide tu cuota entre interés y capital mes a mes.";
 
   return (
-    <div className="rounded-3xl border border-slate-800/70 bg-slate-900/50 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.8)]">
-      <div className="flex justify-between items-center gap-3">
-        <div>
-          <h2 className="text-2xl font-semibold text-slate-50">Tu ruta más probable hoy</h2>
+    <div className="rounded-3xl border border-slate-800/70 bg-slate-900/50 p-4 sm:p-6 shadow-[0_24px_80px_rgba(15,23,42,0.8)]">
+      {/* ✅ Header responsive */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+        <div className="min-w-0">
+          <h2 className="text-xl sm:text-2xl font-semibold text-slate-50 leading-tight">
+            Tu ruta más probable hoy
+          </h2>
           <p className="mt-2 text-sm text-slate-400">{safeStr(ux?.hint, "")}</p>
         </div>
-        <span className={`shrink-0 px-3 py-1 rounded-full text-xs ${chipClass(ux?.pill?.type)}`}>
+        <span className={`self-start sm:self-auto shrink-0 px-3 py-1 rounded-full text-xs ${chipClass(ux?.pill?.type)}`}>
           {safeStr(ux?.pill?.label, "—")}
         </span>
       </div>
 
-      {/* KPIs compactos */}
-      <div className="mt-4 grid sm:grid-cols-4 gap-3">
-        <div className="p-4 rounded-2xl border border-slate-800/70 bg-slate-950/20">
+      {/* ✅ KPIs: 2 columnas en mobile, 4 en desktop */}
+      <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="p-4 rounded-2xl border border-slate-800/70 bg-slate-950/20 min-w-0">
           <LabelWithInfo label="Ruta" info={infoRuta} />
-          <p className="mt-1 font-semibold text-slate-100">{safeStr(tipoHuman)}</p>
+          <p className="mt-1 font-semibold text-slate-100 truncate">{safeStr(tipoHuman)}</p>
         </div>
 
-        <div className="p-4 rounded-2xl border border-slate-800/70 bg-slate-950/20">
+        <div className="p-4 rounded-2xl border border-slate-800/70 bg-slate-950/20 min-w-0">
           <LabelWithInfo label="Entrada" info={infoEntrada} />
           <p className="mt-1 font-semibold text-slate-100">{Number.isFinite(entradaPct) ? `${entradaPct}%` : "—"}</p>
           {hasMoney ? (
-            <p className="mt-1 text-[11px] text-slate-500">
+            <p className="mt-1 text-[11px] text-slate-500 truncate">
               {fmtMoney(entrada)} de {fmtMoney(valor)}
             </p>
           ) : (
@@ -329,92 +366,108 @@ export default function HLScoreCard({ data, onGoSimular, onOpenAmortizacion, onO
           )}
         </div>
 
-        <div className="p-4 rounded-2xl border border-slate-800/70 bg-slate-950/20">
+        <div className="p-4 rounded-2xl border border-slate-800/70 bg-slate-950/20 min-w-0">
           <LabelWithInfo label="DTI aprox" info={infoDTI} />
           <p className="mt-1 font-semibold text-slate-100">{Number.isFinite(dti) ? `${dti}%` : "—"}</p>
+
           <div className="mt-1 flex items-center gap-2">
             <p className="text-[11px] text-slate-500">LTV: {Number.isFinite(ltv) ? `${ltv}%` : "—"}</p>
-            <Tooltip label="Info: LTV" content={infoLTV} side="top" />
+            <Tooltip
+              label="Info: LTV"
+              content={infoLTV}
+              side="top"
+              triggerAs="span"
+              buttonClassName="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-600/40 bg-slate-900/40 text-slate-200 hover:text-white hover:border-slate-500/60 transition"
+            />
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl border border-slate-800/70 bg-slate-950/20">
+        <div className="p-4 rounded-2xl border border-slate-800/70 bg-slate-950/20 min-w-0">
           <LabelWithInfo label="Tasa estimada" info={infoTasa} />
-          <p className="mt-1 font-semibold text-slate-100">
-            {tasaRango.min.toFixed(1)}% – {tasaRango.max.toFixed(1)}%
-          </p>
+          <p className="mt-1 font-semibold text-slate-100">{Number.isFinite(tasaPct) ? `${tasaPct.toFixed(2)}%` : "—"}</p>
           <p className="mt-1 text-[11px] text-slate-500">Plazo ref: {plazoAnios} años</p>
+          {tasaFuente ? <p className="mt-1 text-[11px] text-slate-500 truncate">{tasaFuente}</p> : null}
         </div>
       </div>
 
       {/* Bloque “claridad” */}
-      <div className="mt-4 grid md:grid-cols-3 gap-3">
+      <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="rounded-2xl border border-slate-800/70 bg-slate-950/20 p-4 md:col-span-2">
           <p className="text-xs uppercase tracking-wide text-slate-400">Tu estructura de crédito (resumen)</p>
 
-          <div className="mt-3 grid sm:grid-cols-3 gap-3">
-            <div>
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <p className="text-[11px] text-slate-400">Monto a financiar</p>
-                <Tooltip label="Info: Monto a financiar" content={infoMonto} side="top" />
+                <Tooltip
+                  label="Info: Monto a financiar"
+                  content={infoMonto}
+                  side="top"
+                  triggerAs="span"
+                  buttonClassName="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-600/40 bg-slate-900/40 text-slate-200 hover:text-white hover:border-slate-500/60 transition"
+                />
               </div>
-              <p className="mt-1 font-semibold text-slate-100">{montoFinanciar > 0 ? fmtMoney(montoFinanciar) : "—"}</p>
+              <p className="mt-1 font-semibold text-slate-100 truncate">{montoFinanciar > 0 ? fmtMoney(montoFinanciar) : "—"}</p>
             </div>
 
-            <div>
+            <div className="min-w-0">
               <p className="text-[11px] text-slate-400">Tipo de ingreso</p>
-              <p className="mt-1 font-semibold text-slate-100">{safeStr(input?.tipoIngreso)}</p>
+              <p className="mt-1 font-semibold text-slate-100 truncate">{safeStr(input?.tipoIngreso)}</p>
             </div>
 
-            <div>
+            <div className="min-w-0">
               <p className="text-[11px] text-slate-400">Buró / sustento</p>
-              <p className="mt-1 font-semibold text-slate-100">{safeStr(input?.declaracionBuro)}</p>
+              <p className="mt-1 font-semibold text-slate-100 truncate">{safeStr(input?.declaracionBuro)}</p>
             </div>
           </div>
 
-          {/* ✅ FIX: evitar <button> dentro de <button> */}
-          <div className="mt-4 flex flex-col sm:flex-row gap-2">
-            <div className="inline-flex items-center gap-2">
+          {/* ✅ Botones mobile-first: full width */}
+          <div className="mt-4 grid grid-cols-1 sm:flex sm:flex-row gap-2">
+            <div className="inline-flex items-center gap-2 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={typeof onOpenAmortizacion === "function" ? onOpenAmortizacion : undefined}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-blue-500 hover:bg-blue-400 text-slate-950 font-semibold text-sm transition"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-2xl bg-blue-500 hover:bg-blue-400 text-slate-950 font-semibold text-sm transition"
               >
                 Ver tabla de amortización →
               </button>
 
-              {/* Tooltip fuera del botón (para no anidar buttons) */}
-              <span onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} className="inline-flex">
-                <Tooltip
-                  label="Info: Amortización"
-                  content={infoAmort}
-                  side="top"
-                  buttonClassName="inline-flex h-6 w-6 items-center justify-center rounded-full border border-blue-200/40 bg-blue-500/10 text-blue-100 hover:text-white hover:border-blue-200/60 transition"
-                />
-              </span>
+              <Tooltip
+                label="Info: Amortización"
+                content={infoAmort}
+                side="top"
+                triggerAs="span"
+                buttonClassName="inline-flex h-9 w-9 items-center justify-center rounded-full border border-blue-200/40 bg-blue-500/10 text-blue-100 hover:text-white hover:border-blue-200/60 transition"
+              />
             </div>
 
             <button
               type="button"
               onClick={typeof onGoSimular === "function" ? onGoSimular : undefined}
-              className="inline-flex items-center justify-center px-4 py-2.5 rounded-2xl border border-slate-700 text-slate-100 font-semibold text-sm hover:border-slate-500 transition"
+              className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-3 sm:py-2.5 rounded-2xl border border-slate-700 text-slate-100 font-semibold text-sm hover:border-slate-500 transition"
             >
               Comparar escenarios →
             </button>
           </div>
 
-          <p className="mt-3 text-[11px] text-slate-500">La tasa exacta depende del banco, seguro y validación de ingresos.</p>
+          <p className="mt-3 text-[11px] text-slate-500 break-words">
+            La tasa exacta depende del banco, seguro y validación de ingresos.
+          </p>
         </div>
 
         <div className="rounded-2xl border border-slate-800/70 bg-slate-950/20 p-4">
           <p className="text-xs uppercase tracking-wide text-slate-400">Próximo paso recomendado</p>
-          <p className="mt-2 text-slate-100 font-semibold">{safeStr(topRec, "Compara escenarios y arma tu carpeta.")}</p>
-          <p className="mt-2 text-[12px] text-slate-400">Si lo prefieres, te guiamos para escoger el mejor banco/programa y armar carpeta.</p>
+          <p className="mt-2 text-slate-100 font-semibold break-words">
+            {safeStr(topRec, "Compara escenarios y arma tu carpeta.")}
+          </p>
+          <p className="mt-2 text-[12px] text-slate-400">
+            Si lo prefieres, te guiamos para escoger el mejor banco/programa y armar carpeta.
+          </p>
 
           <button
             type="button"
             onClick={typeof onOpenAsesor === "function" ? onOpenAsesor : undefined}
-            className="mt-3 w-full inline-flex items-center justify-center px-4 py-2.5 rounded-2xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-semibold text-sm transition"
+            className="mt-3 w-full inline-flex items-center justify-center px-4 py-3 rounded-2xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-semibold text-sm transition"
           >
             Hablar con un asesor →
           </button>

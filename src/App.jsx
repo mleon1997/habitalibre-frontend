@@ -3,7 +3,7 @@ import React from "react";
 import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
 import "./App.css";
-
+import ResetPassword from "./pages/ResetPassword.jsx";
 import Landing from "./pages/Landing.jsx";
 import Leads from "./pages/Leads.jsx";
 import Admin from "./pages/Admin.jsx";
@@ -67,6 +67,7 @@ export default function App() {
           <Route path="/admin/leads" element={<AdminLeads />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
         </Routes>
       </LeadCaptureProvider>
     </Router>

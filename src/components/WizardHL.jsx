@@ -242,7 +242,7 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
 
       // ✅ SIEMPRE guardar snapshot local (para que Progreso tenga data sí o sí)
       saveJourneyLocal({
-        input: entradaPayload,
+        entrada: entradaPayload,
         resultado: result,
         updatedAt: new Date().toISOString(),
       });
@@ -267,10 +267,12 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
 
       // ✅ si HAY sesión: guarda en backend (sync)
       await customerApi.saveJourney({
-        entrada: entradaPayload,
-        resultado: result,
-        status: "precalificado",
-      });
+  entrada: entradaPayload,
+  input: entradaPayload, // ✅ compat por si algo viejo lee input
+  metadata: { input: entradaPayload }, // ✅ compat extra
+  resultado: result,
+  status: "precalificado",
+});
 
       navigate("/progreso");
     } catch (ex) {
@@ -299,7 +301,17 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
   );
 
   return (
-    <div className="text-slate-50 relative z-[10]">
+    <div
+      className="
+        text-slate-50 relative z-[10]
+        max-h-[calc(100dvh-32px)]
+        overflow-y-auto
+        pr-1
+        [scrollbar-gutter:stable]
+        [-webkit-overflow-scrolling:touch]
+        overscroll-contain
+      "
+    >
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold tracking-tight">{isJourneyMode ? "Camino HabitaLibre" : "Simulador HabitaLibre"}</h2>

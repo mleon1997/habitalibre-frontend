@@ -246,3 +246,28 @@ textarea {
   font-size: 14px;
   line-height: 1.4;
 }
+
+/* ===== FIX SCROLL MODAL HL ===== */
+
+/* El overlay debe poder scrollear */
+.hl-modal-overlay {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+
+  /* si tu overlay ya es flex, esto ayuda a que no “corte” */
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+/* El panel adentro debe tener altura máxima + scroll interno */
+.hl-modal-overlay > * {
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}

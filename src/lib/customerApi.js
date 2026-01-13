@@ -1,4 +1,6 @@
 // src/lib/customerApi.js
+import { API_BASE } from "./api";
+
 const LS_TOKEN = "hl_customer_token";
 
 export function getCustomerToken() {
@@ -9,8 +11,17 @@ export function getCustomerToken() {
   }
 }
 
+export function setCustomerToken(token) {
+  try {
+    if (!token) localStorage.removeItem(LS_TOKEN);
+    else localStorage.setItem(LS_TOKEN, token);
+  } catch {}
+}
+
 async function apiFetch(path, options = {}) {
-  const res = await fetch(path, {
+  const url = path.startsWith("http") ? path : `${API_BASE}${path}`;
+
+  const res = await fetch(url, {
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -30,18 +41,32 @@ async function apiFetch(path, options = {}) {
   return data;
 }
 
+/* =========================
+   AUTH (Customer)
+========================= */
+
 export async function loginCustomer(payload) {
-  return apiFetch("/api/customer-auth/login", {
+  const data = await apiFetch("/api/customer-auth/login", {
     method: "POST",
     body: JSON.stringify(payload),
   });
+
+  // opcional: guarda token automáticamente si viene
+  if (data?.token) setCustomerToken(data.token);
+
+  return data;
 }
 
 export async function registerCustomer(payload) {
-  return apiFetch("/api/customer-auth/register", {
+  const data = await apiFetch("/api/customer-auth/register", {
     method: "POST",
     body: JSON.stringify(payload),
   });
+
+  // opcional: guarda token automáticamente si viene
+  if (data?.token) setCustomerToken(data.token);
+
+  return data;
 }
 
 export async function meCustomer() {
@@ -53,7 +78,10 @@ export async function meCustomer() {
   });
 }
 
-// ✅ acepta override
+/* =========================
+   JOURNEY SAVE
+========================= */
+
 export async function saveJourney(payload, tokenOverride) {
   const token = tokenOverride || getCustomerToken();
   if (!token) throw new Error("NO_TOKEN");
@@ -61,6 +89,28 @@ export async function saveJourney(payload, tokenOverride) {
   return apiFetch("/api/customer/leads/save-journey", {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+}
+
+/* =========================
+   FORGOT / RESET PASSWORD
+========================= */
+
+// POST /api/customer-auth/forgot-password
+// body: { email }
+export async function forgotPassword(payload) {
+  return apiFetch("/api/customer-auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+// POST /api/customer-auth/reset-password
+// body: { token, newPassword }
+export async function resetPassword(payload) {
+  return apiFetch("/api/customer-auth/reset-password", {
+    method: "POST",
     body: JSON.stringify(payload),
   });
 }

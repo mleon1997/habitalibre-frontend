@@ -80,12 +80,38 @@ function pickBoolIess(obj) {
   return false;
 }
 
+/**
+ * ✅ FIX: merge seguro
+ */
+function mergePreferValues(...objs) {
+  const out = {};
+  for (const o of objs) {
+    if (!o || typeof o !== "object") continue;
+
+    for (const [k, v] of Object.entries(o)) {
+      if (v === undefined || v === null) continue;
+
+      // strings vacíos no pisan
+      if (typeof v === "string" && v.trim() === "") continue;
+
+      // si llega 0 pero ya existe un valor "real" (no 0), NO pises
+      if (typeof v === "number" && v === 0) {
+        const prev = out[k];
+        if (typeof prev === "number" && prev !== 0) continue;
+      }
+
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
 /* =========================
    Amortización (preview liviano)
 ========================= */
 function pmt(principal, annualRate, years) {
   const n = Math.max(1, Math.round(years * 12));
-  const r = (annualRate / 100) / 12;
+  const r = annualRate / 100 / 12;
   if (!Number.isFinite(principal) || principal <= 0) return 0;
   if (!Number.isFinite(r) || r <= 0) return principal / n;
 
@@ -95,7 +121,7 @@ function pmt(principal, annualRate, years) {
 
 function buildAmortSchedulePreview({ principal, annualRate, years }) {
   const n = Math.max(1, Math.round(years * 12));
-  const r = (annualRate / 100) / 12;
+  const r = annualRate / 100 / 12;
   const payment = pmt(principal, annualRate, years);
 
   let balance = principal;
@@ -182,15 +208,27 @@ function buildDataFromSnap(snap) {
   const resultado = snap?.resultado || {};
 
   const estadoCivil = pickStr(input, ["estadoCivil"], "soltero");
-  const esParejaFormal = ["casado", "union_de_hecho"].includes(estadoCivil);
+  const esParejaFormal = ["casado", "union_de_hecho"].includes(String(estadoCivil || "").toLowerCase());
 
   const ingreso = pickNum(input, ["ingreso", "ingresoNetoMensual"], 0);
   const ingresoPareja = esParejaFormal ? pickNum(input, ["ingresoPareja"], 0) : 0;
 
   const deudas = pickNum(input, ["deudas", "otrasDeudasMensuales"], 0);
 
-  const valor = pickNum(input, ["valor", "valorVivienda"], 0);
-  const entrada = pickNum(input, ["entrada", "entradaDisponible"], 0);
+  const valor = pickNum(
+    input,
+    ["valor", "valorVivienda", "precioVivienda", "valorInmueble", "precioInmueble", "houseValue", "valorPropiedad"],
+    0
+  );
+
+  const entrada = pickNum(
+    input,
+    ["entrada", "entradaDisponible", "downPayment", "enganche", "cuotaInicial", "entradaAprox"],
+    0
+  );
+
+  const valorFinal = valor > 0 ? valor : pickNum(resultado, ["valor", "valorVivienda", "precioVivienda"], 0);
+  const entradaFinal = entrada > 0 ? entrada : pickNum(resultado, ["entrada", "entradaDisponible"], 0);
 
   const afiliadoIESS = pickBoolIess(input);
 
@@ -210,11 +248,11 @@ function buildDataFromSnap(snap) {
   const productoSugerido = resultado?.productoSugerido ?? null;
   const bancoSugerido = resultado?.bancoSugerido ?? null;
 
-  const entradaPct = valor > 0 ? Math.round((entrada / valor) * 100) : 0;
+  const entradaPct = valorFinal > 0 ? Math.round((entradaFinal / valorFinal) * 100) : 0;
 
   const entradaObjetivoPct = 10;
-  const entradaObjetivo = valor > 0 ? Math.round((valor * entradaObjetivoPct) / 100) : 0;
-  const faltanteEntrada = Math.max(0, entradaObjetivo - entrada);
+  const entradaObjetivo = valorFinal > 0 ? Math.round((valorFinal * entradaObjetivoPct) / 100) : 0;
+  const faltanteEntrada = Math.max(0, entradaObjetivo - entradaFinal);
 
   let progreso = 0;
 
@@ -294,8 +332,8 @@ function buildDataFromSnap(snap) {
 
     ingresoTotal,
     deudas,
-    valor,
-    entrada,
+    valor: valorFinal,
+    entrada: entradaFinal,
     entradaPct,
     entradaObjetivoPct,
     entradaObjetivo,
@@ -332,7 +370,7 @@ const SIM_JOURNEY = "/simular?mode=journey";
 const SIM_JOURNEY_AMORT = "/simular?mode=journey&tab=amort";
 
 /* =========================
-   Checklist / Tasks (igual que tu versión)
+   Checklist / Tasks
 ========================= */
 function buildSuggestedTasks(d) {
   const tasks = [];
@@ -405,8 +443,8 @@ function buildSuggestedTasks(d) {
 
   tasks.push({
     id: "asesor",
-    title: "Aplicación asistida HabitaLibre",
-    desc: "Te guiamos para elegir banco/programa y armar tu carpeta. Sin costo en esta etapa.",
+    title: "Hablar con un asesor HabitaLibre",
+    desc: "Te guiamos para elegir banco/programa y armar tu carpeta. Te respondemos en minutos.",
     ctaText: "WhatsApp",
     ctaHref: "whatsapp",
     badge: "Recomendado",
@@ -424,18 +462,43 @@ function buildDocumentChecklist(d) {
   items.push({ id: "docs_servicios", title: "Planilla de servicios (domicilio)", desc: "Agua/luz/teléfono (según banco).", status: "todo" });
 
   if (isDependiente) {
-    items.push({ id: "docs_roles", title: "Roles de pago / certificado laboral", desc: "Normalmente 3–6 meses + certificado.", status: d.aniosEstabilidad >= 1 ? "ok" : "warn" });
-    items.push({ id: "docs_estabilidad", title: "Antigüedad laboral", desc: "Ideal: 2–3 años para maximizar aprobación.", status: d.aniosEstabilidad >= 1 ? "ok" : "warn" });
+    items.push({
+      id: "docs_roles",
+      title: "Roles de pago / certificado laboral",
+      desc: "Normalmente 3–6 meses + certificado.",
+      status: d.aniosEstabilidad >= 1 ? "ok" : "warn",
+    });
+    items.push({
+      id: "docs_estabilidad",
+      title: "Antigüedad laboral",
+      desc: "Ideal: 2–3 años para maximizar aprobación.",
+      status: d.aniosEstabilidad >= 1 ? "ok" : "warn",
+    });
   } else {
-    items.push({ id: "docs_ruc", title: "RUC + actividad económica", desc: "Independiente: sustento formal ayuda mucho.", status: d.sustentoIndependiente ? "warn" : "todo" });
-    items.push({ id: "docs_movimientos", title: "Movimientos bancarios", desc: "6–12 meses según entidad.", status: d.sustentoIndependiente === "movimientos" || d.sustentoIndependiente === "ambos" ? "ok" : "warn" });
-    items.push({ id: "docs_declaracion", title: "Declaración de impuestos / facturación", desc: "Fortalece sustento. (depende del banco)", status: d.sustentoIndependiente === "declaracion" || d.sustentoIndependiente === "ambos" ? "ok" : "warn" });
+    items.push({
+      id: "docs_ruc",
+      title: "RUC + actividad económica",
+      desc: "Independiente: sustento formal ayuda mucho.",
+      status: d.sustentoIndependiente ? "warn" : "todo",
+    });
+    items.push({
+      id: "docs_movimientos",
+      title: "Movimientos bancarios",
+      desc: "6–12 meses según entidad.",
+      status: d.sustentoIndependiente === "movimientos" || d.sustentoIndependiente === "ambos" ? "ok" : "warn",
+    });
+    items.push({
+      id: "docs_declaracion",
+      title: "Declaración de impuestos / facturación",
+      desc: "Fortalece sustento. (depende del banco)",
+      status: d.sustentoIndependiente === "declaracion" || d.sustentoIndependiente === "ambos" ? "ok" : "warn",
+    });
   }
 
   items.push({
     id: "docs_iess",
     title: "Historia laboral IESS (si aplica)",
-    desc: "Útil para BIESS y validación de estabilidad.",
+    desc: "Útil demostración de estabilidad y para BIESS.",
     status: d.afiliadoIESS ? (d.aportesTotales >= 12 ? "ok" : "warn") : "neutral",
   });
 
@@ -468,27 +531,143 @@ function PremiumBg({ children }) {
 }
 
 /* =========================
-   Modal Amortización (sin cambios funcionales)
+   ✅ Mobile Sticky CTA
+========================= */
+function MobileStickyCTA({ waHref, onAfinar, onPlan }) {
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-[70] sm:hidden">
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent" />
+      <div className="pointer-events-auto mx-auto max-w-[1100px] px-4 pb-[max(14px,env(safe-area-inset-bottom,0px))] pt-3">
+        <div className="rounded-2xl border border-slate-800/70 bg-slate-950/80 backdrop-blur shadow-[0_20px_60px_rgba(0,0,0,0.55)] p-2">
+          <div className="grid grid-cols-2 gap-2">
+            <a
+              href={waHref}
+              target="_blank"
+              rel="noreferrer"
+              className="h-12 rounded-2xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-semibold text-sm inline-flex items-center justify-center"
+            >
+              WhatsApp →
+            </a>
+            <button
+              type="button"
+              onClick={onAfinar}
+              className="h-12 rounded-2xl border border-slate-700 bg-slate-900/40 hover:bg-slate-900/60 text-slate-100 font-semibold text-sm"
+            >
+              Afinar
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={onPlan}
+            className="mt-2 h-11 w-full rounded-2xl border border-slate-800/70 bg-slate-950/30 hover:bg-slate-950/40 text-slate-200 font-semibold text-sm"
+          >
+            Ver mi plan
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================
+   Modal Amortización
 ========================= */
 function AmortModal({ open, onClose, data, onGoSimular }) {
   const preview = useMemo(() => {
     if (!open) return null;
 
-    const valor = toNum(data?.input?.valorVivienda ?? data?.input?.valor ?? data?.valorVivienda ?? data?.valor ?? 0);
-    const entrada = toNum(data?.input?.entradaDisponible ?? data?.input?.entrada ?? data?.entradaDisponible ?? data?.entrada ?? 0);
+    const base = data?.input || data?.entrada || {};
+    const root = data || {};
+    const resultado = data?.resultado || data?.result || data?.resultadoNormalizado || {};
+
+    const valor = toNum(
+      base?.valorVivienda ??
+        base?.precioVivienda ??
+        base?.valor ??
+        root?.valorVivienda ??
+        root?.valor ??
+        resultado?.valorVivienda ??
+        resultado?.valor ??
+        0
+    );
+
+    const entrada = toNum(
+      base?.entradaDisponible ??
+        base?.entrada ??
+        root?.entradaDisponible ??
+        root?.entrada ??
+        resultado?.entradaDisponible ??
+        resultado?.entrada ??
+        0
+    );
 
     const principal = Math.max(0, valor - entrada);
-    const tasa = inferTasaForModal(data);
 
     const years =
-      toNum(data?.resultado?.plazoAnios ?? data?.resultado?.plazo ?? data?.input?.plazoAnios ?? data?.input?.plazo ?? 25) || 25;
+      toNum(
+        resultado?.plazoAnios ??
+          resultado?.plazo ??
+          base?.plazoAnios ??
+          base?.plazo ??
+          root?.plazoAnios ??
+          root?.plazo ??
+          25
+      ) || 25;
 
     if (principal <= 0) {
       return { error: "No tenemos monto a financiar (valor - entrada) para generar la amortización." };
     }
 
-    const sched = buildAmortSchedulePreview({ principal, annualRate: tasa.mid, years });
-    return { principal, years, tasa, ...sched };
+    // ✅ 1) Preferir tasa FIJA del backend si viene en resultado
+    const tasaRaw =
+      resultado?.tasaAnual ??
+      resultado?.tasa ??
+      resultado?.tasaFija ??
+      resultado?.tasaInteres ??
+      data?.tasaAnual ??
+      data?.tasa ??
+      null;
+
+    // Normaliza: 4.99 -> 4.99 | 0.0499 -> 4.99
+    const tasaBackendPct = (() => {
+      const x = toNum(tasaRaw);
+      if (!Number.isFinite(x) || x <= 0) return null;
+      return x > 1.5 ? x : x * 100;
+    })();
+
+    let tasaUI = null;
+    let annualRateToUse = null;
+
+    if (tasaBackendPct) {
+      annualRateToUse = tasaBackendPct; // %
+      tasaUI = {
+        mode: "exacta",
+        labelMain: `${tasaBackendPct.toFixed(2)}%`,
+        labelSub: "Tasa fija (backend)",
+      };
+    } else {
+      const t = inferTasaForModal(data); // %
+      annualRateToUse = t.mid;
+      tasaUI = {
+        mode: "rango",
+        labelMain: `${t.min.toFixed(1)}% – ${t.max.toFixed(1)}%`,
+        labelSub: `Usando punto medio: ${t.mid.toFixed(1)}%`,
+      };
+    }
+
+    const sched = buildAmortSchedulePreview({
+      principal,
+      annualRate: annualRateToUse,
+      years,
+    });
+
+    return {
+      principal,
+      years,
+      tasaUI,
+      ...sched,
+    };
   }, [open, data]);
 
   useEffect(() => {
@@ -533,22 +712,25 @@ function AmortModal({ open, onClose, data, onGoSimular }) {
               <div className="grid gap-3 sm:grid-cols-4">
                 <div className="rounded-2xl border border-slate-800/70 bg-slate-950/30 p-4">
                   <p className="text-[11px] text-slate-400">Monto a financiar</p>
-                  <p className="mt-1 text-lg font-semibold">{fmtMoney(preview.principal)}</p>
+                  <p className="mt-1 text-lg font-semibold">{fmtMoney(preview?.principal)}</p>
                 </div>
+
                 <div className="rounded-2xl border border-slate-800/70 bg-slate-950/30 p-4">
                   <p className="text-[11px] text-slate-400">Tasa estimada</p>
-                  <p className="mt-1 text-lg font-semibold">
-                    {preview.tasa.min.toFixed(1)}% – {preview.tasa.max.toFixed(1)}%
-                  </p>
-                  <p className="mt-1 text-[11px] text-slate-500">Usando punto medio: {preview.tasa.mid.toFixed(1)}%</p>
+                  <p className="mt-1 text-lg font-semibold">{preview?.tasaUI?.labelMain || "—"}</p>
+                  {preview?.tasaUI?.labelSub ? (
+                    <p className="mt-1 text-[11px] text-slate-500">{preview.tasaUI.labelSub}</p>
+                  ) : null}
                 </div>
+
                 <div className="rounded-2xl border border-slate-800/70 bg-slate-950/30 p-4">
                   <p className="text-[11px] text-slate-400">Plazo</p>
-                  <p className="mt-1 text-lg font-semibold">{preview.years} años</p>
+                  <p className="mt-1 text-lg font-semibold">{preview?.years} años</p>
                 </div>
+
                 <div className="rounded-2xl border border-slate-800/70 bg-slate-950/30 p-4">
                   <p className="text-[11px] text-slate-400">Cuota estimada</p>
-                  <p className="mt-1 text-lg font-semibold">{fmtMoney(preview.payment)}/mes</p>
+                  <p className="mt-1 text-lg font-semibold">{fmtMoney(preview?.payment)}/mes</p>
                 </div>
               </div>
 
@@ -565,7 +747,7 @@ function AmortModal({ open, onClose, data, onGoSimular }) {
                       </tr>
                     </thead>
                     <tbody className="text-slate-200">
-                      {preview.rows.map((r) => (
+                      {(preview?.rows || []).map((r) => (
                         <tr key={r.mes} className="border-b border-slate-900/60">
                           <td className="px-4 py-3 text-slate-300">{r.mes}</td>
                           <td className="px-4 py-3">{fmtMoney(r.pago)}</td>
@@ -581,19 +763,19 @@ function AmortModal({ open, onClose, data, onGoSimular }) {
                 <div className="p-4 bg-slate-950/40 border-t border-slate-800/70 grid gap-3 sm:grid-cols-4">
                   <div>
                     <p className="text-[11px] text-slate-400">Pago total (12 meses)</p>
-                    <p className="mt-1 font-semibold">{fmtMoney(preview.totals.pagoTotal)}</p>
+                    <p className="mt-1 font-semibold">{fmtMoney(preview?.totals?.pagoTotal)}</p>
                   </div>
                   <div>
                     <p className="text-[11px] text-slate-400">Interés total (12 meses)</p>
-                    <p className="mt-1 font-semibold">{fmtMoney(preview.totals.interesTotal)}</p>
+                    <p className="mt-1 font-semibold">{fmtMoney(preview?.totals?.interesTotal)}</p>
                   </div>
                   <div>
                     <p className="text-[11px] text-slate-400">Capital total (12 meses)</p>
-                    <p className="mt-1 font-semibold">{fmtMoney(preview.totals.capitalTotal)}</p>
+                    <p className="mt-1 font-semibold">{fmtMoney(preview?.totals?.capitalTotal)}</p>
                   </div>
                   <div>
                     <p className="text-[11px] text-slate-400">Saldo fin año 1</p>
-                    <p className="mt-1 font-semibold">{fmtMoney(preview.totals.saldoFinal)}</p>
+                    <p className="mt-1 font-semibold">{fmtMoney(preview?.totals?.saldoFinal)}</p>
                   </div>
                 </div>
               </div>
@@ -628,12 +810,9 @@ function AmortModal({ open, onClose, data, onGoSimular }) {
   );
 }
 
-/* =========================
-   Page
-========================= */
 export default function Progreso() {
   const nav = useNavigate();
-  const { token, logout, user, lastAuthError } = useCustomerAuth();
+  const { token, logout, user } = useCustomerAuth();
 
   const [loading, setLoading] = useState(true);
   const [source, setSource] = useState("unknown"); // "backend" | "local" | "none"
@@ -670,7 +849,6 @@ export default function Progreso() {
       setLoading(true);
       setError("");
 
-      // Si no hay token, este useEffect igual corre una vez; pero ya redirigimos arriba.
       if (!token) {
         setSnap(null);
         setSource("none");
@@ -679,7 +857,6 @@ export default function Progreso() {
       }
 
       try {
-        // (Opcional) valida sesión: si está inválida, 401 y logout.
         const meRes = await fetch("/api/customer-auth/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -691,7 +868,6 @@ export default function Progreso() {
         }
         if (!meRes.ok) throw new Error(`Error sesión (${meRes.status})`);
 
-        // ✅ Fuente de verdad: backend
         const leadRes = await fetch("/api/customer/leads/mine", {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -702,7 +878,6 @@ export default function Progreso() {
           return;
         }
 
-        // ✅ Si no hay lead todavía => estado NUEVO (no mostrar números)
         if (leadRes.status === 404) {
           if (!alive) return;
           setSnap(null);
@@ -718,26 +893,34 @@ export default function Progreso() {
         const leadData = await leadRes.json().catch(() => null);
         const lead = leadData?.lead || leadData?.data || leadData;
 
+        const entradaObj =
+          lead?.entrada &&
+          typeof lead.entrada === "object" &&
+          lead.entrada.entrada &&
+          typeof lead.entrada.entrada === "object"
+            ? lead.entrada.entrada
+            : lead?.entrada || {};
+
+        const mergedInput = mergePreferValues(
+          lead?.input && typeof lead.input === "object" ? lead.input : {},
+          lead?.metadata?.input && typeof lead.metadata.input === "object" ? lead.metadata.input : {},
+          entradaObj && typeof entradaObj === "object" ? entradaObj : {}
+        );
+
         const backendSnap = {
-  input: {
-    ...(lead?.entrada || {}),           // ✅ aquí está tu form guardado por save-journey
-    ...(lead?.metadata?.input || {}),
-    ...(lead?.input || {}),
-  },
-  resultado:
-    lead?.resultado ||
-    lead?.resultadoNormalizado ||
-    lead?.resultadoSimulacion ||
-    lead?.result ||
-    lead?.resultadoV1 ||
-    {},
-};
+          input: mergedInput,
+          resultado:
+            lead?.resultado ||
+            lead?.resultadoNormalizado ||
+            lead?.resultadoSimulacion ||
+            lead?.result ||
+            lead?.resultadoV1 ||
+            lead?.entrada?.resultado ||
+            {},
+        };
 
+        const hasBackendResult = backendSnap?.resultado && Object.keys(backendSnap.resultado || {}).length > 0;
 
-        const hasBackendResult =
-          backendSnap?.resultado && Object.keys(backendSnap.resultado || {}).length > 0;
-
-        // ✅ Si existe lead pero aún no tiene resultado => también estado NUEVO (no mostrar números)
         if (!hasBackendResult) {
           if (!alive) return;
           setSnap(null);
@@ -750,7 +933,6 @@ export default function Progreso() {
         setSnap(backendSnap);
         setSource("backend");
       } catch (e) {
-        // ✅ Solo en error (red/servidor) permitimos fallback local para no romper UX
         const localSnap = readJourneyLocal?.() || null;
 
         if (!alive) return;
@@ -777,11 +959,24 @@ export default function Progreso() {
   }, [token, logout, nav]);
 
   const data = useMemo(() => buildDataFromSnap(snap), [snap]);
-
   const sourceLabel = source === "backend" ? "Sincronizado" : source === "local" ? "Guardado local" : "—";
 
   const suggestedTasks = useMemo(() => (data.hasSnap ? buildSuggestedTasks(data) : []), [data]);
   const completedCount = suggestedTasks.reduce((acc, t) => acc + (taskDone?.[t.id] ? 1 : 0), 0);
+
+  const displayName = useMemo(() => {
+    const raw =
+      user?.firstName ||
+      user?.nombre ||
+      user?.name ||
+      user?.fullName ||
+      user?.displayName ||
+      safeNameFromEmail(user?.email) ||
+      "👋";
+    return String(raw || "").trim();
+  }, [user]);
+
+  const greeting = displayName === "👋" ? "Hola" : `Hola, ${displayName}`;
 
   const waMessage = useMemo(() => {
     const parts = [];
@@ -800,20 +995,6 @@ export default function Progreso() {
 
   const docChecklist = useMemo(() => (data.hasSnap ? buildDocumentChecklist(data) : []), [data]);
 
-  const displayName = useMemo(() => {
-    const raw =
-      user?.firstName ||
-      user?.nombre ||
-      user?.name ||
-      user?.fullName ||
-      user?.displayName ||
-      safeNameFromEmail(user?.email) ||
-      "👋";
-    return String(raw || "").trim();
-  }, [user]);
-
-  const greeting = displayName === "👋" ? "Hola" : `Hola, ${displayName}`;
-
   const topTasks = useMemo(() => {
     const weight = (x) => (x.impact === "alto" ? 3 : x.impact === "medio" ? 2 : 1);
     const sorted = [...suggestedTasks].sort((a, b) => weight(b) - weight(a));
@@ -822,22 +1003,18 @@ export default function Progreso() {
 
   const tasksToRender = showAllTasks ? suggestedTasks : topTasks;
 
-  const handleAdvisorNavigate = (href) => {
-    if (!href) return;
-    if (href.startsWith("http")) {
-      window.open(href, "_blank", "noreferrer");
-      return;
-    }
-    nav(href);
-    setAdvisorOpen(false);
+  const goJourney = () => {
+    try {
+      localStorage.setItem("hl_entry_mode", "journey");
+    } catch {}
+    nav(SIM_JOURNEY);
   };
 
-  const handleAdvisorAnchor = (href) => {
-    if (!href) return;
-    const id = String(href).replace("#", "");
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-    setAdvisorOpen(false);
+  const goQuick = () => {
+    try {
+      localStorage.setItem("hl_entry_mode", "quick");
+    } catch {}
+    nav("/simular?mode=quick");
   };
 
   if (loading) {
@@ -853,31 +1030,30 @@ export default function Progreso() {
     );
   }
 
-  // ✅ Estado NUEVO: no hay progreso sincronizado (y no mostramos números)
-  if (!data.hasSnap) {
+  // ✅ EMPTY STATE
+  if (!data?.hasSnap) {
     return (
       <PremiumBg>
-        <div className="mx-auto max-w-[1100px] px-5 sm:px-6 py-10">
-          <div className="rounded-3xl border border-slate-800/70 bg-slate-900/50 p-6">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h1 className="text-xl font-semibold">Tu Camino HabitaLibre</h1>
-                <p className="mt-2 text-sm text-slate-400">
-                  Aún no has iniciado tu Journey. Haz tu precalificación y aquí te armamos tu plan paso a paso.
-                </p>
-
-                {lastAuthError ? (
-                  <p className="mt-3 text-xs text-amber-100 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2">
-                    {lastAuthError}
-                  </p>
-                ) : null}
-
-                {error ? (
-                  <p className="mt-3 text-xs text-red-200 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
-                    {error}
-                  </p>
-                ) : null}
+        <header className="sticky top-0 z-50 border-b border-slate-800/60 bg-slate-950/70 backdrop-blur-xl">
+          <div className="mx-auto max-w-[1100px] px-5 sm:px-6 py-4 flex items-center justify-between">
+            <Link to="/" className="flex items-center gap-3">
+              <div
+                className="h-11 w-11 rounded-2xl bg-slate-900/90 border border-emerald-400/60
+                           shadow-[0_0_25px_rgba(16,185,129,0.35)]
+                           flex items-center justify-center overflow-hidden"
+              >
+                <img src={HIcon} alt="HabitaLibre" className="h-7 w-7 object-contain" />
               </div>
+              <div className="leading-tight">
+                <div className="font-bold text-lg text-white tracking-tight">HabitaLibre</div>
+                <div className="text-[11px] text-emerald-300/90">Camino hacia tu aprobación</div>
+              </div>
+            </Link>
+
+            <div className="flex items-center gap-2">
+              <span className="hidden sm:inline rounded-full bg-slate-900/70 px-3 py-1 text-[11px] text-slate-300 ring-1 ring-slate-700/70">
+                {sourceLabel}
+              </span>
 
               <button
                 type="button"
@@ -890,25 +1066,99 @@ export default function Progreso() {
                 Cerrar sesión
               </button>
             </div>
+          </div>
+        </header>
 
-            <div className="mt-5 flex gap-3">
-              <Link
-                className="inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-emerald-400 text-slate-950 font-semibold text-sm hover:bg-emerald-300 transition"
-                to={SIM_JOURNEY}
-              >
-                Iniciar mi Journey →
-              </Link>
-              <Link
-                className="inline-flex items-center justify-center px-5 py-2.5 rounded-full border border-slate-700 text-slate-100 text-sm hover:border-slate-500 transition"
-                to="/simular"
-              >
-                Usar simulador rápido
-              </Link>
+        <div className="mx-auto max-w-[1100px] px-5 sm:px-6 py-8">
+          {error ? (
+            <div className="mb-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">
+              {error}
             </div>
+          ) : null}
 
-            <p className="mt-4 text-[11px] text-slate-500">
-              Tip: el Journey guarda tu progreso y te da checklist + plan 30–60–90.
-            </p>
+          <div className="rounded-3xl border border-slate-800/70 bg-slate-950/40 shadow-[0_20px_80px_-40px_rgba(0,0,0,0.8)]">
+            <div className="p-6 sm:p-8">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-sm text-slate-400">Tu tablero personal</div>
+                  <h1 className="mt-1 text-2xl sm:text-3xl font-semibold tracking-tight text-slate-50">
+                    Tu Camino HabitaLibre comienza aquí
+                  </h1>
+                  <p className="mt-2 text-sm sm:text-base text-slate-300 max-w-2xl">
+                    En menos de 2 minutos analizamos tu perfil y te damos un plan claro para aumentar tu probabilidad de aprobación.
+                  </p>
+                  {user?.email ? <p className="mt-2 text-[12px] text-slate-500">Sesión: {user.email}</p> : null}
+                </div>
+
+                <span className="shrink-0 rounded-full border border-slate-700/70 bg-slate-900/60 px-3 py-1 text-[11px] text-slate-300">
+                  Nuevo
+                </span>
+              </div>
+
+              <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { t: "Probabilidad real", d: "Un estimado claro según tu perfil." },
+                  { t: "Ruta óptima", d: "VIS / VIP / BIESS / banca privada." },
+                  { t: "Plan 30-60-90", d: "Acciones concretas para mejorar." },
+                  { t: "Progreso guardado", d: "Vuelves cuando quieras sin empezar de cero." },
+                ].map((x) => (
+                  <div key={x.t} className="rounded-2xl border border-slate-800/70 bg-slate-900/30 px-4 py-3">
+                    <div className="text-sm font-semibold text-slate-100">{x.t}</div>
+                    <div className="mt-0.5 text-[12px] text-slate-400">{x.d}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-[12px] text-emerald-100">Completa tu Camino y desbloquea tu checklist + plan personalizado.</div>
+                  <div className="flex items-center gap-1">
+                    {[0, 1, 2, 3].map((i) => (
+                      <span
+                        key={i}
+                        className={[
+                          "h-2.5 w-2.5 rounded-full border",
+                          i === 0 ? "bg-emerald-400 border-emerald-300" : "bg-transparent border-emerald-500/30",
+                        ].join(" ")}
+                      />
+                    ))}
+                    <span className="ml-2 text-[11px] text-emerald-200/80">0/4</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <button
+                  type="button"
+                  onClick={goJourney}
+                  className="rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-950 hover:opacity-95 active:scale-[0.99] transition"
+                >
+                  Iniciar mi Camino →
+                  <span className="block text-[11px] font-medium opacity-80">guarda tu progreso y tu plan</span>
+                </button>
+
+                <div className="sm:ml-auto text-[11px] text-slate-500 leading-relaxed">
+                  HabitaLibre no es un banco. Te ayudamos a prepararte para que el banco te diga que sí.
+                </div>
+              </div>
+
+              {/* Mantengo tu goQuick si luego quieres usarlo en UI (por ahora no lo muestras) */}
+              {/* <button onClick={goQuick}>Modo quick</button> */}
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-center justify-between">
+            <button
+              type="button"
+              className="text-[11px] text-slate-400 hover:text-slate-200 underline"
+              onClick={() => {
+                clearJourneyLocal?.();
+                localStorage.removeItem(LS_TASKS);
+              }}
+            >
+              Borrar progreso local
+            </button>
+            <span className="text-[11px] text-slate-600">Tip: completa el Journey para ver tu tablero.</span>
           </div>
         </div>
       </PremiumBg>
@@ -938,6 +1188,18 @@ export default function Progreso() {
               {sourceLabel}
             </span>
 
+            {/* ✅ CTA PRIMARIO (desktop) */}
+            <a
+              href={waHref}
+              target="_blank"
+              rel="noreferrer"
+              className="hidden sm:inline-flex items-center justify-center px-4 py-2 rounded-full bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-semibold text-xs transition"
+              title="Hablar con un asesor por WhatsApp"
+            >
+              Hablar con asesor →
+            </a>
+
+            {/* Secundarios */}
             <Link
               to={SIM_JOURNEY}
               onClick={() => {
@@ -946,9 +1208,19 @@ export default function Progreso() {
                 } catch {}
               }}
               className="inline-flex items-center justify-center px-4 py-2 rounded-full border border-slate-700 text-slate-100 font-semibold text-xs hover:border-slate-500 transition"
+              title="Ajusta tu escenario para mejorar tu resultado"
             >
               Afinar
             </Link>
+
+            <button
+              type="button"
+              onClick={() => setAdvisorOpen(true)}
+              className="hidden md:inline-flex items-center justify-center px-4 py-2 rounded-full border border-slate-700/70 bg-slate-950/20 text-slate-200 font-semibold text-xs hover:bg-slate-950/30 transition"
+              title="Ver tu plan y checklist"
+            >
+              Ver mi plan
+            </button>
 
             <button
               type="button"
@@ -959,14 +1231,6 @@ export default function Progreso() {
               className="rounded-full border border-slate-700 px-4 py-2 text-xs text-slate-200 hover:border-slate-600"
             >
               Cerrar sesión
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setAdvisorOpen(true)}
-              className="hidden sm:inline-flex items-center justify-center px-4 py-2 rounded-full bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-semibold text-xs transition"
-            >
-              Abrir Advisor →
             </button>
           </div>
         </div>
@@ -986,13 +1250,17 @@ export default function Progreso() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-[1100px] px-5 sm:px-6 py-8">
+      {/* ✅ pb-32 en mobile para que el sticky CTA no tape el contenido */}
+      <div className="mx-auto max-w-[1100px] px-5 sm:px-6 py-8 pb-32 sm:pb-8">
         {error ? (
           <div className="mb-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">
             {error}. Mostrando <span className="font-semibold">{sourceLabel.toLowerCase()}</span>.
           </div>
         ) : null}
 
+        {/* =========================
+            HERO / RESUMEN
+        ========================= */}
         <section className="rounded-3xl border border-slate-800/70 bg-slate-900/50 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.9)]">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -1013,16 +1281,12 @@ export default function Progreso() {
           <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="rounded-2xl border border-slate-800/70 bg-slate-950/30 p-4">
               <p className="text-[11px] text-slate-400">Precio máximo estimado</p>
-              <p className="mt-1 text-xl font-semibold">
-                {data.precioMaxVivienda != null ? fmtMoney(data.precioMaxVivienda) : "—"}
-              </p>
+              <p className="mt-1 text-xl font-semibold">{data.precioMaxVivienda != null ? fmtMoney(data.precioMaxVivienda) : "—"}</p>
             </div>
 
             <div className="rounded-2xl border border-slate-800/70 bg-slate-950/30 p-4">
               <p className="text-[11px] text-slate-400">Cuota mensual estimada</p>
-              <p className="mt-1 text-xl font-semibold">
-                {data.cuotaEstimada != null ? `${fmtMoney(data.cuotaEstimada)}/mes` : "—"}
-              </p>
+              <p className="mt-1 text-xl font-semibold">{data.cuotaEstimada != null ? `${fmtMoney(data.cuotaEstimada)}/mes` : "—"}</p>
             </div>
 
             <div className="rounded-2xl border border-slate-800/70 bg-slate-950/30 p-4">
@@ -1031,12 +1295,16 @@ export default function Progreso() {
             </div>
           </div>
 
+          {/* ✅ Siguiente paso + urgencia */}
           <div className="mt-5 rounded-2xl border border-slate-800/70 bg-slate-950/20 p-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <p className="text-[11px] tracking-[0.2em] uppercase text-slate-400">Tu siguiente paso</p>
                 <p className="mt-1 text-sm font-semibold text-slate-100">{data.nextBestAction.title}</p>
                 <p className="mt-1 text-[12px] text-slate-400">{data.nextBestAction.desc}</p>
+                <p className="mt-2 text-[11px] text-slate-500">
+                  Tip: con 1–2 ajustes puedes mejorar condiciones. Si quieres, te guiamos en WhatsApp.
+                </p>
               </div>
               <span className="self-start sm:self-auto rounded-full bg-slate-900/70 px-3 py-1 text-[11px] text-slate-300 ring-1 ring-slate-700/70">
                 Impacto {data.nextBestAction.impact}
@@ -1044,7 +1312,8 @@ export default function Progreso() {
             </div>
           </div>
 
-          <div className="mt-5 flex flex-col sm:flex-row gap-3">
+          {/* ✅ CTA STACK (desktop/tablet) */}
+          <div className="mt-5 hidden sm:flex flex-col sm:flex-row gap-3">
             <a
               href={waHref}
               target="_blank"
@@ -1052,6 +1321,7 @@ export default function Progreso() {
               className="inline-flex items-center justify-center px-6 py-3 rounded-2xl bg-emerald-400 text-slate-950 font-semibold text-sm hover:bg-emerald-300 transition"
             >
               Hablar con un asesor →
+              <span className="sr-only">por WhatsApp</span>
             </a>
 
             <Link
@@ -1071,11 +1341,11 @@ export default function Progreso() {
               onClick={() => setAdvisorOpen(true)}
               className="inline-flex items-center justify-center px-6 py-3 rounded-2xl border border-slate-800/70 bg-slate-950/20 text-slate-200 font-semibold text-sm hover:bg-slate-950/30 transition"
             >
-              Mi advisor
+              Ver mi plan
             </button>
           </div>
 
-          <p className="mt-4 text-[11px] text-slate-400">
+          <p className="mt-3 text-[11px] text-slate-400">
             Estimación basada en tu información declarada. No es aprobación bancaria.
           </p>
         </section>
@@ -1094,6 +1364,9 @@ export default function Progreso() {
           />
         </div>
 
+        {/* =========================
+            PLAN / TASKS
+        ========================= */}
         <section id="mejoras" className="mt-5 rounded-3xl border border-slate-800/70 bg-slate-900/50 p-6">
           <div className="flex items-end justify-between gap-4">
             <div>
@@ -1127,6 +1400,8 @@ export default function Progreso() {
                   ? { type: "neutral", label: "Impacto medio" }
                   : { type: "ok", label: "OK" };
 
+              const isPrimaryWhatsApp = t.ctaHref === "whatsapp";
+
               return (
                 <div
                   key={t.id}
@@ -1136,16 +1411,12 @@ export default function Progreso() {
                     <button
                       type="button"
                       onClick={() => setTaskDone((prev) => ({ ...(prev || {}), [t.id]: !done }))}
-                      className={`mt-1 h-5 w-5 rounded border ${
-                        done ? "bg-emerald-400 border-emerald-300" : "border-slate-600"
-                      }`}
+                      className={`mt-1 h-5 w-5 rounded border ${done ? "bg-emerald-400 border-emerald-300" : "border-slate-600"}`}
                       aria-label={done ? "Marcar como pendiente" : "Marcar como hecho"}
                     />
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className={`font-semibold ${done ? "text-slate-400 line-through" : "text-slate-100"}`}>
-                          {t.title}
-                        </p>
+                        <p className={`font-semibold ${done ? "text-slate-400 line-through" : "text-slate-100"}`}>{t.title}</p>
                         <span className="rounded-full bg-slate-900/70 px-2.5 py-0.5 text-[10px] text-slate-300 ring-1 ring-slate-700/70">
                           {t.badge}
                         </span>
@@ -1163,7 +1434,12 @@ export default function Progreso() {
                         href={waHref}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-blue-500 hover:bg-blue-400 text-slate-950 font-semibold text-xs transition"
+                        className={[
+                          "inline-flex items-center justify-center px-4 py-2 rounded-full font-semibold text-xs transition",
+                          isPrimaryWhatsApp
+                            ? "bg-emerald-400 hover:bg-emerald-300 text-slate-950"
+                            : "bg-blue-500 hover:bg-blue-400 text-slate-950",
+                        ].join(" ")}
                       >
                         {t.ctaText}
                       </a>
@@ -1342,13 +1618,25 @@ export default function Progreso() {
       <AmortModal
         open={amortOpen}
         onClose={() => setAmortOpen(false)}
-        data={snap} // 👈 snap tiene input/resultado
+        data={snap}
         onGoSimular={() => {
           try {
             localStorage.setItem("hl_entry_mode", "journey");
           } catch {}
           nav(SIM_JOURNEY_AMORT);
         }}
+      />
+
+      {/* ✅ Sticky CTA solo mobile */}
+      <MobileStickyCTA
+        waHref={waHref}
+        onAfinar={() => {
+          try {
+            localStorage.setItem("hl_entry_mode", "journey");
+          } catch {}
+          nav(SIM_JOURNEY);
+        }}
+        onPlan={() => setAdvisorOpen(true)}
       />
     </PremiumBg>
   );

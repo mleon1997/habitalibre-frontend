@@ -15,3 +15,49 @@ body,
 #root {
   max-width: none !important;
 }
+
+/* =========================
+   MOBILE BASELINE (RECOMENDADO)
+========================= */
+
+/* Mejor baseline para móviles (barra del navegador dinámica) */
+html,
+body {
+  min-height: 100dvh;
+  height: auto;
+}
+
+/* Scroll suave en iOS + evita rebotes raros entre contenedores */
+body {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: none;
+}
+
+/* Ajuste de texto en móviles (evita que iOS “reescale” raro) */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Safe area (iPhone notch/home bar). Útil para footers sticky */
+:root {
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+
+/* Evita zoom iOS en inputs (si usas text-sm en Tailwind, esto lo corrige) */
+input,
+select,
+textarea,
+button {
+  font-size: 16px;
+}
+
+/* Mejor “tap” UX */
+button,
+a,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}

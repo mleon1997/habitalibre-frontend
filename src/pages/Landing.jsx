@@ -24,13 +24,11 @@ import { trackEvent, trackPageView } from "../lib/analytics";
 import { useNavigate } from "react-router-dom";
 import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
 
-
 export default function Landing({ onStart }) {
   const [activeLegalSection, setActiveLegalSection] = useState(null);
 
-const navigate = useNavigate();
-const { token } = useCustomerAuth();
-
+  const navigate = useNavigate();
+  const { token } = useCustomerAuth();
 
   // Page view
   useEffect(() => {
@@ -40,11 +38,35 @@ const { token } = useCustomerAuth();
   const handleStart = (source = "unknown") => {
     trackEvent("cta_iniciar_simulacion_click", { source });
 
+    // ✅ Landing = maximiza precalificaciones (quick mode)
+    try {
+      localStorage.setItem("hl_entry_mode", "quick");
+    } catch {}
+
     if (typeof onStart === "function") {
       onStart();
     } else {
       window.location.hash = "#/simular";
     }
+  };
+
+  // ✅ CTA secundario (Guardar/Progreso) — mobile
+  const handleMobileAccount = (source = "unknown") => {
+    trackEvent("cta_guardar_progreso_click", { source });
+
+    // Si ya está logueado → progreso
+    if (token) {
+      navigate("/progreso");
+      return;
+    }
+
+    // Si no está logueado → register y volver al journey
+    try {
+      localStorage.setItem("hl_entry_mode", "journey");
+    } catch {}
+
+    const returnTo = "/simular?mode=journey";
+    navigate(`/login?intent=register&returnTo=${encodeURIComponent(returnTo)}`);
   };
 
   const openLegal = (section) => {
@@ -67,10 +89,7 @@ const { token } = useCustomerAuth();
     viewport: { once: true, amount: 0.3 },
   };
 
-
-
   return (
-    
     <main className="min-h-screen bg-slate-950 text-slate-50">
       {/* NAVBAR */}
       <header className="border-b border-slate-800/70 bg-slate-950/90 backdrop-blur sticky top-0 z-50">
@@ -103,43 +122,41 @@ const { token } = useCustomerAuth();
             </div>
           </div>
 
-        {/* NAV LINKS - DESKTOP */}
-<nav className="hidden md:flex items-center gap-8 text-sm">
-  <a href="#como-funciona" className="text-slate-300 hover:text-slate-50">
-    Cómo funciona
-  </a>
+          {/* NAV LINKS - DESKTOP */}
+          <nav className="hidden md:flex items-center gap-8 text-sm">
+            <a href="#como-funciona" className="text-slate-300 hover:text-slate-50">
+              Cómo funciona
+            </a>
 
-  <a href="#beneficios" className="text-slate-300 hover:text-slate-50">
-    Beneficios
-  </a>
+            <a href="#beneficios" className="text-slate-300 hover:text-slate-50">
+              Beneficios
+            </a>
 
-  <a href="#nosotros" className="text-slate-300 hover:text-slate-50">
-    Nosotros
-  </a>
+            <a href="#nosotros" className="text-slate-300 hover:text-slate-50">
+              Nosotros
+            </a>
 
-  <a href="#testimonios" className="text-slate-300 hover:text-slate-50">
-    Testimonios
-  </a>
+            <a href="#testimonios" className="text-slate-300 hover:text-slate-50">
+              Testimonios
+            </a>
 
-  {/* 👤 LOGIN / PROGRESO */}
-  <button
-    onClick={() => navigate(token ? "/progreso" : "/login")}
-    className="text-slate-200 hover:text-white transition text-sm"
-  >
-    {token ? "Mi progreso" : "Iniciar sesión"}
-  </button>
+            {/* 👤 LOGIN / PROGRESO */}
+            <button
+              onClick={() => navigate(token ? "/progreso" : "/login")}
+              className="text-slate-200 hover:text-white transition text-sm"
+            >
+              {token ? "Mi progreso" : "Iniciar sesión"}
+            </button>
 
-  {/* CTA PRINCIPAL */}
-  <button
-    onClick={() => handleStart("navbar_primary")}
-    className="px-5 py-2.5 rounded-full bg-blue-500 hover:bg-blue-400
+            {/* CTA PRINCIPAL */}
+            <button
+              onClick={() => handleStart("navbar_primary")}
+              className="px-5 py-2.5 rounded-full bg-blue-500 hover:bg-blue-400
                text-slate-950 font-semibold text-sm shadow-lg transition"
-  >
-    Iniciar simulación
-  </button>
-</nav>
-
-
+            >
+              Iniciar simulación
+            </button>
+          </nav>
 
           {/* CTA MOBILE */}
           <button
@@ -186,6 +203,7 @@ const { token } = useCustomerAuth();
               <p className="text-[11px] tracking-[0.2em] uppercase text-slate-400 mb-3">
                 ● Sin afectar tu buró · resultado en menos de 2 minutos
               </p>
+
               <h1 className="text-3xl md:text-5xl font-semibold tracking-tight text-slate-50 mb-4">
                 Tu camino fácil a la
                 <br />
@@ -194,12 +212,14 @@ const { token } = useCustomerAuth();
                   🏡
                 </span>
               </h1>
+
               <p className="text-sm md:text-[15px] text-slate-300 max-w-xl mb-6">
                 En menos de 2 minutos ves cuánto podrías comprar hoy y con qué
                 tipo de crédito avanzar (VIS, VIP, BIESS o banca privada).
                 Recibes un resumen claro en tu correo, sin ir al banco, sin
                 papeleo y sin consultas a tu buró.
               </p>
+
               {/* CTA buttons */}
               <div className="flex flex-wrap gap-3 mb-4">
                 <button
@@ -214,22 +234,35 @@ const { token } = useCustomerAuth();
                   type="button"
                   className="inline-flex items-center justify-center px-4 py-2.5 rounded-full border border-slate-600/80 text-slate-200 text-sm hover:border-slate-400 hover:text-slate-50 transition"
                   onClick={() => {
-                    trackEvent("cta_ver_ejemplo_resultado_click", {
-                      source: "hero",
-                    });
+                    trackEvent("cta_ver_ejemplo_resultado_click", { source: "hero" });
                     const el = document.getElementById("preview");
-                    if (el)
-                      el.scrollIntoView({
-                        behavior: "smooth",
-                        block: "center",
-                      });
+                    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
                   }}
                 >
                   Ver ejemplo de resultado
                 </button>
               </div>
 
-              <div className="flex flex-wrap gap-x-6 gap-y-2 text-[11px] text-slate-400">
+              {/* ✅ CTA secundario SOLO mobile */}
+<div className="md:hidden">
+  <button
+    type="button"
+    onClick={() => handleMobileAccount("hero_mobile_secondary")}
+    className="w-full inline-flex items-center justify-center px-5 py-2.5 rounded-2xl
+      border border-emerald-400/35 bg-slate-950/30 text-slate-100 font-semibold text-sm
+      shadow-[0_0_0_1px_rgba(16,185,129,0.12),0_18px_50px_rgba(2,6,23,0.55)]
+      hover:border-emerald-300/60 hover:bg-emerald-500/10 hover:text-white
+      transition active:scale-[.99]"
+  >
+    {token ? "Ver mi progreso" : "Crear Cuenta/Iniciar Sesión"}
+  </button>
+
+  <p className="mt-2 text-[11px] text-slate-500 text-center">
+    guarda tu plan
+  </p>
+</div>
+
+              <div className="flex flex-wrap gap-x-6 gap-y-2 text-[11px] text-slate-400 mt-4">
                 <div className="flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                   Datos cifrados
@@ -246,29 +279,19 @@ const { token } = useCustomerAuth();
             </motion.div>
 
             {/* RIGHT – result card */}
-            <motion.div
-              id="preview"
-              {...fadeUp}
-              transition={{ ...fadeUp.transition, delay: 0.1 }}
-            >
+            <motion.div id="preview" {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }}>
               <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 shadow-[0_24px_60px_rgba(15,23,42,0.9)] backdrop-blur-sm">
                 <div className="flex items-start justify-between text-xs mb-4">
                   <div>
                     <div className="inline-flex items-center gap-2 rounded-full bg-slate-900 border border-slate-700/70 px-2.5 py-1 mb-2">
                       <div className="h-4 w-4 rounded-lg bg-slate-950 flex items-center justify-center border border-emerald-400/60 overflow-hidden">
-                        <img
-                          src={HLogo}
-                          alt="HabitaLibre"
-                          className="h-3.5 w-3.5 object-contain"
-                        />
+                        <img src={HLogo} alt="HabitaLibre" className="h-3.5 w-3.5 object-contain" />
                       </div>
                       <span className="text-[11px] text-teal-300 font-medium">
                         Precalificación HabitaLibre
                       </span>
                     </div>
-                    <p className="text-slate-400 text-[11px]">
-                      Vista previa de tu resultado
-                    </p>
+                    <p className="text-slate-400 text-[11px]">Vista previa de tu resultado</p>
                     <p className="text-slate-500 mt-0.5 text-[11px]">
                       Ejemplo con ingresos de $1.600 y deudas moderadas
                     </p>
@@ -279,12 +302,8 @@ const { token } = useCustomerAuth();
                 </div>
 
                 <div className="mb-5">
-                  <p className="text-slate-400 text-[11px] mb-1">
-                    Capacidad estimada de compra
-                  </p>
-                  <p className="text-3xl md:text-4xl font-bold tracking-tight">
-                    $ 98.500
-                  </p>
+                  <p className="text-slate-400 text-[11px] mb-1">Capacidad estimada de compra</p>
+                  <p className="text-3xl md:text-4xl font-bold tracking-tight">$ 98.500</p>
                   <p className="text-[11px] text-slate-500 mt-1">
                     Monto referencial de vivienda según tus datos declarados.
                   </p>
@@ -292,9 +311,7 @@ const { token } = useCustomerAuth();
 
                 <div className="grid grid-cols-2 gap-4 text-sm mb-4">
                   <div className="bg-slate-900 border border-slate-700/70 rounded-2xl p-4">
-                    <p className="text-slate-400 text-[11px] mb-1">
-                      Cuota estimada
-                    </p>
+                    <p className="text-slate-400 text-[11px] mb-1">Cuota estimada</p>
                     <p className="font-semibold text-[17px]">$ 480 / mes</p>
                     <p className="text-[11px] text-slate-500 mt-1">
                       Incluye capital + intereses · Plazo 20 años.
@@ -302,9 +319,7 @@ const { token } = useCustomerAuth();
                   </div>
 
                   <div className="bg-slate-900 border border-slate-700/70 rounded-2xl p-4">
-                    <p className="text-slate-400 text-[11px] mb-1">
-                      Producto tentativo
-                    </p>
+                    <p className="text-slate-400 text-[11px] mb-1">Producto tentativo</p>
                     <p className="font-semibold text-[15px]">VIS / VIP</p>
                     <p className="text-[11px] text-slate-500 mt-1">
                       Ajustamos según si calificas a subsidio o BIESS.
@@ -314,37 +329,19 @@ const { token } = useCustomerAuth();
 
                 <div className="grid grid-cols-3 gap-3 text-[11px] mb-5">
                   <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
-                    <p className="text-slate-400 text-[10px] mb-0.5">
-                      Tasa referencial
-                    </p>
-                    <p className="text-slate-100 font-semibold text-sm">
-                      4,87%*
-                    </p>
-                    <p className="text-slate-500 text-[9px] mt-0.5">
-                      Varía por banco y producto.
-                    </p>
+                    <p className="text-slate-400 text-[10px] mb-0.5">Tasa referencial</p>
+                    <p className="text-slate-100 font-semibold text-sm">4,87%*</p>
+                    <p className="text-slate-500 text-[9px] mt-0.5">Varía por banco y producto.</p>
                   </div>
                   <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
-                    <p className="text-slate-400 text-[10px] mb-0.5">
-                      Plazo estimado
-                    </p>
-                    <p className="text-slate-100 font-semibold text-sm">
-                      20 años
-                    </p>
-                    <p className="text-slate-500 text-[9px] mt-0.5">
-                      Buscamos balance entre cuota y costo total.
-                    </p>
+                    <p className="text-slate-400 text-[10px] mb-0.5">Plazo estimado</p>
+                    <p className="text-slate-100 font-semibold text-sm">20 años</p>
+                    <p className="text-slate-500 text-[9px] mt-0.5">Buscamos balance entre cuota y costo total.</p>
                   </div>
                   <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
-                    <p className="text-slate-400 text-[10px] mb-0.5">
-                      Score HabitaLibre
-                    </p>
-                    <p className="text-slate-100 font-semibold text-sm">
-                      82 / 100
-                    </p>
-                    <p className="text-emerald-400 text-[9px] mt-0.5">
-                      Perfil sólido para iniciar tu proceso.
-                    </p>
+                    <p className="text-slate-400 text-[10px] mb-0.5">Score HabitaLibre</p>
+                    <p className="text-slate-100 font-semibold text-sm">82 / 100</p>
+                    <p className="text-emerald-400 text-[9px] mt-0.5">Perfil sólido para iniciar tu proceso.</p>
                   </div>
                 </div>
 
@@ -353,30 +350,19 @@ const { token } = useCustomerAuth();
                     i
                   </div>
                   <div className="text-[11px] leading-snug text-slate-200">
-                    <span className="font-semibold text-emerald-300">
-                      Ejemplo:
-                    </span>{" "}
-                    si reduces tus otras deudas en{" "}
-                    <span className="font-semibold">$ 150/mes</span>, tu
-                    capacidad podría subir hasta aprox.{" "}
-                    <span className="font-semibold">$ 112.000</span>. En el
-                    reporte real te mostramos estos escenarios con tus propios
-                    datos.
+                    <span className="font-semibold text-emerald-300">Ejemplo:</span>{" "}
+                    si reduces tus otras deudas en <span className="font-semibold">$ 150/mes</span>, tu
+                    capacidad podría subir hasta aprox. <span className="font-semibold">$ 112.000</span>. En el
+                    reporte real te mostramos estos escenarios con tus propios datos.
                   </div>
                 </div>
 
                 <button
-                  onClick={() =>
-                    handleStart("card_ver_capacidad_real_button")
-                  }
+                  onClick={() => handleStart("card_ver_capacidad_real_button")}
                   className="w-full py-3 rounded-xl bg-blue-500 hover:bg-blue-400 text-slate-950 font-semibold text-sm transition flex items-center justify-center gap-2"
                 >
                   <div className="h-5 w-5 rounded-lg bg-slate-950 flex items-center justify-center border border-emerald-400/60 overflow-hidden">
-                    <img
-                      src={HLogo}
-                      alt=""
-                      className="h-4 w-4 object-contain"
-                    />
+                    <img src={HLogo} alt="" className="h-4 w-4 object-contain" />
                   </div>
                   <span>Ver mi capacidad real</span>
                 </button>
@@ -386,9 +372,8 @@ const { token } = useCustomerAuth();
                 </p>
 
                 <p className="text-[9px] text-slate-500 mt-3 leading-snug">
-                  *Tasa y condiciones referenciales. Tu resultado real se
-                  calcula con tus datos y puede variar según entidad financiera,
-                  producto y regulación vigente en Ecuador.
+                  *Tasa y condiciones referenciales. Tu resultado real se calcula con tus datos y puede variar según
+                  entidad financiera, producto y regulación vigente en Ecuador.
                 </p>
               </div>
             </motion.div>
@@ -421,20 +406,12 @@ const { token } = useCustomerAuth();
 
             <div className="flex gap-4 text-xs text-slate-400">
               <div className="rounded-2xl bg-slate-900/60 border border-slate-800 px-4 py-3">
-                <div className="text-[11px] text-slate-500 mb-1">
-                  Tiempo promedio
-                </div>
-                <div className="text-sm font-semibold text-slate-50">
-                  1–2 min
-                </div>
+                <div className="text-[11px] text-slate-500 mb-1">Tiempo promedio</div>
+                <div className="text-sm font-semibold text-slate-50">1–2 min</div>
               </div>
               <div className="rounded-2xl bg-slate-900/60 border border-slate-800 px-4 py-3">
-                <div className="text-[11px] text-slate-500 mb-1">
-                  Información requerida
-                </div>
-                <div className="text-sm font-semibold text-slate-50">
-                  Solo ingresos y deudas
-                </div>
+                <div className="text-[11px] text-slate-500 mb-1">Información requerida</div>
+                <div className="text-sm font-semibold text-slate-50">Solo ingresos y deudas</div>
               </div>
             </div>
           </div>
@@ -448,9 +425,7 @@ const { token } = useCustomerAuth();
                   <ClipboardDocumentListIcon className="h-5 w-5 text-emerald-400" />
                 </div>
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-                    Paso 1
-                  </p>
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Paso 1</p>
                   <p className="font-semibold text-slate-50">
                     Simulas sin papeles ni claves bancarias
                   </p>
@@ -471,9 +446,7 @@ const { token } = useCustomerAuth();
                   <BanknotesIcon className="h-5 w-5 text-sky-400" />
                 </div>
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-                    Paso 2
-                  </p>
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Paso 2</p>
                   <p className="font-semibold text-slate-50">
                     Ves tu rango de compra y tipo de crédito
                   </p>
@@ -495,9 +468,7 @@ const { token } = useCustomerAuth();
                   <UserGroupIcon className="h-5 w-5 text-fuchsia-400" />
                 </div>
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-                    Paso 3
-                  </p>
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Paso 3</p>
                   <p className="font-semibold text-slate-50">
                     Si quieres, te acompañamos hasta el crédito
                   </p>
@@ -550,14 +521,10 @@ const { token } = useCustomerAuth();
             </div>
 
             <div className="rounded-2xl bg-slate-900/70 border border-slate-800 px-4 py-3 text-xs text-slate-300 max-w-xs">
-              <p className="font-semibold text-slate-50 mb-1">
-                Nuestro enfoque
-              </p>
+              <p className="font-semibold text-slate-50 mb-1">Nuestro enfoque</p>
               <p className="text-slate-400">
                 No es “te aprobaron / te rechazaron”. Es:{" "}
-                <span className="text-emerald-300 font-semibold">
-                  qué cambiar
-                </span>{" "}
+                <span className="text-emerald-300 font-semibold">qué cambiar</span>{" "}
                 para que tu perfil sí pueda ser viable.
               </p>
             </div>
@@ -572,9 +539,7 @@ const { token } = useCustomerAuth();
                   <BanknotesIcon className="h-5 w-5 text-emerald-400" />
                 </div>
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-                    Motivo 1
-                  </p>
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Motivo 1</p>
                   <p className="font-semibold text-slate-50">
                     La cuota no cabe en tu ingreso (DTI alto)
                   </p>
@@ -582,9 +547,7 @@ const { token } = useCustomerAuth();
               </div>
               <div className="text-[12px] text-slate-400 space-y-2">
                 <div>
-                  <p className="font-semibold text-slate-200 mb-0.5">
-                    Por qué el banco rechaza:
-                  </p>
+                  <p className="font-semibold text-slate-200 mb-0.5">Por qué el banco rechaza:</p>
                   <p>
                     Si el porcentaje de tu ingreso ya comprometido en deudas
                     supera ~40–45%, el sistema de riesgo automáticamente bloquea
@@ -592,9 +555,7 @@ const { token } = useCustomerAuth();
                   </p>
                 </div>
                 <div>
-                  <p className="font-semibold text-emerald-300 mb-0.5">
-                    Cómo HabitaLibre lo corrige:
-                  </p>
+                  <p className="font-semibold text-emerald-300 mb-0.5">Cómo HabitaLibre lo corrige:</p>
                   <ul className="list-disc list-inside space-y-1">
                     <li>Calculamos tu DTI real con tus deudas actuales.</li>
                     <li>
@@ -617,9 +578,7 @@ const { token } = useCustomerAuth();
                   <PresentationChartLineIcon className="h-5 w-5 text-sky-400" />
                 </div>
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-                    Motivo 2
-                  </p>
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Motivo 2</p>
                   <p className="font-semibold text-slate-50">
                     La entrada es muy baja para el valor de la vivienda (LTV)
                   </p>
@@ -627,9 +586,7 @@ const { token } = useCustomerAuth();
               </div>
               <div className="text-[12px] text-slate-400 space-y-2">
                 <div>
-                  <p className="font-semibold text-slate-200 mb-0.5">
-                    Por qué el banco rechaza:
-                  </p>
+                  <p className="font-semibold text-slate-200 mb-0.5">Por qué el banco rechaza:</p>
                   <p>
                     Con poca entrada, el préstamo cubre casi todo el valor
                     (LTV 90–95%+), el riesgo sube y muchas veces el banco
@@ -637,9 +594,7 @@ const { token } = useCustomerAuth();
                   </p>
                 </div>
                 <div>
-                  <p className="font-semibold text-emerald-300 mb-0.5">
-                    Cómo HabitaLibre lo corrige:
-                  </p>
+                  <p className="font-semibold text-emerald-300 mb-0.5">Cómo HabitaLibre lo corrige:</p>
                   <ul className="list-disc list-inside space-y-1">
                     <li>
                       Calculamos tu LTV y lo comparamos con rangos VIS/VIP,
@@ -665,9 +620,7 @@ const { token } = useCustomerAuth();
                   <ClipboardDocumentListIcon className="h-5 w-5 text-fuchsia-400" />
                 </div>
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-                    Motivo 3
-                  </p>
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Motivo 3</p>
                   <p className="font-semibold text-slate-50">
                     No cumples los requisitos formales (BIESS / estabilidad)
                   </p>
@@ -675,9 +628,7 @@ const { token } = useCustomerAuth();
               </div>
               <div className="text-[12px] text-slate-400 space-y-2">
                 <div>
-                  <p className="font-semibold text-slate-200 mb-0.5">
-                    Por qué el banco rechaza:
-                  </p>
+                  <p className="font-semibold text-slate-200 mb-0.5">Por qué el banco rechaza:</p>
                   <p>
                     BIESS y los bancos piden cierto número de aportes,
                     estabilidad laboral y documentación ordenada. Si algo falta,
@@ -685,22 +636,11 @@ const { token } = useCustomerAuth();
                   </p>
                 </div>
                 <div>
-                  <p className="font-semibold text-emerald-300 mb-0.5">
-                    Cómo HabitaLibre lo corrige:
-                  </p>
+                  <p className="font-semibold text-emerald-300 mb-0.5">Cómo HabitaLibre lo corrige:</p>
                   <ul className="list-disc list-inside space-y-1">
-                    <li>
-                      Te indicamos cuántos aportes o meses de estabilidad te
-                      faltan.
-                    </li>
-                    <li>
-                      Te damos un timeline estimado para ser elegible a BIESS o
-                      cierto producto.
-                    </li>
-                    <li>
-                      Te mostramos opciones alternativas mientras completas esos
-                      requisitos.
-                    </li>
+                    <li>Te indicamos cuántos aportes o meses de estabilidad te faltan.</li>
+                    <li>Te damos un timeline estimado para ser elegible a BIESS o cierto producto.</li>
+                    <li>Te mostramos opciones alternativas mientras completas esos requisitos.</li>
                   </ul>
                 </div>
               </div>
@@ -713,9 +653,7 @@ const { token } = useCustomerAuth();
                   <LockClosedIcon className="h-5 w-5 text-emerald-300" />
                 </div>
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-                    Motivo 4
-                  </p>
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Motivo 4</p>
                   <p className="font-semibold text-slate-50">
                     Ingresos informales o mal documentados
                   </p>
@@ -723,9 +661,7 @@ const { token } = useCustomerAuth();
               </div>
               <div className="text-[12px] text-slate-400 space-y-2">
                 <div>
-                  <p className="font-semibold text-slate-200 mb-0.5">
-                    Por qué el banco rechaza:
-                  </p>
+                  <p className="font-semibold text-slate-200 mb-0.5">Por qué el banco rechaza:</p>
                   <p>
                     Si eres independiente o tienes ingresos mixtos pero sin RUC,
                     roles o declaraciones claras, el banco no puede justificar
@@ -733,22 +669,11 @@ const { token } = useCustomerAuth();
                   </p>
                 </div>
                 <div>
-                  <p className="font-semibold text-emerald-300 mb-0.5">
-                    Cómo HabitaLibre lo corrige:
-                  </p>
+                  <p className="font-semibold text-emerald-300 mb-0.5">Cómo HabitaLibre lo corrige:</p>
                   <ul className="list-disc list-inside space-y-1">
-                    <li>
-                      Te damos un checklist según tu tipo de ingreso (empleado,
-                      independiente, mixto).
-                    </li>
-                    <li>
-                      Te mostramos cómo ordenar tus extractos y respaldos para
-                      que el banco sí los tome en cuenta.
-                    </li>
-                    <li>
-                      Te ayudamos a pasar de “rechazado hoy” a un perfil
-                      trabajable en los próximos meses.
-                    </li>
+                    <li>Te damos un checklist según tu tipo de ingreso (empleado, independiente, mixto).</li>
+                    <li>Te mostramos cómo ordenar tus extractos y respaldos para que el banco sí los tome en cuenta.</li>
+                    <li>Te ayudamos a pasar de “rechazado hoy” a un perfil trabajable en los próximos meses.</li>
                   </ul>
                 </div>
               </div>
@@ -772,7 +697,6 @@ const { token } = useCustomerAuth();
           </div>
         </div>
       </motion.section>
-
 
       {/* BENEFICIOS */}
       <motion.section
@@ -823,13 +747,8 @@ const { token } = useCustomerAuth();
                 hoy.
               </p>
               <ul className="text-[11px] text-slate-400 space-y-1.5">
-                <li>
-                  • Te damos un rango de precio realista, no una cifra aislada.
-                </li>
-                <li>
-                  • Score hipotecario que te dice qué tan listo estás para el
-                  banco.
-                </li>
+                <li>• Te damos un rango de precio realista, no una cifra aislada.</li>
+                <li>• Score hipotecario que te dice qué tan listo estás para el banco.</li>
               </ul>
             </div>
 
@@ -850,10 +769,7 @@ const { token } = useCustomerAuth();
               </p>
               <ul className="text-[11px] text-slate-400 space-y-1.5">
                 <li>• Ideal si todavía no quieres sentarte frente al banco.</li>
-                <li>
-                  • Puedes probar diferentes montos, plazos y cuotas antes de
-                  decidir.
-                </li>
+                <li>• Puedes probar diferentes montos, plazos y cuotas antes de decidir.</li>
               </ul>
             </div>
 
@@ -873,14 +789,8 @@ const { token } = useCustomerAuth();
                 papeles y preparar tu mejor versión para el banco o el BIESS.
               </p>
               <ul className="text-[11px] text-slate-400 space-y-1.5">
-                <li>
-                  • Te explicamos el reporte en lenguaje simple, sin jerga
-                  bancaria.
-                </li>
-                <li>
-                  • Te mostramos qué cambiar (deudas, entrada, plazo) para subir
-                  tu score.
-                </li>
+                <li>• Te explicamos el reporte en lenguaje simple, sin jerga bancaria.</li>
+                <li>• Te mostramos qué cambiar (deudas, entrada, plazo) para subir tu score.</li>
               </ul>
             </div>
           </div>
@@ -897,8 +807,6 @@ const { token } = useCustomerAuth();
         </div>
       </motion.section>
 
-      
-
       {/* NOSOTROS – HL-SCORE */}
       <motion.section
         id="nosotros"
@@ -906,25 +814,21 @@ const { token } = useCustomerAuth();
         {...fadeUp}
       >
         <div className="mx-auto max-w-6xl px-4 py-16">
-          {/* Label */}
           <div className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-[11px] text-slate-300 mb-6">
             <PresentationChartLineIcon className="h-3.5 w-3.5 text-emerald-400" />
             Algoritmo HabitaLibre · HL-Score®
           </div>
 
-          {/* Title */}
           <h2 className="text-2xl md:text-3xl font-semibold text-slate-50 mb-3">
             Un motor diseñado para la realidad hipotecaria ecuatoriana
           </h2>
 
-          {/* Subtitle */}
           <p className="text-sm text-slate-400 max-w-2xl mb-8">
             HL-Score® combina tu nivel de ingresos, deudas, relación con el IESS
             y parámetros VIS/VIP/BIESS para darte una lectura honesta de qué tan
             cerca estás de tu hipoteca y qué ajustes tienen más impacto.
           </p>
 
-          {/* Resume Chips */}
           <div className="flex flex-wrap gap-3 mb-10">
             <div className="flex items-center gap-2 rounded-full bg-slate-900 border border-slate-700 px-4 py-1.5 text-[11px]">
               <SparklesIcon className="h-4 w-4 text-emerald-400" />
@@ -942,52 +846,32 @@ const { token } = useCustomerAuth();
             </div>
           </div>
 
-          {/* Two Cards */}
           <div className="grid md:grid-cols-2 gap-6">
             <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 text-[12px] text-slate-300">
               <p className="font-semibold mb-2">Escenarios con varios bancos</p>
               <ul className="space-y-1 text-slate-400">
-                <li>
-                  • Comparamos rangos de tasa, plazo y entrada según tu perfil.
-                </li>
-                <li>
-                  • Ajustamos el modelo si aplicas a VIS, VIP, BIESS o banca
-                  privada.
-                </li>
-                <li>
-                  • Te mostramos un rango de vivienda, no una cifra aislada.
-                </li>
+                <li>• Comparamos rangos de tasa, plazo y entrada según tu perfil.</li>
+                <li>• Ajustamos el modelo si aplicas a VIS, VIP, BIESS o banca privada.</li>
+                <li>• Te mostramos un rango de vivienda, no una cifra aislada.</li>
               </ul>
             </div>
 
             <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 text-[12px] text-slate-300">
               <p className="font-semibold mb-2">Decisiones claras, sin jerga</p>
               <ul className="space-y-1 text-slate-400">
-                <li>
-                  • Te mostramos qué pasa si bajas deudas, cambias plazo o
-                  aumentas entrada.
-                </li>
-                <li>
-                  • Usamos gráficos y mensajes simples, sin letras pequeñas.
-                </li>
-                <li>
-                  • El modelo se entrena con casos reales de familias en
-                  Ecuador.
-                </li>
+                <li>• Te mostramos qué pasa si bajas deudas, cambias plazo o aumentas entrada.</li>
+                <li>• Usamos gráficos y mensajes simples, sin letras pequeñas.</li>
+                <li>• El modelo se entrena con casos reales de familias en Ecuador.</li>
               </ul>
             </div>
           </div>
         </div>
       </motion.section>
 
-      {/* OFICINAS – ESTILO APPLE */}
-      <motion.section
-        className="border-t border-slate-800 bg-slate-950/95"
-        {...fadeUp}
-      >
+      {/* OFICINAS */}
+      <motion.section className="border-t border-slate-800 bg-slate-950/95" {...fadeUp}>
         <div className="mx-auto max-w-6xl px-4 py-16">
           <div className="grid gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] items-center">
-            {/* Texto */}
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1 text-[11px] text-slate-300 mb-3">
                 <BuildingOffice2Icon className="h-3.5 w-3.5 text-emerald-300" />
@@ -1006,17 +890,13 @@ const { token } = useCustomerAuth();
               </p>
 
               <ul className="text-sm text-slate-300 space-y-2 mb-6">
-                <li>
-                  • Documentación alineada a requisitos de bancos y BIESS.
-                </li>
+                <li>• Documentación alineada a requisitos de bancos y BIESS.</li>
               </ul>
 
               <div className="mt-4 rounded-2xl bg-slate-900/80 border border-slate-700/80 p-4 flex items-start gap-3">
                 <LockClosedIcon className="h-5 w-5 text-emerald-300 mt-0.5" />
                 <div className="text-[12px] text-slate-300">
-                  <p className="font-semibold mb-1">
-                    Centro de confianza HabitaLibre
-                  </p>
+                  <p className="font-semibold mb-1">Centro de confianza HabitaLibre</p>
                   <p className="text-slate-400 mb-3">
                     Tus datos se usan solo para construir tu simulación y, si
                     nos lo autorizas, ayudarte a contactar bancos o proyectos de
@@ -1033,7 +913,6 @@ const { token } = useCustomerAuth();
               </div>
             </div>
 
-            {/* Card estilo Apple con foto */}
             <motion.div
               className="relative"
               initial={{ opacity: 0, y: 24 }}
@@ -1050,12 +929,8 @@ const { token } = useCustomerAuth();
                         <BuildingOffice2Icon className="h-5 w-5 text-emerald-300" />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-slate-50">
-                          Oficinas HabitaLibre
-                        </p>
-                        <p className="text-[11px] text-slate-400">
-                          Quito · Zona financiera
-                        </p>
+                        <p className="text-sm font-semibold text-slate-50">Oficinas HabitaLibre</p>
+                        <p className="text-[11px] text-slate-400">Quito · Zona financiera</p>
                       </div>
                     </div>
                     <div className="rounded-full bg-emerald-500/10 border border-emerald-400/60 px-3 py-1 text-[11px] text-emerald-300">
@@ -1072,9 +947,7 @@ const { token } = useCustomerAuth();
                   </div>
 
                   <div className="mt-4 text-[12px] text-slate-300">
-                    <p className="mb-1 font-semibold">
-                      Aquí se conectan proyectos, bancos y familias.
-                    </p>
+                    <p className="mb-1 font-semibold">Aquí se conectan proyectos, bancos y familias.</p>
                     <p className="text-slate-400">
                       En estas oficinas afinamos el HL-Score®, recibimos a
                       aliados y acompañamos a personas que están dando el paso
@@ -1120,7 +993,6 @@ const { token } = useCustomerAuth();
           </div>
 
           <div className="grid gap-5 md:grid-cols-3 text-sm">
-            {/* Testimonio 1 */}
             <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
               <div className="absolute inset-0 pointer-events-none opacity-60 bg-[radial-gradient(circle_at_top,_rgba(52,211,153,0.15),transparent_55%)]" />
               <div className="relative flex items-center gap-3 mb-3">
@@ -1128,12 +1000,8 @@ const { token } = useCustomerAuth();
                   MA
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-slate-50">
-                    Mateo &amp; Alejandra
-                  </p>
-                  <p className="text-[11px] text-slate-400">
-                    Primera vivienda · Quito
-                  </p>
+                  <p className="text-sm font-semibold text-slate-50">Mateo &amp; Alejandra</p>
+                  <p className="text-[11px] text-slate-400">Primera vivienda · Quito</p>
                 </div>
               </div>
               <p className="relative text-xs text-slate-300">
@@ -1144,7 +1012,6 @@ const { token } = useCustomerAuth();
               </p>
             </div>
 
-            {/* Testimonio 2 */}
             <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
               <div className="absolute inset-0 pointer-events-none opacity-60 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.16),transparent_55%)]" />
               <div className="relative flex items-center gap-3 mb-3">
@@ -1152,9 +1019,7 @@ const { token } = useCustomerAuth();
                   CR
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-slate-50">
-                    Carolina R.
-                  </p>
+                  <p className="text-sm font-semibold text-slate-50">Carolina R.</p>
                   <p className="text-[11px] text-slate-400">
                     Migrando de arriendo a dueño · VIS/VIP
                   </p>
@@ -1168,7 +1033,6 @@ const { token } = useCustomerAuth();
               </p>
             </div>
 
-            {/* Testimonio 3 */}
             <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
               <div className="absolute inset-0 pointer-events-none opacity-60 bg-[radial-gradient(circle_at_top,_rgba(236,72,153,0.16),transparent_55%)]" />
               <div className="relative flex items-center gap-3 mb-3">
@@ -1176,9 +1040,7 @@ const { token } = useCustomerAuth();
                   JP
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-slate-50">
-                    Jorge P.
-                  </p>
+                  <p className="text-sm font-semibold text-slate-50">Jorge P.</p>
                   <p className="text-[11px] text-slate-400">
                     Cambio de banco · Refinanciamiento
                   </p>
@@ -1195,14 +1057,9 @@ const { token } = useCustomerAuth();
         </div>
       </motion.section>
 
-            {/* FAQ – Preguntas frecuentes */}
-      <motion.section
-        id="faq"
-        className="border-t border-slate-800 bg-slate-950 scroll-mt-20"
-        {...fadeUp}
-      >
+      {/* FAQ */}
+      <motion.section id="faq" className="border-t border-slate-800 bg-slate-950 scroll-mt-20" {...fadeUp}>
         <div className="mx-auto max-w-6xl px-4 py-12 md:py-16">
-          {/* Header */}
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-[11px] text-slate-300 mb-3">
@@ -1219,16 +1076,11 @@ const { token } = useCustomerAuth();
             </div>
           </div>
 
-          {/* FAQ items */}
           <div className="space-y-3 text-sm">
             <details className="group rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3">
               <summary className="flex items-center justify-between cursor-pointer list-none">
-                <span className="font-medium text-slate-100">
-                  ¿HabitaLibre afecta mi buró de crédito?
-                </span>
-                <span className="ml-3 text-slate-500 group-open:rotate-180 transition-transform">
-                  ▾
-                </span>
+                <span className="font-medium text-slate-100">¿HabitaLibre afecta mi buró de crédito?</span>
+                <span className="ml-3 text-slate-500 group-open:rotate-180 transition-transform">▾</span>
               </summary>
               <p className="mt-2 text-xs text-slate-300">
                 No. La precalificación de HabitaLibre es referencial y se realiza
@@ -1240,12 +1092,8 @@ const { token } = useCustomerAuth();
 
             <details className="group rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3">
               <summary className="flex items-center justify-between cursor-pointer list-none">
-                <span className="font-medium text-slate-100">
-                  ¿Con qué tipos de crédito trabaja HabitaLibre?
-                </span>
-                <span className="ml-3 text-slate-500 group-open:rotate-180 transition-transform">
-                  ▾
-                </span>
+                <span className="font-medium text-slate-100">¿Con qué tipos de crédito trabaja HabitaLibre?</span>
+                <span className="ml-3 text-slate-500 group-open:rotate-180 transition-transform">▾</span>
               </summary>
               <p className="mt-2 text-xs text-slate-300">
                 Hoy te ayudamos a estimar si calificas para un crédito hipotecario
@@ -1256,27 +1104,18 @@ const { token } = useCustomerAuth();
 
             <details className="group rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3">
               <summary className="flex items-center justify-between cursor-pointer list-none">
-                <span className="font-medium text-slate-100">
-                  ¿Tiene algún costo usar HabitaLibre?
-                </span>
-                <span className="ml-3 text-slate-500 group-open:rotate-180 transition-transform">
-                  ▾
-                </span>
+                <span className="font-medium text-slate-100">¿Tiene algún costo usar HabitaLibre?</span>
+                <span className="ml-3 text-slate-500 group-open:rotate-180 transition-transform">▾</span>
               </summary>
               <p className="mt-2 text-xs text-slate-300">
-                No. Usar HabitaLibre y obtener tu precalificación es totalmente
-                gratuito.
+                No. Usar HabitaLibre y obtener tu precalificación es totalmente gratuito.
               </p>
             </details>
 
             <details className="group rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3">
               <summary className="flex items-center justify-between cursor-pointer list-none">
-                <span className="font-medium text-slate-100">
-                  ¿Qué información necesito para precalificarme?
-                </span>
-                <span className="ml-3 text-slate-500 group-open:rotate-180 transition-transform">
-                  ▾
-                </span>
+                <span className="font-medium text-slate-100">¿Qué información necesito para precalificarme?</span>
+                <span className="ml-3 text-slate-500 group-open:rotate-180 transition-transform">▾</span>
               </summary>
               <p className="mt-2 text-xs text-slate-300">
                 Solo necesitas ingresar tu ingreso mensual, si tienes deudas
@@ -1288,12 +1127,8 @@ const { token } = useCustomerAuth();
 
             <details className="group rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3">
               <summary className="flex items-center justify-between cursor-pointer list-none">
-                <span className="font-medium text-slate-100">
-                  ¿La precalificación es una aprobación definitiva del banco?
-                </span>
-                <span className="ml-3 text-slate-500 group-open:rotate-180 transition-transform">
-                  ▾
-                </span>
+                <span className="font-medium text-slate-100">¿La precalificación es una aprobación definitiva del banco?</span>
+                <span className="ml-3 text-slate-500 group-open:rotate-180 transition-transform">▾</span>
               </summary>
               <p className="mt-2 text-xs text-slate-300">
                 No. La precalificación de HabitaLibre es una estimación orientativa
@@ -1305,12 +1140,8 @@ const { token } = useCustomerAuth();
 
             <details className="group rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3">
               <summary className="flex items-center justify-between cursor-pointer list-none">
-                <span className="font-medium text-slate-100">
-                  ¿Puedo usar el resultado para negociar con un promotor o banco?
-                </span>
-                <span className="ml-3 text-slate-500 group-open:rotate-180 transition-transform">
-                  ▾
-                </span>
+                <span className="font-medium text-slate-100">¿Puedo usar el resultado para negociar con un promotor o banco?</span>
+                <span className="ml-3 text-slate-500 group-open:rotate-180 transition-transform">▾</span>
               </summary>
               <p className="mt-2 text-xs text-slate-300">
                 Sí. El reporte de HabitaLibre resume tu capacidad de compra y el
@@ -1323,41 +1154,35 @@ const { token } = useCustomerAuth();
         </div>
       </motion.section>
 
-        {/* FOOTER */}
-<footer className="mt-20 py-10 border-t border-slate-800 text-center text-slate-400">
-  <p className="mb-4 text-sm">Síguenos en nuestras redes</p>
+      {/* FOOTER REDES */}
+      <footer className="mt-20 py-10 border-t border-slate-800 text-center text-slate-400">
+        <p className="mb-4 text-sm">Síguenos en nuestras redes</p>
 
-  <div className="flex justify-center gap-6 text-slate-300">
-    {/* Instagram */}
-    <a
-      href="https://www.instagram.com/habitalibre.ec/"
-      target="_blank"
-      rel="noopener noreferrer"
-      className="hover:text-white transition"
-    >
-      <i className="fa-brands fa-instagram text-2xl"></i>
-    </a>
+        <div className="flex justify-center gap-6 text-slate-300">
+          <a
+            href="https://www.instagram.com/habitalibre.ec/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-white transition"
+          >
+            <i className="fa-brands fa-instagram text-2xl"></i>
+          </a>
 
-    {/* Facebook */}
-    <a
-      href="https://www.facebook.com/profile.php?id=61584282855630"
-      target="_blank"
-      rel="noopener noreferrer"
-      className="hover:text-white transition"
-    >
-      <i className="fa-brands fa-facebook text-2xl"></i>
-    </a>
-  </div>
-</footer>
+          <a
+            href="https://www.facebook.com/profile.php?id=61584282855630"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-white transition"
+          >
+            <i className="fa-brands fa-facebook text-2xl"></i>
+          </a>
+        </div>
+      </footer>
 
-
-
-      {/* FOOTER – Disclaimer + Links */}
+      {/* FOOTER DISCLAIMER */}
       <footer className="border-t border-slate-800 bg-slate-950 py-7 mt-4">
         <div className="mx-auto max-w-6xl px-4 text-center text-[11px] text-slate-500 leading-relaxed">
-          <p className="text-slate-400 font-semibold mb-1">
-            HabitaLibre © 2025
-          </p>
+          <p className="text-slate-400 font-semibold mb-1">HabitaLibre © 2025</p>
 
           <p className="mb-3 max-w-2xl mx-auto">
             Las estimaciones son referenciales y pueden variar según verificación
@@ -1391,8 +1216,6 @@ const { token } = useCustomerAuth();
         </div>
       </footer>
 
-      
-
       {/* LEGAL MODAL */}
       {activeLegalSection && (
         <div className="hl-modal-overlay" onClick={closeLegal}>
@@ -1400,7 +1223,6 @@ const { token } = useCustomerAuth();
             className="hl-modal-panel bg-slate-950 border border-slate-800"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2 text-[11px] text-slate-400">
                 <ShieldCheckIcon className="h-4 w-4 text-emerald-400" />
@@ -1415,7 +1237,6 @@ const { token } = useCustomerAuth();
               </button>
             </div>
 
-            {/* CONTENIDO: Política de Privacidad */}
             {activeLegalSection === "politica" && (
               <div className="text-slate-300 text-sm leading-relaxed space-y-4">
                 <h2 className="text-xl font-semibold text-slate-50">
@@ -1423,51 +1244,42 @@ const { token } = useCustomerAuth();
                 </h2>
 
                 <p className="text-xs text-slate-500">
-                  Queremos que tengas claridad total sobre cómo usamos tu
-                  información.
+                  Queremos que tengas claridad total sobre cómo usamos tu información.
                 </p>
 
                 <div className="space-y-3 text-sm">
                   <div>
-                    <h3 className="font-semibold text-slate-100">
-                      1. Qué datos pedimos
-                    </h3>
+                    <h3 className="font-semibold text-slate-100">1. Qué datos pedimos</h3>
                     <p>
-                      Solo solicitamos los datos necesarios para simular tu
-                      capacidad hipotecaria: ingresos, deudas, relación con el
-                      IESS y tu información de contacto para enviarte tu
-                      resultado.
+                      Solo solicitamos los datos necesarios para simular tu capacidad
+                      hipotecaria: ingresos, deudas, relación con el IESS y tu información
+                      de contacto para enviarte tu resultado.
                     </p>
                   </div>
 
                   <div>
-                    <h3 className="font-semibold text-slate-100">
-                      2. Cómo usamos tu información
-                    </h3>
+                    <h3 className="font-semibold text-slate-100">2. Cómo usamos tu información</h3>
                     <p>
                       Calculamos tu HL-Score®, te mostramos escenarios de crédito
-                      personalizados y, solo si tú lo autorizas, compartimos tus
-                      datos con bancos, cooperativas o desarrolladores
-                      inmobiliarios aliados para acompañarte en tu proceso de
-                      compra de vivienda.
+                      personalizados y, solo si tú lo autorizas, compartimos tus datos
+                      con bancos, cooperativas o desarrolladores inmobiliarios aliados
+                      para acompañarte en tu proceso de compra de vivienda.
                     </p>
                   </div>
 
                   <div>
-                    <h3 className="font-semibold text-slate-100">
-                      3. Seguridad y almacenamiento
-                    </h3>
+                    <h3 className="font-semibold text-slate-100">3. Seguridad y almacenamiento</h3>
                     <p>
-                      Protegemos tu información con prácticas de seguridad
-                      modernas y la conservamos únicamente mientras sea
-                      necesaria para tu proceso o lo que exija la ley.
+                      Protegemos tu información con prácticas de seguridad modernas y la
+                      conservamos únicamente mientras sea necesaria para tu proceso o lo
+                      que exija la ley.
                     </p>
                   </div>
                 </div>
 
                 <p className="text-[11px] text-slate-500">
-                  Puedes solicitar la eliminación de tus datos en cualquier
-                  momento. Lee la versión completa en nuestra{" "}
+                  Puedes solicitar la eliminación de tus datos en cualquier momento. Lee
+                  la versión completa en nuestra{" "}
                   <a
                     href="#/privacidad"
                     target="_blank"
@@ -1481,83 +1293,62 @@ const { token } = useCustomerAuth();
               </div>
             )}
 
-            {/* CONTENIDO: Términos de Uso */}
             {activeLegalSection === "terminos" && (
               <div className="text-slate-300 text-sm leading-relaxed space-y-4">
-                <h2 className="text-xl font-semibold text-slate-50">
-                  Términos de Uso
-                </h2>
+                <h2 className="text-xl font-semibold text-slate-50">Términos de Uso</h2>
                 <p className="text-xs text-slate-500">
-                  Al usar el simulador de HabitaLibre aceptas estos términos de
-                  forma previa y consciente.
+                  Al usar el simulador de HabitaLibre aceptas estos términos de forma previa
+                  y consciente.
                 </p>
 
                 <div className="space-y-3">
                   <div>
-                    <h3 className="font-semibold text-slate-100">
-                      1. Naturaleza del servicio
-                    </h3>
+                    <h3 className="font-semibold text-slate-100">1. Naturaleza del servicio</h3>
                     <p>
-                      HabitaLibre es una herramienta educativa y de orientación
-                      financiera inicial. Los resultados son estimaciones
-                      referenciales basadas en los datos que tú ingresas y no
-                      constituyen una oferta formal de crédito, una aprobación
-                      hipotecaria, ni asesoría financiera, legal o tributaria
+                      HabitaLibre es una herramienta educativa y de orientación financiera
+                      inicial. Los resultados son estimaciones referenciales basadas en los
+                      datos que tú ingresas y no constituyen una oferta formal de crédito,
+                      una aprobación hipotecaria, ni asesoría financiera, legal o tributaria
                       personalizada.
                     </p>
                   </div>
 
                   <div>
-                    <h3 className="font-semibold text-slate-100">
-                      2. Responsabilidad sobre la información ingresada
-                    </h3>
+                    <h3 className="font-semibold text-slate-100">2. Responsabilidad sobre la información ingresada</h3>
                     <p>
-                      La precisión de las estimaciones depende de la veracidad y
-                      actualización de los datos que proporcionas. Las
-                      decisiones tomadas únicamente sobre la base del simulador
-                      deben ser contrastadas con las políticas y evaluaciones
-                      internas de cada institución financiera.
+                      La precisión de las estimaciones depende de la veracidad y actualización
+                      de los datos que proporcionas. Las decisiones tomadas únicamente sobre
+                      la base del simulador deben ser contrastadas con las políticas y
+                      evaluaciones internas de cada institución financiera.
                     </p>
                   </div>
 
                   <div>
-                    <h3 className="font-semibold text-slate-100">
-                      3. Relación con bancos y terceros
-                    </h3>
+                    <h3 className="font-semibold text-slate-100">3. Relación con bancos y terceros</h3>
                     <p>
-                      HabitaLibre no representa a ningún banco o cooperativa en
-                      particular. Con tu autorización expresa, podemos compartir
-                      tu caso con entidades financieras o desarrolladores
-                      inmobiliarios aliados para análisis o contacto, pero la
-                      aprobación final dependerá exclusivamente de sus políticas
-                      internas, análisis de riesgo y documentación que ellos
-                      requieran.
+                      HabitaLibre no representa a ningún banco o cooperativa en particular. Con
+                      tu autorización expresa, podemos compartir tu caso con entidades financieras
+                      o desarrolladores inmobiliarios aliados para análisis o contacto, pero la
+                      aprobación final dependerá exclusivamente de sus políticas internas, análisis
+                      de riesgo y documentación que ellos requieran.
                     </p>
                   </div>
 
                   <div>
-                    <h3 className="font-semibold text-slate-100">
-                      4. Uso permitido y limitaciones
-                    </h3>
+                    <h3 className="font-semibold text-slate-100">4. Uso permitido y limitaciones</h3>
                     <p>
-                      El simulador está destinado a uso personal e informativo.
-                      No se permite su uso automatizado, fraudulento, con fines
-                      ilícitos o para reproducir, copiar o revender el servicio
-                      sin autorización previa por escrito de HabitaLibre. El
-                      algoritmo HL-Score® y el diseño de la plataforma son
-                      propiedad intelectual de HabitaLibre.
+                      El simulador está destinado a uso personal e informativo. No se permite su uso
+                      automatizado, fraudulento, con fines ilícitos o para reproducir, copiar o revender
+                      el servicio sin autorización previa por escrito de HabitaLibre. El algoritmo HL-Score®
+                      y el diseño de la plataforma son propiedad intelectual de HabitaLibre.
                     </p>
                   </div>
 
                   <div>
-                    <h3 className="font-semibold text-slate-100">
-                      5. Modificaciones
-                    </h3>
+                    <h3 className="font-semibold text-slate-100">5. Modificaciones</h3>
                     <p>
-                      Podemos actualizar estos Términos de Uso para reflejar
-                      cambios normativos o mejoras del servicio. Publicaremos la
-                      versión vigente y su fecha de actualización en nuestros
-                      canales oficiales.
+                      Podemos actualizar estos Términos de Uso para reflejar cambios normativos o mejoras del
+                      servicio. Publicaremos la versión vigente y su fecha de actualización en nuestros canales oficiales.
                     </p>
                   </div>
                 </div>
