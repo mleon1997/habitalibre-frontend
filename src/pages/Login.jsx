@@ -43,6 +43,7 @@ export default function Login() {
 
   // Fields
   const [nombre, setNombre] = useState("");
+  const [apellido, setApellido] = useState(""); // ✅ nuevo
   const [email, setEmail] = useState("");
   const [telefono, setTelefono] = useState("");
   const [password, setPassword] = useState("");
@@ -54,7 +55,6 @@ export default function Login() {
   useEffect(() => {
     trackPageView("customer_login");
     if (token) {
-      // si ya hay token, manda a progreso / returnTo
       try {
         nav(qs.returnTo || "/progreso");
       } catch {
@@ -70,7 +70,6 @@ export default function Login() {
   }, [qs.intent]);
 
   const subtitle = useMemo(() => {
-    // Mensaje según intención: si viene desde “guardar plan”, refuerza valor
     const rt = String(qs.returnTo || "");
     if (rt.includes("journey")) {
       return "Guarda tu plan y retoma tu camino a la vivienda propia cuando quieras.";
@@ -86,16 +85,16 @@ export default function Login() {
 
   const canRegister = useMemo(() => {
     if (String(nombre || "").trim().length < 2) return false;
+    if (String(apellido || "").trim().length < 2) return false; // ✅ nuevo
     if (!isEmail(email)) return false;
     if (!isValidEcMobile(telefono)) return false;
     if (String(password || "").length < 6) return false;
     if (!acepta) return false;
     return true;
-  }, [nombre, email, telefono, password, acepta]);
+  }, [nombre, apellido, email, telefono, password, acepta]);
 
   const goReturn = () => {
     const target = qs.returnTo || "/progreso";
-    // compat hash routing si aplica en algunos flujos
     try {
       nav(target);
     } catch {
@@ -139,8 +138,30 @@ export default function Login() {
   const onSubmitRegister = async (e) => {
     e.preventDefault();
     setError("");
-    if (!canRegister) {
-      setError("Completa tus datos correctamente para crear tu cuenta.");
+
+    // ✅ error más específico para UX
+    if (String(nombre || "").trim().length < 2) {
+      setError("Por favor ingresa tu nombre.");
+      return;
+    }
+    if (String(apellido || "").trim().length < 2) {
+      setError("Por favor ingresa tu apellido.");
+      return;
+    }
+    if (!isEmail(email)) {
+      setError("Revisa tu email.");
+      return;
+    }
+    if (!isValidEcMobile(telefono)) {
+      setError("Revisa tu teléfono (ej: 09XXXXXXXX o +5939XXXXXXXX).");
+      return;
+    }
+    if (String(password || "").length < 6) {
+      setError("Tu contraseña debe tener mínimo 6 caracteres.");
+      return;
+    }
+    if (!acepta) {
+      setError("Debes aceptar los términos para crear tu cuenta.");
       return;
     }
 
@@ -150,6 +171,7 @@ export default function Login() {
 
       const payload = {
         nombre: String(nombre).trim(),
+        apellido: String(apellido).trim(), // ✅ nuevo
         email: String(email).trim().toLowerCase(),
         telefono: cleanPhone(telefono),
         password: String(password),
@@ -344,9 +366,21 @@ export default function Login() {
                     value={nombre}
                     onChange={(e) => setNombre(e.target.value)}
                     type="text"
-                    autoComplete="name"
+                    autoComplete="given-name"
                     className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400"
                     placeholder="Tu nombre"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[12px] text-slate-300 mb-1">Apellido</label>
+                  <input
+                    value={apellido}
+                    onChange={(e) => setApellido(e.target.value)}
+                    type="text"
+                    autoComplete="family-name"
+                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400"
+                    placeholder="Tu apellido"
                   />
                 </div>
 
@@ -395,9 +429,7 @@ export default function Login() {
                     onChange={(e) => setAcepta(e.target.checked)}
                     className="mt-1 accent-emerald-400"
                   />
-                  <span>
-                    Acepto términos y política de privacidad (sin spam).
-                  </span>
+                  <span>Acepto términos y política de privacidad (sin spam).</span>
                 </label>
 
                 <button
