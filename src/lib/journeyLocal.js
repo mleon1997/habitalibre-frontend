@@ -107,6 +107,31 @@ export function saveJourneyLocal(snap, opts = {}) {
   }
 }
 
+/**
+ * ✅ FIX: evitar ReferenceError en producción
+ * Algunas partes del frontend están llamando persistLastResult().
+ * Lo definimos aquí y lo mantenemos separado del Journey Snap:
+ * - Solo guarda el resultado (legacy / quickwin si alguien lo usa)
+ * - NO modifica owner/ts (para no “rejuvenecer” el journey)
+ */
+export function persistLastResult(resultado) {
+  try {
+    localStorage.setItem(LS_LAST_RESULT, JSON.stringify(resultado || {}));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function readLastResult() {
+  try {
+    const raw = localStorage.getItem(LS_LAST_RESULT);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function readJourneyLocal() {
   try {
     const raw = localStorage.getItem(LS_JOURNEY_SNAP);
