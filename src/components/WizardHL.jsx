@@ -101,7 +101,8 @@ function SliderField({
 export default function WizardHL({ mode = "quick", onboarding = false }) {
   const navigate = useNavigate();
   const { openLead } = useLeadCapture();
-  const { isAuthed } = useCustomerAuth();
+  const { isAuthed, user } = useCustomerAuth();
+
 
   // ✅ fuente única de verdad
   const isJourneyMode = String(mode || "").toLowerCase() === "journey";
@@ -269,9 +270,10 @@ saveJourneyLocal({
   entrada: entradaPayload,
   input: entradaPayload,
   resultado: result,
-  userEmail: user?.email || "",
+  userEmail: (user && user.email) ? user.email : "",
   ts: Date.now(),
 });
+
 
 
       if (!isAuthed) {
