@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { readJourneyLocal, clearJourneyLocal } from "../lib/journeyLocal";
 import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
+import { API_BASE } from "../lib/api"; // ✅ FIX: IMPORT REAL (evita pegarle a habitalibre.com/api)
 import HIcon from "../assets/HICON.png";
 import AdvisorPanel from "../components/AdvisorPanel.jsx";
 import HLScoreCard from "../components/HLScoreCard.jsx";
@@ -168,6 +169,7 @@ function shouldUseLocalFallback(localSnap, currentEmail) {
   if (snapEmail && snapEmail !== emailNow) return false;
 
   // 2) si NO trae email, usamos owner guardado como “candado”
+  // 🚫 OJO: esto SOLO funciona si currentEmail viene de SESIÓN real
   const owner = normalizeEmail(localStorage.getItem(LS_JOURNEY_OWNER_EMAIL));
   if (owner && owner !== emailNow) return false;
 
@@ -257,13 +259,6 @@ function inferTasaForModal(data) {
     "";
 
   let tipo = String(tipoRaw || "").toLowerCase();
-
-  if (!tipo) {
-    try {
-      const normalized = buildDataFromSnap(data);
-      tipo = String(normalized?.suggestedCredit || "").toLowerCase();
-    } catch {}
-  }
 
   if (tipo.includes("biess")) return { min: 4.8, max: 6.5, mid: 5.6, source: "heur" };
   if (tipo.includes("vip")) return { min: 4.8, max: 7.0, mid: 6.0, source: "heur" };
@@ -931,7 +926,7 @@ export default function Progreso() {
 
       try {
         // 1) Validar sesión y obtener email real
-        const meRes = await fetch("/api/customer-auth/me", {
+        const meRes = await fetch(`${API_BASE}/api/customer-auth/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -954,16 +949,8 @@ export default function Progreso() {
 
         const meEmailNorm = normalizeEmail(meEmail);
 
-        // ✅ Candado de owner + timestamp (solo para Journey)
-        if (meEmailNorm) {
-          try {
-            localStorage.setItem(LS_JOURNEY_OWNER_EMAIL, meEmailNorm);
-            localStorage.setItem(LS_JOURNEY_TS, String(Date.now()));
-          } catch {}
-        }
-
         // 2) Cargar lead del journey (backend)
-        const leadRes = await fetch("/api/customer/leads/mine", {
+        const leadRes = await fetch(`${API_BASE}/api/customer/leads/mine`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -974,6 +961,10 @@ export default function Progreso() {
         }
 
         if (leadRes.status === 404) {
+          // ✅ No hay lead: NO mostrar datos viejos
+          try {
+            clearJourneyLocal?.();
+          } catch {}
           if (!alive) return;
           setSnap(null);
           setSource("none");
@@ -1020,7 +1011,15 @@ export default function Progreso() {
           return;
         }
 
-        // ✅ backendSnap “sellado” con email + ts (para que el modal / fallback sea consistente)
+        // ✅ SOLO AQUÍ sellamos owner + ts (porque ya hay lead real)
+        if (meEmailNorm) {
+          try {
+            localStorage.setItem(LS_JOURNEY_OWNER_EMAIL, meEmailNorm);
+            localStorage.setItem(LS_JOURNEY_TS, String(Date.now()));
+          } catch {}
+        }
+
+        // ✅ backendSnap “sellado”
         const backendSnap = {
           input: mergedInput,
           resultado: backendResult,
@@ -1028,21 +1027,23 @@ export default function Progreso() {
           ts: Date.now(),
         };
 
+        // ✅ opcional: guarda local como backup “correcto” del MISMO user
+        // (si tu saveJourneyLocal ya existe, lo ideal es llamarlo aquí)
+        // try { saveJourneyLocal(backendSnap, { userEmail: meEmailNorm }); } catch {}
+
         if (!alive) return;
         setSnap(backendSnap);
         setSource("backend");
       } catch (e) {
-        // 3) Fallback local SOLO si es del mismo usuario y reciente
+        // 3) Fallback local SOLO si:
+        // - tenemos email real de SESIÓN (no usamos owner LS como sustituto)
         const localSnap = readJourneyLocal?.() || null;
 
         if (!alive) return;
 
-        const currentEmail =
-          normalizeEmail(user?.email) ||
-          normalizeEmail(localStorage.getItem(LS_JOURNEY_OWNER_EMAIL)) ||
-          "";
+        const currentEmail = normalizeEmail(user?.email); // ✅ FIX CLAVE: SOLO email de sesión real
 
-        if (shouldUseLocalFallback(localSnap, currentEmail)) {
+        if (currentEmail && shouldUseLocalFallback(localSnap, currentEmail)) {
           setSnap(localSnap);
           setSource("local");
           setError("No pudimos cargar tu progreso sincronizado. Mostrando tu guardado local (de tu cuenta) por ahora.");

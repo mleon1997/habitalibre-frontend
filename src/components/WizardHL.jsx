@@ -5,7 +5,8 @@ import { precalificar } from "../lib/api";
 import { useLeadCapture } from "../context/LeadCaptureContext.jsx";
 import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
 import * as customerApi from "../lib/customerApi.js";
-import { saveJourneyLocal } from "../lib/journeyLocal.js";
+import { saveJourneyLocal, persistLastResult } from "../lib/journeyLocal";
+
 
 const TOTAL_STEPS = 4;
 
