@@ -81,7 +81,7 @@ function pickBoolIess(obj) {
 }
 
 /**
- * ✅ FIX: merge seguro
+ * ✅ merge seguro (no pisa con vacíos / 0 innecesarios)
  */
 function mergePreferValues(...objs) {
   const out = {};
@@ -104,6 +104,80 @@ function mergePreferValues(...objs) {
     }
   }
   return out;
+}
+
+/* =========================
+   ✅ Local fallback seguro (por usuario y recencia)
+========================= */
+const LS_TASKS = "hl_progress_tasks_v1";
+
+const SIM_JOURNEY = "/simular?mode=journey";
+const SIM_JOURNEY_AMORT = "/simular?mode=journey&tab=amort";
+
+const LS_JOURNEY_OWNER_EMAIL = "hl_journey_owner_email_v1";
+const LS_JOURNEY_TS = "hl_journey_ts_v1";
+
+function normalizeEmail(s) {
+  return String(s || "").trim().toLowerCase();
+}
+
+function extractLocalSnapEmail(localSnap) {
+  return (
+    localSnap?.userEmail ||
+    localSnap?.email ||
+    localSnap?.customerEmail ||
+    localSnap?.meta?.email ||
+    localSnap?.meta?.userEmail ||
+    localSnap?.entrada?.email ||
+    localSnap?.input?.email ||
+    ""
+  );
+}
+
+function extractLocalSnapTs(localSnap) {
+  const raw =
+    localSnap?.ts ||
+    localSnap?.timestamp ||
+    localSnap?.createdAt ||
+    localSnap?.updatedAt ||
+    localSnap?.meta?.ts ||
+    localSnap?.meta?.timestamp ||
+    null;
+
+  const n = raw ? Number(new Date(raw).getTime()) : 0;
+  return Number.isFinite(n) ? n : 0;
+}
+
+function isRecent(ts, days = 14) {
+  if (!ts || !Number.isFinite(ts)) return false;
+  const maxAge = days * 24 * 60 * 60 * 1000;
+  return Date.now() - ts <= maxAge;
+}
+
+function shouldUseLocalFallback(localSnap, currentEmail) {
+  if (!localSnap) return false;
+
+  const hasResult = localSnap?.resultado && Object.keys(localSnap.resultado || {}).length > 0;
+  if (!hasResult) return false;
+
+  const emailNow = normalizeEmail(currentEmail);
+  if (!emailNow) return false;
+
+  // 1) si el snap trae email, debe coincidir
+  const snapEmail = normalizeEmail(extractLocalSnapEmail(localSnap));
+  if (snapEmail && snapEmail !== emailNow) return false;
+
+  // 2) si NO trae email, usamos owner guardado como “candado”
+  const owner = normalizeEmail(localStorage.getItem(LS_JOURNEY_OWNER_EMAIL));
+  if (owner && owner !== emailNow) return false;
+
+  // 3) recencia: si el snap trae ts úsalo; si no, usa LS_JOURNEY_TS; si no, NO confíes
+  const tsFromSnap = extractLocalSnapTs(localSnap);
+  const tsFromLS = toNum(localStorage.getItem(LS_JOURNEY_TS));
+  const ts = tsFromSnap || tsFromLS || 0;
+  if (!isRecent(ts, 14)) return false;
+
+  return true;
 }
 
 /* =========================
@@ -365,10 +439,6 @@ function buildDataFromSnap(snap) {
   };
 }
 
-const LS_TASKS = "hl_progress_tasks_v1";
-const SIM_JOURNEY = "/simular?mode=journey";
-const SIM_JOURNEY_AMORT = "/simular?mode=journey&tab=amort";
-
 /* =========================
    Checklist / Tasks
 ========================= */
@@ -619,7 +689,7 @@ function AmortModal({ open, onClose, data, onGoSimular }) {
       return { error: "No tenemos monto a financiar (valor - entrada) para generar la amortización." };
     }
 
-    // ✅ 1) Preferir tasa FIJA del backend si viene en resultado
+    // ✅ Preferir tasa FIJA del backend si viene en resultado
     const tasaRaw =
       resultado?.tasaAnual ??
       resultado?.tasa ??
@@ -810,6 +880,9 @@ function AmortModal({ open, onClose, data, onGoSimular }) {
   );
 }
 
+/* =========================
+   Progreso (Page)
+========================= */
 export default function Progreso() {
   const nav = useNavigate();
   const { token, logout, user } = useCustomerAuth();
@@ -857,6 +930,7 @@ export default function Progreso() {
       }
 
       try {
+        // 1) Validar sesión y obtener email real
         const meRes = await fetch("/api/customer-auth/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -868,6 +942,27 @@ export default function Progreso() {
         }
         if (!meRes.ok) throw new Error(`Error sesión (${meRes.status})`);
 
+        const meJson = await meRes.json().catch(() => null);
+
+        const meEmail =
+          meJson?.email ||
+          meJson?.customer?.email ||
+          meJson?.user?.email ||
+          meJson?.data?.email ||
+          user?.email ||
+          "";
+
+        const meEmailNorm = normalizeEmail(meEmail);
+
+        // ✅ Candado de owner + timestamp (solo para Journey)
+        if (meEmailNorm) {
+          try {
+            localStorage.setItem(LS_JOURNEY_OWNER_EMAIL, meEmailNorm);
+            localStorage.setItem(LS_JOURNEY_TS, String(Date.now()));
+          } catch {}
+        }
+
+        // 2) Cargar lead del journey (backend)
         const leadRes = await fetch("/api/customer/leads/mine", {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -886,13 +981,12 @@ export default function Progreso() {
           return;
         }
 
-        if (!leadRes.ok) {
-          throw new Error(`No se pudo cargar lead (${leadRes.status})`);
-        }
+        if (!leadRes.ok) throw new Error(`No se pudo cargar lead (${leadRes.status})`);
 
         const leadData = await leadRes.json().catch(() => null);
         const lead = leadData?.lead || leadData?.data || leadData;
 
+        // algunos backends guardan entrada dentro de lead.entrada.entrada
         const entradaObj =
           lead?.entrada &&
           typeof lead.entrada === "object" &&
@@ -907,19 +1001,16 @@ export default function Progreso() {
           entradaObj && typeof entradaObj === "object" ? entradaObj : {}
         );
 
-        const backendSnap = {
-          input: mergedInput,
-          resultado:
-            lead?.resultado ||
-            lead?.resultadoNormalizado ||
-            lead?.resultadoSimulacion ||
-            lead?.result ||
-            lead?.resultadoV1 ||
-            lead?.entrada?.resultado ||
-            {},
-        };
+        const backendResult =
+          lead?.resultado ||
+          lead?.resultadoNormalizado ||
+          lead?.resultadoSimulacion ||
+          lead?.result ||
+          lead?.resultadoV1 ||
+          lead?.entrada?.resultado ||
+          {};
 
-        const hasBackendResult = backendSnap?.resultado && Object.keys(backendSnap.resultado || {}).length > 0;
+        const hasBackendResult = backendResult && Object.keys(backendResult || {}).length > 0;
 
         if (!hasBackendResult) {
           if (!alive) return;
@@ -929,19 +1020,38 @@ export default function Progreso() {
           return;
         }
 
+        // ✅ backendSnap “sellado” con email + ts (para que el modal / fallback sea consistente)
+        const backendSnap = {
+          input: mergedInput,
+          resultado: backendResult,
+          userEmail: meEmailNorm || "",
+          ts: Date.now(),
+        };
+
         if (!alive) return;
         setSnap(backendSnap);
         setSource("backend");
       } catch (e) {
+        // 3) Fallback local SOLO si es del mismo usuario y reciente
         const localSnap = readJourneyLocal?.() || null;
 
         if (!alive) return;
 
-        if (localSnap?.resultado && Object.keys(localSnap.resultado || {}).length > 0) {
+        const currentEmail =
+          normalizeEmail(user?.email) ||
+          normalizeEmail(localStorage.getItem(LS_JOURNEY_OWNER_EMAIL)) ||
+          "";
+
+        if (shouldUseLocalFallback(localSnap, currentEmail)) {
           setSnap(localSnap);
           setSource("local");
-          setError("No pudimos cargar tu progreso sincronizado. Mostrando el guardado local por ahora.");
+          setError("No pudimos cargar tu progreso sincronizado. Mostrando tu guardado local (de tu cuenta) por ahora.");
         } else {
+          // evita “inventar” info: limpia journey local si no es confiable
+          try {
+            clearJourneyLocal?.();
+          } catch {}
+
           setSnap(null);
           setSource("none");
           setError(e?.message || "No se pudo cargar tu progreso");
@@ -956,7 +1066,7 @@ export default function Progreso() {
     return () => {
       alive = false;
     };
-  }, [token, logout, nav]);
+  }, [token, logout, nav, user?.email]);
 
   const data = useMemo(() => buildDataFromSnap(snap), [snap]);
   const sourceLabel = source === "backend" ? "Sincronizado" : source === "local" ? "Guardado local" : "—";
@@ -1142,7 +1252,7 @@ export default function Progreso() {
                 </div>
               </div>
 
-              {/* Mantengo tu goQuick si luego quieres usarlo en UI (por ahora no lo muestras) */}
+              {/* Mantengo goQuick si luego quieres usarlo en UI (por ahora no lo muestras) */}
               {/* <button onClick={goQuick}>Modo quick</button> */}
             </div>
           </div>
@@ -1154,6 +1264,10 @@ export default function Progreso() {
               onClick={() => {
                 clearJourneyLocal?.();
                 localStorage.removeItem(LS_TASKS);
+                try {
+                  localStorage.removeItem(LS_JOURNEY_OWNER_EMAIL);
+                  localStorage.removeItem(LS_JOURNEY_TS);
+                } catch {}
               }}
             >
               Borrar progreso local
@@ -1345,9 +1459,7 @@ export default function Progreso() {
             </button>
           </div>
 
-          <p className="mt-3 text-[11px] text-slate-400">
-            Estimación basada en tu información declarada. No es aprobación bancaria.
-          </p>
+          <p className="mt-3 text-[11px] text-slate-400">Estimación basada en tu información declarada. No es aprobación bancaria.</p>
         </section>
 
         <div className="mt-4">
@@ -1481,6 +1593,10 @@ export default function Progreso() {
               onClick={() => {
                 clearJourneyLocal?.();
                 localStorage.removeItem(LS_TASKS);
+                try {
+                  localStorage.removeItem(LS_JOURNEY_OWNER_EMAIL);
+                  localStorage.removeItem(LS_JOURNEY_TS);
+                } catch {}
                 window.location.reload();
               }}
             >
