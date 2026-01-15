@@ -22,6 +22,7 @@ import CustomerProtectedRoute from "./components/CustomerProtectedRoute.jsx";
 
 import AppLayoutShell from "./layouts/AppLayoutShell.jsx";
 import CustomerAuthListener from "./components/CustomerAuthListener.jsx";
+import AdminUsers from "./pages/AdminUsers.jsx";
 
 // ✅ Opción A: Quick Win modal global (usa TU ModalLead.jsx)
 import { LeadCaptureProvider } from "./context/LeadCaptureContext.jsx";
@@ -66,8 +67,10 @@ export default function App() {
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/leads" element={<AdminLeads />} />
 
-          <Route path="*" element={<Navigate to="/" replace />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+<Route path="/admin/users" element={<AdminUsers />} />
+<Route path="*" element={<Navigate to="/" replace />} />
+
         </Routes>
       </LeadCaptureProvider>
     </Router>
