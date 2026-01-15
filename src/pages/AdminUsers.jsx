@@ -4,27 +4,34 @@ import { API_BASE } from "../lib/api";
 
 const LIMIT = 20;
 
-export default function AdminUsers() {
-  // KPIs
-  const [totalUsers, setTotalUsers] = useState(0);
+function getAdminToken() {
+  try {
+    return localStorage.getItem("hl_admin_token") || "";
+  } catch {
+    return "";
+  }
+}
 
-  // Tabla
+export default function AdminUsers() {
+  const [totalUsers, setTotalUsers] = useState(0);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [err, setErr] = useState("");
 
-  // Filtros
+  // filtros
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
   const [producto, setProducto] = useState("");
   const [ciudad, setCiudad] = useState("");
   const [horizonte, setHorizonte] = useState("");
-  const [soloJourney, setSoloJourney] = useState(true);
+  const [soloJourney, setSoloJourney] = useState(false);
 
-  // Paginación
+  // paginación
   const [page, setPage] = useState(1);
 
-  // Query string (reutilizable para fetch y CSV)
+  const token = useMemo(() => getAdminToken(), []);
+
   const queryString = useMemo(() => {
     const p = new URLSearchParams();
     p.set("page", String(page));
@@ -38,108 +45,164 @@ export default function AdminUsers() {
     return p.toString();
   }, [page, q, status, producto, ciudad, horizonte, soloJourney]);
 
-  // Load KPIs
+  // helper fetch con auth
+  async function authedJson(url) {
+    const r = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const j = await r.json().catch(() => ({}));
+    return { r, j };
+  }
+
+  // KPIs
   useEffect(() => {
-    fetch(`${API_BASE}/api/admin/users/kpis`)
-      .then((r) => r.json())
-      .then((j) => {
-        if (j?.ok) setTotalUsers(j.totalUsers || 0);
-      })
-      .catch(() => {});
+    (async () => {
+      try {
+        const { r, j } = await authedJson(`${API_BASE}/api/admin/users/kpis`);
+        if (r.ok && j?.ok) setTotalUsers(Number(j.totalUsers || 0));
+      } catch {}
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load users list
+  // Lista
   useEffect(() => {
     let alive = true;
-    setLoading(true);
-    setErr("");
-
-    fetch(`${API_BASE}/api/admin/users?${queryString}`)
-      .then((r) => r.json())
-      .then((j) => {
+    (async () => {
+      try {
+        setLoading(true);
+        setErr("");
+        const { r, j } = await authedJson(`${API_BASE}/api/admin/users?${queryString}`);
         if (!alive) return;
-        if (!j?.ok) throw new Error(j?.message || "Error cargando usuarios");
+        if (!r.ok || !j?.ok) {
+          setItems([]);
+          setErr(j?.message || "No se pudo cargar la lista de usuarios");
+          return;
+        }
         setItems(j.items || []);
-      })
-      .catch(() => {
+      } catch {
         if (!alive) return;
         setItems([]);
-        setErr("No se pudo cargar la lista de usuarios");
-      })
-      .finally(() => alive && setLoading(false));
+        setErr("Error de red al cargar usuarios");
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
 
     return () => {
       alive = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryString]);
 
   function etapaBadge(etapa) {
-    if (etapa === "califica")
-      return "bg-emerald-100 text-emerald-700";
-    if (etapa === "en_camino")
-      return "bg-amber-100 text-amber-700";
-    return "bg-slate-100 text-slate-600";
+    if (etapa === "califica") return "bg-emerald-500/15 text-emerald-300 border-emerald-500/20";
+    if (etapa === "en_camino") return "bg-amber-500/15 text-amber-300 border-amber-500/20";
+    return "bg-slate-500/15 text-slate-300 border-slate-500/20";
+  }
+
+  async function exportCSV() {
+    try {
+      setExporting(true);
+      setErr("");
+
+      const r = await fetch(`${API_BASE}/api/admin/users/export.csv?${queryString}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!r.ok) {
+        const t = await r.text().catch(() => "");
+        throw new Error(t || "No se pudo exportar CSV");
+      }
+
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `habitalibre-users-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErr("Error exportando CSV (¿sesión admin válida?)");
+    } finally {
+      setExporting(false);
+    }
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="max-w-7xl mx-auto px-6 py-8">
+    <main className="min-h-screen bg-slate-950 text-slate-100">
+      {/* fondo HL */}
+      <div className="pointer-events-none fixed inset-0 opacity-60">
+        <div className="absolute -top-24 -left-24 h-72 w-72 rounded-full bg-emerald-500/20 blur-3xl" />
+        <div className="absolute top-24 right-0 h-96 w-96 rounded-full bg-indigo-500/20 blur-3xl" />
+      </div>
+
+      <div className="relative max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">Dashboard de Usuarios</h1>
-            <p className="text-slate-600 mt-1">
+            <h1 className="text-2xl font-semibold tracking-tight">Dashboard de Usuarios</h1>
+            <p className="text-slate-300 mt-1">
               Vista interna. Solo para uso del equipo HabitaLibre.
+            </p>
+            <p className="text-xs text-slate-400 mt-1">
+              Endpoint: <span className="font-mono text-slate-300">/api/admin/users</span>
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() =>
-                window.open(
-                  `${API_BASE}/api/admin/users/export.csv?${queryString}`,
-                  "_blank",
-                  "noopener,noreferrer"
-                )
-              }
-              disabled={loading}
-              className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-50"
-            >
-              Exportar CSV
-            </button>
-          </div>
+          <button
+            onClick={exportCSV}
+            disabled={loading || exporting}
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/10 disabled:opacity-50"
+            title="Descargar CSV con filtros actuales"
+          >
+            {exporting ? "Exportando…" : "Exportar CSV"}
+          </button>
         </div>
 
         {/* KPIs */}
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Kpi title="USUARIOS TOTALES" value={totalUsers} />
-          <Kpi title="USUARIOS EN LISTA" value={items.length} />
+          <KpiDark title="USUARIOS TOTALES" value={totalUsers} subtitle="Cuentas creadas (email único)" />
+          <KpiDark title="USUARIOS EN LISTA" value={items.length} subtitle="Resultado según filtros actuales" />
         </div>
 
         {/* Filtros */}
-        <div className="mt-6 grid gap-3 md:grid-cols-6">
-          <Input label="Buscar" value={q} onChange={setQ} placeholder="Email, nombre o teléfono" />
-          <Input label="Status" value={status} onChange={setStatus} placeholder="precalificado..." />
-          <Input label="Producto" value={producto} onChange={setProducto} placeholder="VIP, VIS, BIESS" />
-          <Input label="Ciudad" value={ciudad} onChange={setCiudad} placeholder="Quito, Gye..." />
-          <Input label="Horizonte" value={horizonte} onChange={setHorizonte} placeholder="0-6, 6-12..." />
-          <div className="flex items-end">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={soloJourney}
-                onChange={(e) => setSoloJourney(e.target.checked)}
-              />
-              Solo journey
-            </label>
+        <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div className="grid gap-3 md:grid-cols-6">
+            <InputDark label="Buscar" value={q} onChange={setQ} placeholder="Email, nombre o teléfono" />
+            <InputDark label="Status" value={status} onChange={setStatus} placeholder="precalificado…" />
+            <InputDark label="Producto" value={producto} onChange={setProducto} placeholder="VIP, VIS, BIESS" />
+            <InputDark label="Ciudad" value={ciudad} onChange={setCiudad} placeholder="Quito, Gye…" />
+            <InputDark label="Horizonte" value={horizonte} onChange={setHorizonte} placeholder="0-6, 6-12…" />
+
+            <div className="flex items-end">
+              <label className="flex items-center gap-2 text-sm text-slate-200">
+                <input
+                  type="checkbox"
+                  checked={soloJourney}
+                  onChange={(e) => {
+                    setPage(1);
+                    setSoloJourney(e.target.checked);
+                  }}
+                />
+                Solo journey
+              </label>
+            </div>
           </div>
         </div>
 
         {/* Tabla */}
-        <div className="mt-6 overflow-x-auto rounded-xl border bg-white">
+        <div className="mt-6 overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
           <table className="min-w-full text-sm">
-            <thead className="bg-slate-50">
-              <tr className="text-left text-slate-600">
+            <thead className="bg-white/5">
+              <tr className="text-left text-slate-300">
+                <Th>Ciudad</Th>
                 <Th>Email</Th>
                 <Th>Nombre</Th>
                 <Th>Teléfono</Th>
@@ -149,10 +212,11 @@ export default function AdminUsers() {
                 <Th>Última actividad</Th>
               </tr>
             </thead>
+
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={7} className="p-6 text-center text-slate-500">
+                  <td colSpan={8} className="p-6 text-center text-slate-300">
                     Cargando…
                   </td>
                 </tr>
@@ -160,19 +224,22 @@ export default function AdminUsers() {
 
               {!loading && items.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="p-6 text-center text-slate-500">
+                  <td colSpan={8} className="p-6 text-center text-slate-300">
                     No hay resultados con estos filtros
                   </td>
                 </tr>
               )}
 
               {items.map((u) => (
-                <tr key={u.userId} className="border-t">
-                  <Td>{u.email}</Td>
-                  <Td>{u.nombre} {u.apellido}</Td>
+                <tr key={u.userId} className="border-t border-white/10">
+                  <Td>{u.ciudad || "-"}</Td>
+                  <Td className="text-slate-100">{u.email}</Td>
+                  <Td>{`${u.nombre || ""} ${u.apellido || ""}`.trim() || "-"}</Td>
                   <Td>{u.telefono || "-"}</Td>
                   <Td>
-                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${etapaBadge(u.etapa)}`}>
+                    <span
+                      className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${etapaBadge(u.etapa)}`}
+                    >
                       {u.etapa}
                     </span>
                   </Td>
@@ -189,27 +256,28 @@ export default function AdminUsers() {
         <div className="mt-4 flex items-center justify-between">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="rounded-xl border px-3 py-2 text-sm disabled:opacity-40"
+            disabled={page === 1 || loading}
+            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10 disabled:opacity-50"
           >
             ← Anterior
           </button>
 
-          <span className="text-sm text-slate-600">
-            Página <strong>{page}</strong>
+          <span className="text-sm text-slate-300">
+            Página <strong className="text-slate-100">{page}</strong>
           </span>
 
           <button
             onClick={() => setPage((p) => p + 1)}
-            disabled={items.length < LIMIT}
-            className="rounded-xl border px-3 py-2 text-sm disabled:opacity-40"
+            disabled={loading || items.length < LIMIT}
+            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10 disabled:opacity-50"
+            title={items.length < LIMIT ? "No hay más resultados en esta página" : "Siguiente"}
           >
             Siguiente →
           </button>
         </div>
 
         {err && (
-          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
             {err}
           </div>
         )}
@@ -218,25 +286,25 @@ export default function AdminUsers() {
   );
 }
 
-/* ---------------- UI helpers ---------------- */
-
-function Kpi({ title, value }) {
+/* UI helpers */
+function KpiDark({ title, value, subtitle }) {
   return (
-    <div className="rounded-2xl border bg-white p-5 shadow-sm">
-      <div className="text-xs font-medium text-slate-500">{title}</div>
-      <div className="mt-2 text-3xl font-semibold">
-        {value.toLocaleString("es-EC")}
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-sm">
+      <div className="text-xs font-medium text-slate-400">{title}</div>
+      <div className="mt-2 text-3xl font-semibold text-slate-100">
+        {Number(value || 0).toLocaleString("es-EC")}
       </div>
+      {subtitle ? <div className="mt-2 text-sm text-slate-300">{subtitle}</div> : null}
     </div>
   );
 }
 
-function Input({ label, value, onChange, placeholder }) {
+function InputDark({ label, value, onChange, placeholder }) {
   return (
     <div>
-      <label className="text-xs text-slate-500">{label}</label>
+      <label className="text-xs text-slate-400">{label}</label>
       <input
-        className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
+        className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/30 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-emerald-400/40"
         value={value}
         onChange={(e) => {
           onChange(e.target.value);
@@ -250,7 +318,6 @@ function Input({ label, value, onChange, placeholder }) {
 function Th({ children }) {
   return <th className="px-4 py-3 font-medium">{children}</th>;
 }
-
-function Td({ children }) {
-  return <td className="px-4 py-3">{children}</td>;
+function Td({ children, className = "" }) {
+  return <td className={`px-4 py-3 text-slate-200 ${className}`}>{children}</td>;
 }
