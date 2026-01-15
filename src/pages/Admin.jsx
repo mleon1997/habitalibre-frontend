@@ -1,47 +1,16 @@
 // src/pages/Admin.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { API_BASE } from "../lib/api";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:4000";
 const LS_ADMIN_TOKEN = "hl_admin_token";
-
-function getTokenSafe() {
-  try {
-    return localStorage.getItem(LS_ADMIN_TOKEN) || "";
-  } catch {
-    return "";
-  }
-}
-
-function setTokenSafe(t) {
-  try {
-    localStorage.setItem(LS_ADMIN_TOKEN, t);
-  } catch {}
-}
-
-function removeTokenSafe() {
-  try {
-    localStorage.removeItem(LS_ADMIN_TOKEN);
-  } catch {}
-}
 
 export default function Admin() {
   const nav = useNavigate();
   const loc = useLocation();
 
-  // ✅ lee ?next= (AdminProtectedRoute te lo manda)
-  const nextPath = useMemo(() => {
-    const sp = new URLSearchParams(loc.search || "");
-    const next = sp.get("next");
-    // seguridad mínima: solo permitimos rutas internas
-    if (!next) return "/admin/users";
-    if (next.startsWith("/")) return next;
-    return "/admin/users";
-  }, [loc.search]);
-
-  // ✅ token como estado para que re-renderice sin reload
-  const [token, setToken] = useState(() => getTokenSafe());
-  const loggedIn = !!token;
+  const params = new URLSearchParams(loc.search || "");
+  const next = params.get("next") || "/admin/users";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -49,18 +18,22 @@ export default function Admin() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
-  // Si ya hay token, opcionalmente podrías redirigir al next
-  // (yo lo dejo manual para que puedas elegir Users o Leads)
-  useEffect(() => {
-    // noop
+  const token = useMemo(() => {
+    try {
+      return localStorage.getItem(LS_ADMIN_TOKEN) || "";
+    } catch {
+      return "";
+    }
   }, []);
 
+  const loggedIn = !!token;
+
   const onLogout = () => {
-    removeTokenSafe();
-    setToken("");
-    setErr("");
-    // vuelve al login admin
+    try {
+      localStorage.removeItem(LS_ADMIN_TOKEN);
+    } catch {}
     nav("/admin", { replace: true });
+    window.location.reload();
   };
 
   const onLogin = async (e) => {
@@ -69,14 +42,10 @@ export default function Admin() {
     setBusy(true);
 
     try {
-      // ✅ OJO: endpoint ADMIN
-      const r = await fetch(`${API}/api/admin/login`, {
+      const r = await fetch(`${API_BASE}/api/admin/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: String(email || "").trim().toLowerCase(),
-          password: String(password || ""),
-        }),
+        body: JSON.stringify({ email, password }),
       });
 
       const j = await r.json().catch(() => ({}));
@@ -86,12 +55,13 @@ export default function Admin() {
         return;
       }
 
-      setTokenSafe(j.token);
-      setToken(j.token);
+      try {
+        localStorage.setItem(LS_ADMIN_TOKEN, j.token);
+      } catch {}
 
-      // ✅ manda a la ruta que estaba intentando abrir (o users por defecto)
-      nav(nextPath, { replace: true });
-    } catch (e2) {
+      nav(next, { replace: true });
+      window.location.reload();
+    } catch {
       setErr("Error de red iniciando sesión");
     } finally {
       setBusy(false);
@@ -106,18 +76,14 @@ export default function Admin() {
 
         {loggedIn ? (
           <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm text-slate-300">Sesión activa</div>
                 <div className="text-lg font-semibold mt-1">Panel interno</div>
-                <div className="text-xs text-slate-400 mt-1 break-all">
-                  Token guardado en localStorage (hl_admin_token)
-                </div>
               </div>
-
               <button
                 onClick={onLogout}
-                className="shrink-0 px-3 py-2 rounded-xl border border-white/15 bg-white/10 hover:bg-white/15"
+                className="px-3 py-2 rounded-xl border border-white/15 bg-white/10 hover:bg-white/15"
               >
                 Cerrar sesión
               </button>
@@ -130,7 +96,6 @@ export default function Admin() {
               >
                 Ver Usuarios
               </button>
-
               <button
                 onClick={() => nav("/admin/leads")}
                 className="px-4 py-3 rounded-xl bg-indigo-500/90 hover:bg-indigo-500 text-white font-semibold"
@@ -140,10 +105,7 @@ export default function Admin() {
             </div>
           </div>
         ) : (
-          <form
-            onSubmit={onLogin}
-            className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6"
-          >
+          <form onSubmit={onLogin} className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6">
             <div className="text-sm text-slate-300 mb-4">Inicia sesión</div>
 
             <label className="block text-sm text-slate-200">Email</label>
@@ -151,7 +113,6 @@ export default function Admin() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="mateo@habitalibre.com"
-              autoComplete="username"
               className="mt-1 w-full px-3 py-2 rounded-xl bg-slate-900 border border-white/10 outline-none"
             />
 
@@ -161,7 +122,6 @@ export default function Admin() {
               onChange={(e) => setPassword(e.target.value)}
               type="password"
               placeholder="••••••••"
-              autoComplete="current-password"
               className="mt-1 w-full px-3 py-2 rounded-xl bg-slate-900 border border-white/10 outline-none"
             />
 
@@ -179,7 +139,7 @@ export default function Admin() {
             </button>
 
             <div className="mt-3 text-xs text-slate-400">
-              Te redirigirá a: <span className="text-slate-200">{nextPath}</span>
+              Te redirigirá a: <span className="text-slate-200">{next}</span>
             </div>
           </form>
         )}
