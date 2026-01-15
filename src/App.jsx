@@ -58,6 +58,7 @@ export default function App() {
 
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             <Route
               path="/progreso"
@@ -104,10 +105,8 @@ export default function App() {
           />
 
           {/* =========================
-              OTROS
+              DEFAULT
              ========================= */}
-          <Route path="/reset-password" element={<ResetPassword />} />
-
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </LeadCaptureProvider>
