@@ -7,7 +7,6 @@ import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
 import * as customerApi from "../lib/customerApi.js";
 import { saveJourneyLocal, persistLastResult } from "../lib/journeyLocal";
 
-
 const TOTAL_STEPS = 4;
 
 const HORIZONTE_OPCIONES = [
@@ -100,9 +99,8 @@ function SliderField({
 
 export default function WizardHL({ mode = "quick", onboarding = false }) {
   const navigate = useNavigate();
-  const { openLead } = useLeadCapture();
+  const { openLead, openLeadNow, setLeadResult } = useLeadCapture();
   const { isAuthed, user } = useCustomerAuth();
-
 
   // ✅ fuente única de verdad
   const isJourneyMode = String(mode || "").toLowerCase() === "journey";
@@ -233,15 +231,14 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
     };
   }
 
-function persistQuickLastResult(resultado) {
-  try {
-    localStorage.setItem(
-      LS_QUICK_LAST_RESULT,
-      JSON.stringify({ resultado, updatedAt: new Date().toISOString() })
-    );
-  } catch {}
-}
-
+  function persistQuickLastResult(resultado) {
+    try {
+      localStorage.setItem(
+        LS_QUICK_LAST_RESULT,
+        JSON.stringify({ resultado, updatedAt: new Date().toISOString() })
+      );
+    } catch {}
+  }
 
   async function handleCalcular() {
     if (loading) return;
@@ -252,29 +249,44 @@ function persistQuickLastResult(resultado) {
     setLoading(true);
     setErr("");
 
+    // ✅ armamos entrada una vez
+    const entradaPayload = buildEntrada();
+
+    // ✅ QUICK: abre modal ya (no esperes backend)
+    if (!isJourneyMode) {
+      if (typeof openLeadNow === "function") {
+        openLeadNow({ __loading: true, __entrada: entradaPayload });
+      } else {
+        // fallback (por si en algún entorno aún no está el ajuste del context)
+        openLead({ __loading: true, __entrada: entradaPayload });
+      }
+    }
+
     try {
-      const entradaPayload = buildEntrada();
       const result = await precalificar(entradaPayload);
 
       persistLastResult(result);
 
-    // QUICK
-if (!isJourneyMode) {
-  persistQuickLastResult(result);
-  openLead(result);
-  return;
-}
+      // QUICK: actualiza el resultado sin cerrar/remontear
+      if (!isJourneyMode) {
+        persistQuickLastResult(result);
+        if (typeof setLeadResult === "function") {
+          setLeadResult({ ...result, __loading: false });
+        } else {
+          // fallback legacy: reabrir con resultado real
+          openLead({ ...result, __loading: false });
+        }
+        return;
+      }
 
-// JOURNEY (nada de quick keys)
-saveJourneyLocal({
-  entrada: entradaPayload,
-  input: entradaPayload,
-  resultado: result,
-  userEmail: (user && user.email) ? user.email : "",
-  ts: Date.now(),
-});
-
-
+      // JOURNEY (nada de quick keys)
+      saveJourneyLocal({
+        entrada: entradaPayload,
+        input: entradaPayload,
+        resultado: result,
+        userEmail: user && user.email ? user.email : "",
+        ts: Date.now(),
+      });
 
       if (!isAuthed) {
         try {
@@ -293,13 +305,16 @@ saveJourneyLocal({
         return;
       }
 
-      await customerApi.saveJourney({
-        entrada: entradaPayload,
-        input: entradaPayload,
-        metadata: { input: entradaPayload },
-        resultado: result,
-        status: "precalificado",
-      });
+      // ✅ no bloquees la navegación por guardar progreso (mejor UX)
+      customerApi
+        .saveJourney({
+          entrada: entradaPayload,
+          input: entradaPayload,
+          metadata: { input: entradaPayload },
+          resultado: result,
+          status: "precalificado",
+        })
+        .catch(() => {});
 
       navigate("/progreso");
     } catch (ex) {
@@ -311,6 +326,7 @@ saveJourneyLocal({
         return;
       }
 
+      // ✅ si QUICK falló, deja el modal abierto pero muestra error en el wizard
       setErr(isJourneyMode ? "No se pudo guardar tu progreso." : "No se pudo calcular tu resultado ahora.");
     } finally {
       setLoading(false);

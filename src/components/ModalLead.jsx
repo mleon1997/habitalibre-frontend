@@ -60,6 +60,9 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
   const [sentOK, setSentOK] = useState(false);
   const [err, setErr] = useState("");
 
+  // ✅ Si el wizard abrió el modal “al instante”, puede venir en modo loading
+  const resultadoLoading = !!dataResultado?.__loading;
+
   // ✅ Reset cada vez que se abre el modal
   useEffect(() => {
     if (!open) return;
@@ -118,6 +121,9 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
         aceptaMarketing: false,
         origen: "simulador",
         tiempoCompra: horizonteCompra || null,
+
+        // ✅ Si aún está calculando, mandamos null (no rompe nada).
+        // Cuando ya llegue el resultado real, sanitizeResultado devuelve el objeto.
         resultado: sanitizeResultado(dataResultado),
       };
 
@@ -136,10 +142,6 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
   }
 
   return (
-    // ✅ FIX MOBILE SCROLL:
-    // - max-h en viewport
-    // - overflow-y-auto para que puedas bajar hasta los botones
-    // - overscroll-contain para que no se “pegue” el scroll del body
     <div className="hl-modal-panel max-h-[90dvh] overflow-y-auto overscroll-contain">
       {/* X */}
       <button
@@ -187,6 +189,14 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
             No afecta tu buró, no pedimos claves bancarias y puedes pedir que
             eliminemos tus datos cuando quieras.
           </p>
+
+          {/* ✅ Banner “calculando” si el modal se abrió antes de tener resultado */}
+          {resultadoLoading && (
+            <div className="mb-4 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-[12px] text-slate-700 flex items-center gap-2">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              Estamos analizando tu caso… llena tus datos mientras tanto.
+            </div>
+          )}
 
           {err && (
             <div className="text-sm bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 mb-4">
@@ -318,7 +328,7 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
                   !canSubmit ? "opacity-50 cursor-not-allowed hover:scale-100" : "",
                 ].join(" ")}
               >
-                {loading ? "Procesando…" : "Ver mi resultado"}
+                {loading ? "Procesando…" : resultadoLoading ? "Guardar y ver resultado" : "Ver mi resultado"}
               </button>
             </div>
           </form>
@@ -329,6 +339,9 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
 }
 
 function sanitizeResultado(r = {}) {
+  // ✅ si todavía está calculando (modal instantáneo), no mandes basura
+  if (!r || r.__loading) return null;
+
   const safe = (n) => (Number.isFinite(Number(n)) ? Number(n) : null);
 
   // ✅ calcula variables ANTES del return

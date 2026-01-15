@@ -1,3 +1,4 @@
+// src/context/LeadCaptureContext.jsx
 import React, { createContext, useContext, useMemo, useState } from "react";
 
 const LeadCaptureContext = createContext(null);
@@ -9,6 +10,7 @@ export function LeadCaptureProvider({ children }) {
   // ✅ cada apertura incrementa nonce para remontear el modal y evitar estados “pegados”
   const [nonce, setNonce] = useState(0);
 
+  // ✅ legacy: abre el modal + setea resultado (como hoy)
   const openLead = (dataResultado) => {
     // reset “duro” primero (evita parpadeos en StrictMode)
     setIsOpen(false);
@@ -20,6 +22,24 @@ export function LeadCaptureProvider({ children }) {
       setResult(dataResultado || null);
       setIsOpen(true);
     });
+  };
+
+  // ✅ NUEVO: abre el modal inmediatamente con data inicial (puede ser {__loading:true})
+  // No rompe nada porque es adicional y no altera openLead.
+  const openLeadNow = (initialData = null) => {
+    setIsOpen(false);
+    setResult(null);
+
+    queueMicrotask(() => {
+      setNonce((n) => n + 1);
+      setResult(initialData || null);
+      setIsOpen(true);
+    });
+  };
+
+  // ✅ NUEVO: permite actualizar el resultado sin cerrar/remontear el modal
+  const setLeadResult = (dataResultado) => {
+    setResult(dataResultado || null);
   };
 
   const closeLead = () => setIsOpen(false);
@@ -34,7 +54,9 @@ export function LeadCaptureProvider({ children }) {
       isOpen,
       result,
       nonce,
-      openLead,
+      openLead, // legacy
+      openLeadNow, // new
+      setLeadResult, // new
       closeLead,
       resetLeadCapture,
     }),
