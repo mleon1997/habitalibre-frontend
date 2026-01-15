@@ -3,22 +3,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useLeadCapture } from "../context/LeadCaptureContext.jsx";
 import ModalLead from "./ModalLead.jsx";
-
-async function postLead(payload) {
-  const res = await fetch("/api/leads", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-
-  const data = await res.json().catch(() => ({}));
-
-  if (!res.ok) {
-    return { ok: false, error: data?.error || data?.message || `HTTP ${res.status}` };
-  }
-
-  return data?.ok ? data : { ok: true, ...data };
-}
+import { crearLead } from "../lib/api.js";
 
 export default function LeadModalBare() {
   const navigate = useNavigate();
@@ -27,12 +12,19 @@ export default function LeadModalBare() {
   const handleLeadSaved = () => {
     closeLead?.();
     resetLeadCapture?.();
-    navigate("/gracias"); // ✅ ahora sí va a Gracias.jsx
+    navigate("/gracias");
   };
 
   const handleSubmitLead = async (payload) => {
-    const resp = await postLead(payload);
-    return resp;
+    try {
+      const resp = await crearLead(payload);
+      return resp;
+    } catch (err) {
+      return {
+        ok: false,
+        error: err?.message || "No se pudo enviar el lead",
+      };
+    }
   };
 
   return (
