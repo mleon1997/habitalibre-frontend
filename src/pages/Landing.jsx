@@ -103,7 +103,6 @@ export default function Landing({ onStart }) {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50">
       <div style={{position:"fixed", bottom: 6, left: 6, zIndex: 2147483647, fontSize: 12, padding: "6px 8px", background:"#00ff99", color:"#000", borderRadius: 8}}>
-  WA_WIDGET_V1
 </div>
 
       {/* NAVBAR */}
