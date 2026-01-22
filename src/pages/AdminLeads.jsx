@@ -40,6 +40,23 @@ const formatDate = (d) => {
   }
 };
 
+// ✅ Helper: number or null
+const toNumOrNull = (v) => {
+  if (v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+// ✅ Helper: bool-ish → "Sí/No/-"
+const formatBoolSiNo = (v) => {
+  if (v === true) return "Sí";
+  if (v === false) return "No";
+  const s = String(v ?? "").trim().toLowerCase();
+  if (s === "true" || s === "1" || s === "si" || s === "sí") return "Sí";
+  if (s === "false" || s === "0" || s === "no") return "No";
+  return "-";
+};
+
 const AdminLeads = () => {
   // -----------------------------
   // Filtros existentes
@@ -272,6 +289,35 @@ const AdminLeads = () => {
   // ✅ Decision UI (desde backend lead.decision)
   // -------------------------------------------------
   const getDecision = (lead) => lead?.decision || null;
+
+  // ✅ Helpers: extraer ingreso/deuda “plano” con fallback a perfil del scoring
+  const getIngresoMensual = (lead) => {
+    const r = lead?.resultado || null;
+    const perfil = r?.perfil || null;
+
+    // preferimos campos planos (para dashboard)
+    const a = toNumOrNull(lead?.ingreso_mensual);
+    if (a != null) return a;
+
+    // fallback: scoring perfil
+    const b = toNumOrNull(perfil?.ingresoTotal);
+    if (b != null) return b;
+
+    return null;
+  };
+
+  const getDeudaMensual = (lead) => {
+    const r = lead?.resultado || null;
+    const perfil = r?.perfil || null;
+
+    const a = toNumOrNull(lead?.deuda_mensual_aprox);
+    if (a != null) return a;
+
+    const b = toNumOrNull(perfil?.otrasDeudasMensuales);
+    if (b != null) return b;
+
+    return null;
+  };
 
   const chipHeat = (heat) => {
     const h = Number(heat ?? -1);
@@ -820,6 +866,11 @@ const AdminLeads = () => {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Teléfono</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Ciudad</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Horizonte</th>
+
+                  {/* ✅ NUEVO */}
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Ingreso</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Deudas</th>
+
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Producto</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Score HL</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Fuente</th>
@@ -830,7 +881,7 @@ const AdminLeads = () => {
               <tbody>
                 {!loading && leads.length === 0 && (
                   <tr>
-                    <td colSpan={15} className="px-4 py-6 text-center text-sm text-slate-400">
+                    <td colSpan={17} className="px-4 py-6 text-center text-sm text-slate-400">
                       No hay leads para los filtros seleccionados.
                     </td>
                   </tr>
@@ -842,6 +893,9 @@ const AdminLeads = () => {
                   const igLink = buildIgLink(lead);
                   const igUser = getIgUsername(lead);
                   const decision = getDecision(lead);
+
+                  const ingreso = getIngresoMensual(lead);
+                  const deuda = getDeudaMensual(lead);
 
                   const rowHover =
                     decision?.llamarHoy === true
@@ -871,6 +925,15 @@ const AdminLeads = () => {
                       <td className="px-4 py-3 text-sm text-slate-700">{lead.telefono || "-"}</td>
                       <td className="px-4 py-3 text-sm text-slate-700">{lead.ciudad || "-"}</td>
                       <td className="px-4 py-3 text-sm text-slate-700">{formatTiempoCompra(lead.tiempoCompra)}</td>
+
+                      {/* ✅ NUEVO */}
+                      <td className="px-4 py-3 text-sm font-semibold text-slate-900">
+                        {ingreso != null ? `$${formatMoney(ingreso)}` : "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-semibold text-slate-900">
+                        {deuda != null ? `$${formatMoney(deuda)}` : "-"}
+                      </td>
+
                       <td className="px-4 py-3 text-sm text-slate-700">{lead.producto || lead.tipoProducto || decision?.producto || "-"}</td>
                       <td className="px-4 py-3 text-sm font-semibold text-slate-900">
                         {lead.scoreHL != null ? chipScore(lead.scoreHL) : chipScore(decision?.scoreHL)}
@@ -937,7 +1000,7 @@ const AdminLeads = () => {
 
                 {loading && (
                   <tr>
-                    <td colSpan={15} className="px-4 py-6 text-center text-sm text-slate-400">
+                    <td colSpan={17} className="px-4 py-6 text-center text-sm text-slate-400">
                       Cargando leads…
                     </td>
                   </tr>
@@ -995,6 +1058,8 @@ const AdminLeads = () => {
         chipLlamarHoy={chipLlamarHoy}
         formatTiempoCompra={formatTiempoCompra}
         obtenerCodigoLead={obtenerCodigoLead}
+        getIngresoMensual={getIngresoMensual}
+        getDeudaMensual={getDeudaMensual}
       />
     </div>
   );
@@ -1020,6 +1085,8 @@ function LeadDrawer({
   chipLlamarHoy,
   formatTiempoCompra,
   obtenerCodigoLead,
+  getIngresoMensual,
+  getDeudaMensual,
 }) {
   if (!open) return null;
 
@@ -1039,6 +1106,19 @@ function LeadDrawer({
   const faltantes = Array.isArray(decision?.faltantes) ? decision.faltantes : [];
   const porQue = Array.isArray(decision?.porQue) ? decision.porQue : [];
   const nextActions = Array.isArray(decision?.nextActions) ? decision.nextActions : [];
+
+  // ✅ NUEVO: perfil financiero (plano → fallback perfil scoring)
+  const ingresoMensual = getIngresoMensual ? getIngresoMensual(lead) : null;
+  const deudaMensual = getDeudaMensual ? getDeudaMensual(lead) : null;
+  const dtiBase = ingresoMensual && ingresoMensual > 0 && deudaMensual != null ? deudaMensual / ingresoMensual : null;
+
+  const aniosEstabilidad =
+    toNumOrNull(lead?.anios_estabilidad) ??
+    toNumOrNull(perfil?.aniosEstabilidad) ??
+    null;
+
+  const afiliadoIess =
+    lead?.afiliado_iess != null ? lead.afiliado_iess : (perfil?.afiliadoIess ?? null);
 
   return (
     <div className="fixed inset-0 z-[60]">
@@ -1196,6 +1276,42 @@ function LeadDrawer({
               <Stat label="LTV estimado" value={<span className="text-sm font-semibold text-slate-900">{formatPct(resultado?.ltv)}</span>} />
             </div>
 
+            {/* ✅ NUEVO: Perfil financiero operativo */}
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <Stat
+                label="Ingreso mensual"
+                value={
+                  <span className="text-sm font-semibold text-slate-900">
+                    {ingresoMensual != null ? `$${formatMoney(ingresoMensual)}` : "-"}
+                  </span>
+                }
+              />
+              <Stat
+                label="Deudas mensuales"
+                value={
+                  <span className="text-sm font-semibold text-slate-900">
+                    {deudaMensual != null ? `$${formatMoney(deudaMensual)}` : "-"}
+                  </span>
+                }
+              />
+              <Stat
+                label="DTI sin hipoteca"
+                value={
+                  <span className="text-sm font-semibold text-slate-900">
+                    {dtiBase != null ? `${Math.round(dtiBase * 100)}%` : "-"}
+                  </span>
+                }
+              />
+              <Stat
+                label="Estabilidad / IESS"
+                value={
+                  <span className="text-sm font-semibold text-slate-900">
+                    {aniosEstabilidad != null ? `${aniosEstabilidad} años` : "-"} • {formatBoolSiNo(afiliadoIess)}
+                  </span>
+                }
+              />
+            </div>
+
             <div className="mt-4">
               <p className="text-xs font-semibold text-slate-700">Ruta recomendada</p>
               <div className="mt-2 rounded-xl border border-slate-200 bg-white p-3">
@@ -1252,7 +1368,7 @@ function LeadDrawer({
                   <Row label="Tipo ingreso" value={perfil?.tipoIngreso || "-"} />
                   <Row label="Ingreso total" value={perfil?.ingresoTotal != null ? `$${formatMoney(perfil.ingresoTotal)}` : "-"} />
                   <Row label="Años estabilidad" value={perfil?.aniosEstabilidad != null ? String(perfil.aniosEstabilidad) : "-"} />
-                  <Row label="IESS" value={perfil?.afiliadoIess || "-"} />
+                  <Row label="IESS" value={formatBoolSiNo(perfil?.afiliadoIess)} />
                 </div>
               </div>
             )}
