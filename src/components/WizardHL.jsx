@@ -41,7 +41,6 @@ function SliderField({
     onChange(String(v));
   };
 
-  // input type="text" pero con inputMode numeric para teclado móvil
   const handleInputChange = (e) => {
     let raw = e.target.value.replace(/[^0-9]/g, "");
     if (raw === "") {
@@ -102,12 +101,10 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
   const { openLead, openLeadNow, setLeadResult } = useLeadCapture();
   const { isAuthed, user } = useCustomerAuth();
 
-  // ✅ fuente única de verdad
   const isJourneyMode = String(mode || "").toLowerCase() === "journey";
 
   const [step, setStep] = useState(1);
 
-  // ====== Estados ======
   const [nacionalidad, setNacionalidad] = useState("ecuatoriana");
   const [estadoCivil, setEstadoCivil] = useState("soltero");
   const [edad, setEdad] = useState("30");
@@ -138,7 +135,6 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
 
   const scrollerRef = useRef(null);
 
-  // ✅ MOBILE UX: al cambiar de paso, vuelve al top del wizard
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
@@ -252,13 +248,22 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
     // ✅ armamos entrada una vez
     const entradaPayload = buildEntrada();
 
-    // ✅ QUICK: abre modal ya (no esperes backend)
+    // =========================================================
+    // ✅ QUICK: abre modal YA y guarda input en perfilInput
+    // (también deja __entrada por compatibilidad)
+    // =========================================================
     if (!isJourneyMode) {
+      const initial = {
+        __loading: true,
+        __entrada: entradaPayload, // compat (por si ModalLead lo usa)
+        perfilInput: entradaPayload, // estándar nuevo
+      };
+
       if (typeof openLeadNow === "function") {
-        openLeadNow({ __loading: true, __entrada: entradaPayload });
+        // 2do parámetro: perfilInput (según tu LeadCaptureContext actualizado)
+        openLeadNow(initial, entradaPayload);
       } else {
-        // fallback (por si en algún entorno aún no está el ajuste del context)
-        openLead({ __loading: true, __entrada: entradaPayload });
+        openLead(initial, entradaPayload);
       }
     }
 
@@ -267,19 +272,29 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
 
       persistLastResult(result);
 
-      // QUICK: actualiza el resultado sin cerrar/remontear
+      // =========================================================
+      // ✅ QUICK: actualiza el resultado y conserva perfilInput
+      // =========================================================
       if (!isJourneyMode) {
         persistQuickLastResult(result);
+
+        const merged = {
+          ...result,
+          __loading: false,
+          __entrada: entradaPayload,   // compat
+          perfilInput: entradaPayload, // estándar
+        };
+
         if (typeof setLeadResult === "function") {
-          setLeadResult({ ...result, __loading: false });
+          // 2do parámetro: perfilInput
+          setLeadResult(merged, entradaPayload);
         } else {
-          // fallback legacy: reabrir con resultado real
-          openLead({ ...result, __loading: false });
+          openLead(merged, entradaPayload);
         }
         return;
       }
 
-      // JOURNEY (nada de quick keys)
+      // JOURNEY
       saveJourneyLocal({
         entrada: entradaPayload,
         input: entradaPayload,
@@ -305,7 +320,6 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
         return;
       }
 
-      // ✅ no bloquees la navegación por guardar progreso (mejor UX)
       customerApi
         .saveJourney({
           entrada: entradaPayload,
@@ -326,7 +340,6 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
         return;
       }
 
-      // ✅ si QUICK falló, deja el modal abierto pero muestra error en el wizard
       setErr(isJourneyMode ? "No se pudo guardar tu progreso." : "No se pudo calcular tu resultado ahora.");
     } finally {
       setLoading(false);
@@ -343,16 +356,13 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
     </div>
   );
 
-  // ✅ barra de acciones: sticky en móvil, normal en md+
   const ActionsBar = ({ left, right }) => (
     <>
-      {/* Desktop / md+: normal */}
       <div className="hidden md:flex mt-6 items-center justify-between gap-3">
         <div>{left}</div>
         <div>{right}</div>
       </div>
 
-      {/* Mobile: sticky */}
       <div className="md:hidden sticky bottom-0 -mx-5 px-5 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+14px)] bg-gradient-to-t from-slate-950 via-slate-950/90 to-transparent">
         <div className="rounded-2xl border border-slate-800/80 bg-slate-900/70 backdrop-blur px-3 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.55)]">
           <div className="flex items-center justify-between gap-2">

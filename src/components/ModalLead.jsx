@@ -110,21 +110,57 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
     try {
       setLoading(true);
 
+      // =========================================================
+      // ✅ 1) Recupera el input del wizard (perfil)
+      // =========================================================
+      const perfilInput =
+        dataResultado?.perfilInput ||
+        dataResultado?.__entrada ||
+        null;
+
+      // =========================================================
+      // ✅ 2) Mapea ese input a los campos que guarda tu Lead
+      // (snake_case como se ve en tu panel admin)
+      // =========================================================
+      const perfilMapped = mapPerfilInputToLeadFields(perfilInput);
+
+      // =========================================================
+      // ✅ 3) Resultado (solo si ya llegó)
+      // =========================================================
+      const resultadoSan = sanitizeResultado(dataResultado);
+
+      // =========================================================
+      // ✅ 4) Payload final (contacto + perfil + resultado)
+      // - canal/origen: ponlos coherentes con WEB
+      // =========================================================
       const payload = {
+        // contacto
         nombre: nombre.trim(),
         email: email.trim(),
         telefono: telefono.trim(),
         ciudad: ciudad.trim(),
-        canal: "WhatsApp",
+
+        // tracking / fuente
+        canal: "Web",
+        fuente: "form",
+        origen: perfilInput?.origen === "journey" ? "Customer Journey" : "Simulador Hipoteca Exprés",
+
+        // compliance
         aceptaTerminos,
         aceptaCompartir,
         aceptaMarketing: false,
-        origen: "simulador",
-        tiempoCompra: horizonteCompra || null,
 
-        // ✅ Si aún está calculando, mandamos null (no rompe nada).
-        // Cuando ya llegue el resultado real, sanitizeResultado devuelve el objeto.
-        resultado: sanitizeResultado(dataResultado),
+        // UX: lo que seleccionó en el modal (si el wizard ya lo tenía, también viene en perfilInput)
+        tiempoCompra: horizonteCompra || perfilInput?.tiempoCompra || null,
+
+        // ✅ Perfil del usuario (top-level para que NO sea null en el admin)
+        ...perfilMapped,
+
+        // ✅ Guarda el input crudo también (te sirve para debug / evolución)
+        perfilInput: perfilInput || null,
+
+        // ✅ Resultado
+        resultado: resultadoSan,
       };
 
       const resp = await onSubmitLead?.(payload);
@@ -344,13 +380,11 @@ function sanitizeResultado(r = {}) {
 
   const safe = (n) => (Number.isFinite(Number(n)) ? Number(n) : null);
 
-  // ✅ calcula variables ANTES del return
   const producto =
     r.productoSugerido ?? r.productoElegido ?? r.tipoCreditoElegido ?? "";
   const banco = r.bancoSugerido ?? r.mejorBanco?.banco ?? r.banco ?? null;
 
   const out = {
-    // ✅ asegurar compatibilidad legacy + nuevo
     productoElegido: producto,
     tipoCreditoElegido: producto,
     productoSugerido: r.productoSugerido ?? producto,
@@ -370,4 +404,56 @@ function sanitizeResultado(r = {}) {
   };
 
   return out;
+}
+
+/**
+ * Mapea el input del Wizard a los campos que tu backend ya está mostrando
+ * (snake_case como en "Ver datos completos (debug)")
+ */
+function mapPerfilInputToLeadFields(input) {
+  if (!input) return {};
+
+  const toNum = (v) => {
+    const n = Number((v ?? "").toString().replace(/[^0-9.]/g, ""));
+    return Number.isFinite(n) ? n : null;
+  };
+
+  // ojo: el wizard usa boolean en afiliadoIess; también puede venir string.
+  const afiliado =
+    typeof input.afiliadoIess === "boolean"
+      ? input.afiliadoIess
+      : String(input.afiliadoIess || "").toLowerCase() === "sí";
+
+  const ingresoMensual = toNum(input.ingresoNetoMensual);
+  const deudaMensual = toNum(input.otrasDeudasMensuales);
+  const valorVivienda = toNum(input.valorVivienda);
+  const entradaDisp = toNum(input.entradaDisponible);
+
+  return {
+    // lo que te salía NULL en admin:
+    afiliado_iess: afiliado,
+    anios_estabilidad: toNum(input.aniosEstabilidad),
+    ingreso_mensual: ingresoMensual,
+    deuda_mensual_aprox: deudaMensual,
+
+    // extra útil (te queda para analítica / segmentación)
+    ingreso_pareja: toNum(input.ingresoPareja),
+    estado_civil: input.estadoCivil || null,
+    edad: toNum(input.edad),
+
+    tipoIngreso: input.tipoIngreso || null,
+    sustentoDependiente: input.sustentoIndependiente || null,
+
+    valor_vivienda_objetivo: valorVivienda,
+    entrada_disponible: entradaDisp,
+
+    iess_aportes_totales: toNum(input.iessAportesTotales),
+    iess_aportes_consecutivos: toNum(input.iessAportesConsecutivos),
+
+    tiene_vivienda: typeof input.tieneVivienda === "boolean" ? input.tieneVivienda : null,
+    primera_vivienda: typeof input.primeraVivienda === "boolean" ? input.primeraVivienda : null,
+    tipo_vivienda: input.tipoVivienda || null,
+
+    tiempoCompra: input.tiempoCompra || null,
+  };
 }
