@@ -99,6 +99,8 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
     !loading;
 
   async function handleSubmit(e) {
+    const entrada = dataResultado?.__entrada || null;
+
     e?.preventDefault?.();
     setErr("");
 
@@ -134,34 +136,30 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
       // - canal/origen: ponlos coherentes con WEB
       // =========================================================
       const payload = {
-        // contacto
-        nombre: nombre.trim(),
-        email: email.trim(),
-        telefono: telefono.trim(),
-        ciudad: ciudad.trim(),
+         nombre: nombre.trim(),
+  email: email.trim(),
+  telefono: telefono.trim(),
+  ciudad: ciudad.trim(),
 
-        // tracking / fuente
-        canal: "Web",
-        fuente: "form",
-        origen: perfilInput?.origen === "journey" ? "Customer Journey" : "Simulador Hipoteca Exprés",
+  canal: "WhatsApp", // (puedes dejarlo, backend lo fuerza a web en upsert web)
+  aceptaTerminos,
+  aceptaCompartir,
+  aceptaMarketing: false,
+  origen: "simulador",
+  tiempoCompra: horizonteCompra || null,
 
-        // compliance
-        aceptaTerminos,
-        aceptaCompartir,
-        aceptaMarketing: false,
+  // ✅ CAMPOS RÁPIDOS (del wizard)
+  afiliadoIess: entrada?.afiliadoIess ?? null,
+  aniosEstabilidad: entrada?.aniosEstabilidad ?? null,
+  ingresoNetoMensual: entrada?.ingresoNetoMensual ?? null,
+  otrasDeudasMensuales: entrada?.otrasDeudasMensuales ?? null,
+  ciudadCompra: entrada?.ciudadCompra ?? entrada?.ciudad ?? null,
+  tipoCompra: entrada?.tipoCompra ?? null,
+  tipoCompraNumero: entrada?.tipoCompraNumero ?? null,
 
-        // UX: lo que seleccionó en el modal (si el wizard ya lo tenía, también viene en perfilInput)
-        tiempoCompra: horizonteCompra || perfilInput?.tiempoCompra || null,
-
-        // ✅ Perfil del usuario (top-level para que NO sea null en el admin)
-        ...perfilMapped,
-
-        // ✅ Guarda el input crudo también (te sirve para debug / evolución)
-        perfilInput: perfilInput || null,
-
-        // ✅ Resultado
-        resultado: resultadoSan,
-      };
+  // ✅ Resultado (sanitizado)
+  resultado: sanitizeResultado(dataResultado),
+};
 
       const resp = await onSubmitLead?.(payload);
       if (!resp?.ok)
