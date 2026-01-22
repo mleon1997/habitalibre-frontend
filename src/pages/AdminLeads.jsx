@@ -2,13 +2,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import AdminLogin from "../components/AdminLogin.jsx";
 import { EnvelopeIcon } from "@heroicons/react/24/outline";
+import { API_BASE } from "../lib/api"; // ✅ PATCH: usa el mismo API_BASE del app
 
 // =====================================================
-// BACKEND HabitaLibre (Render)
+// BACKEND HabitaLibre
+// ✅ PATCH: usa API_BASE ("" en DEV con proxy /api, o https://... en PROD)
 // =====================================================
-const API_BASE_URL = import.meta.env.DEV
-  ? "http://localhost:4000"
-  : "https://habitalibre-backend.onrender.com";
+const API_BASE_URL = (API_BASE || "").trim();
 
 const AdminLeads = () => {
   // -----------------------------
@@ -247,6 +247,26 @@ const AdminLeads = () => {
     return `https://www.instagram.com/${u}/`;
   };
 
+  // ✅ PATCH: helper para forzar relogin admin con retorno a la ruta actual
+  const forceAdminRelogin = (reason = "expired") => {
+    try {
+      localStorage.removeItem("hl_admin_token");
+      localStorage.removeItem("hl_admin_email");
+    } catch {}
+    setToken("");
+    setAdminEmail("");
+
+    const returnTo =
+      window.location?.pathname +
+      (window.location?.search || "") +
+      (window.location?.hash || "");
+
+    // HashRouter => usamos "#/admin"
+    window.location.href = `#/admin?returnTo=${encodeURIComponent(returnTo)}&reason=${encodeURIComponent(
+      reason
+    )}`;
+  };
+
   // =====================================================
   // Fetch Leads
   // =====================================================
@@ -271,7 +291,8 @@ const AdminLeads = () => {
       if (telefono.trim()) params.append("telefono", telefono.trim());
       if (ciudad.trim()) params.append("ciudad", ciudad.trim());
       if (tiempoCompra.trim()) params.append("tiempoCompra", tiempoCompra.trim());
-      if (sustentoFiltro.trim()) params.append("sustentoIndependiente", sustentoFiltro.trim());
+      if (sustentoFiltro.trim())
+        params.append("sustentoIndependiente", sustentoFiltro.trim());
 
       // ✅ nuevos filtros
       if (canalFiltro.trim()) params.append("canal", canalFiltro.trim());
@@ -289,11 +310,9 @@ const AdminLeads = () => {
         },
       });
 
+      // ✅ PATCH: en 401/403 redirige al login admin con returnTo
       if (res.status === 401 || res.status === 403) {
-        localStorage.removeItem("hl_admin_token");
-        localStorage.removeItem("hl_admin_email");
-        setToken("");
-        setAdminEmail("");
+        forceAdminRelogin("expired");
         throw new Error("No autorizado: tu sesión ha expirado.");
       }
 
@@ -332,6 +351,12 @@ const AdminLeads = () => {
           Authorization: `Bearer ${currentToken}`,
         },
       });
+
+      // ✅ PATCH: si expiró el token, redirige al login admin con returnTo
+      if (res.status === 401 || res.status === 403) {
+        forceAdminRelogin("expired");
+        return;
+      }
 
       if (!res.ok) {
         console.warn("No se pudieron cargar stats de leads");
@@ -509,9 +534,7 @@ const AdminLeads = () => {
           <KpiCard
             label="Leads hoy"
             value={stats.hoy}
-            subtitle={
-              loadingStats ? "Calculando…" : "Ingresados desde 00:00"
-            }
+            subtitle={loadingStats ? "Calculando…" : "Ingresados desde 00:00"}
           />
           <KpiCard
             label="Esta semana"
@@ -537,9 +560,7 @@ const AdminLeads = () => {
               <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
                 Mix por canal
               </p>
-              <span className="text-[11px] text-slate-400">
-                (histórico)
-              </span>
+              <span className="text-[11px] text-slate-400">(histórico)</span>
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
               <MiniPill label="Web" value={breakdownCanal.web} />
@@ -553,9 +574,7 @@ const AdminLeads = () => {
               <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
                 Mix por fuente
               </p>
-              <span className="text-[11px] text-slate-400">
-                (histórico)
-              </span>
+              <span className="text-[11px] text-slate-400">(histórico)</span>
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
               <MiniPill label="Form" value={breakdownFuente.form} />
@@ -692,9 +711,7 @@ const AdminLeads = () => {
             </button>
           </div>
 
-          {error && (
-            <div className="mt-3 text-sm text-red-500">{error}</div>
-          )}
+          {error && <div className="mt-3 text-sm text-red-500">{error}</div>}
         </section>
 
         {/* TABLA */}
@@ -780,9 +797,7 @@ const AdminLeads = () => {
                           : "-"}
                       </td>
 
-                      <td className="px-4 py-3 text-sm">
-                        {chipCanal(lead)}
-                      </td>
+                      <td className="px-4 py-3 text-sm">{chipCanal(lead)}</td>
 
                       <td className="px-4 py-3 text-xs font-semibold text-slate-700">
                         {obtenerCodigoLead(lead)}
@@ -820,32 +835,31 @@ const AdminLeads = () => {
                         {lead.scoreHL != null ? chipScore(lead.scoreHL) : "-"}
                       </td>
 
-                      <td className="px-4 py-3 text-sm">
-                        {chipFuente(lead)}
-                      </td>
+                      <td className="px-4 py-3 text-sm">{chipFuente(lead)}</td>
 
                       {/* ⭐ ACCIONES */}
                       <td className="px-4 py-3 text-sm">
                         <div className="flex items-center gap-2">
                           {/* WhatsApp: prioriza canal whatsapp; fallback: si hay telefono igual lo dejamos */}
-                          {lead.telefono && (canal === "whatsapp" || canal === "web") && (
-                            <a
-                              href={waLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1.5 rounded-lg bg-green-100 hover:bg-green-200 transition"
-                              title="Enviar WhatsApp"
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 448 512"
-                                className="w-4 h-4 text-green-600"
-                                fill="currentColor"
+                          {lead.telefono &&
+                            (canal === "whatsapp" || canal === "web") && (
+                              <a
+                                href={waLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1.5 rounded-lg bg-green-100 hover:bg-green-200 transition"
+                                title="Enviar WhatsApp"
                               >
-                                <path d="M380.9 97.1C339-3.6 280.4-15.4 224.2-15.4c-59.2 0-114.5 22.9-156.5 64.9C25.7 95.4 2.8 150.7 2.8 209.9c0 45.3 13.4 89.5 38.8 127.6L0 480l145-40.7c36.1 19.7 76.6 30 118.3 30h.1c59 0 114.3-22.9 156.4-64.9 42-42 65-97.3 65-156.5-.1-59.2-23-114.5-65-156.5zM224.2 438.6c-36.6 0-72.4-9.8-103.6-28.3l-7.4-4.4-85.9 24.1L52 344.3l-4.8-7.8c-23.6-38.2-36.1-82.3-36.1-127.1 0-130.1 106-236.1 236.1-236.1 63.1 0 122.3 24.6 166.7 69.1 44.4 44.4 68.8 103.6 68.8 166.7 0 130.1-106 236.1-236 236.1zm130.2-176.4c-7.1-3.5-42.3-20.9-48.8-23.2-6.5-2.4-11.2-3.5-15.9 3.5-4.7 7.1-18.2 23.2-22.3 27.9-4.1 4.7-8.2 5.3-15.3 1.8-7.1-3.5-30.1-11.1-57.3-35.4-21.2-18.9-35.5-42.3-39.6-49.4-4.1-7.1-.4-10.9 3.1-14.3 3.2-3.2 7.1-8.2 10.6-12.4 3.5-4.1 4.7-7.1 7.1-11.8 2.4-4.7 1.2-8.8-.6-12.4-1.8-3.5-15.9-38.3-21.8-52.5-5.7-13.8-11.5-11.9-15.9-12.1-4.1-.2-8.8-.2-13.5-.2s-12.4 1.8-18.9 8.8c-6.5 7.1-24.7 24.1-24.7 58.8 0 34.7 25.3 68.2 28.8 72.9 3.5 4.7 49.8 76.1 120.7 106.7 16.9 7.3 30.1 11.7 40.3 15 16.9 5.4 32.3 4.6 44.5 2.8 13.6-2 42.3-17.3 48.2-34.1 5.9-16.8 5.9-31.2 4.1-34.1-1.8-2.9-6.5-4.7-13.6-8.2z" />
-                              </svg>
-                            </a>
-                          )}
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 448 512"
+                                  className="w-4 h-4 text-green-600"
+                                  fill="currentColor"
+                                >
+                                  <path d="M380.9 97.1C339-3.6 280.4-15.4 224.2-15.4c-59.2 0-114.5 22.9-156.5 64.9C25.7 95.4 2.8 150.7 2.8 209.9c0 45.3 13.4 89.5 38.8 127.6L0 480l145-40.7c36.1 19.7 76.6 30 118.3 30h.1c59 0 114.3-22.9 156.4-64.9 42-42 65-97.3 65-156.5-.1-59.2-23-114.5-65-156.5zM224.2 438.6c-36.6 0-72.4-9.8-103.6-28.3l-7.4-4.4-85.9 24.1L52 344.3l-4.8-7.8c-23.6-38.2-36.1-82.3-36.1-127.1 0-130.1 106-236.1 236.1-236.1 63.1 0 122.3 24.6 166.7 69.1 44.4 44.4 68.8 103.6 68.8 166.7 0 130.1-106 236.1-236 236.1zm130.2-176.4c-7.1-3.5-42.3-20.9-48.8-23.2-6.5-2.4-11.2-3.5-15.9 3.5-4.7 7.1-18.2 23.2-22.3 27.9-4.1 4.7-8.2 5.3-15.3 1.8-7.1-3.5-30.1-11.1-57.3-35.4-21.2-18.9-35.5-42.3-39.6-49.4-4.1-7.1-.4-10.9 3.1-14.3 3.2-3.2 7.1-8.2 10.6-12.4 3.5-4.1 4.7-7.1 7.1-11.8 2.4-4.7 1.2-8.8-.6-12.4-1.8-3.5-15.9-38.3-21.8-52.5-5.7-13.8-11.5-11.9-15.9-12.1-4.1-.2-8.8-.2-13.5-.2s-12.4 1.8-18.9 8.8c-6.5 7.1-24.7 24.1-24.7 58.8 0 34.7 25.3 68.2 28.8 72.9 3.5 4.7 49.8 76.1 120.7 106.7 16.9 7.3 30.1 11.7 40.3 15 16.9 5.4 32.3 4.6 44.5 2.8 13.6-2 42.3-17.3 48.2-34.1 5.9-16.8 5.9-31.2 4.1-34.1-1.8-2.9-6.5-4.7-13.6-8.2z" />
+                                </svg>
+                              </a>
+                            )}
 
                           {/* Instagram: solo si canal instagram y hay username */}
                           {canal === "instagram" && igUser && (

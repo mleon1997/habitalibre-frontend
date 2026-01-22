@@ -17,18 +17,19 @@ console.log("[API] VITE_API_URL:", import.meta.env.VITE_API_URL);
 console.log("[API] API_BASE usado:", API_BASE || "(proxy /api)");
 
 // ----------------------------------------------------------------------
-// Helpers token (Customer)
+// Helpers token
 // ----------------------------------------------------------------------
 function getCustomerToken(explicitToken) {
-  return (
-    explicitToken ||
-    localStorage.getItem("hl_customer_token") ||
-    null
-  );
+  return explicitToken || localStorage.getItem("hl_customer_token") || null;
 }
 
-// Dispara evento global cuando token falla (401/403)
-// Un listener en App se encarga de navegar a /login + limpiar sesión.
+function getAdminToken(explicitToken) {
+  return explicitToken || localStorage.getItem("hl_admin_token") || null;
+}
+
+// ----------------------------------------------------------------------
+// Events de unauthorized
+// ----------------------------------------------------------------------
 function emitCustomerUnauthorized({ status, path, message }) {
   try {
     window.dispatchEvent(
@@ -37,7 +38,26 @@ function emitCustomerUnauthorized({ status, path, message }) {
           status,
           path,
           message: message || "Tu sesión expiró. Inicia sesión nuevamente.",
-          // útil para volver a donde estaba
+          returnTo:
+            window.location?.pathname +
+            (window.location?.search || "") +
+            (window.location?.hash || ""),
+        },
+      })
+    );
+  } catch {
+    // ignore
+  }
+}
+
+function emitAdminUnauthorized({ status, path, message }) {
+  try {
+    window.dispatchEvent(
+      new CustomEvent("hl:admin-unauthorized", {
+        detail: {
+          status,
+          path,
+          message: message || "Tu sesión de admin expiró. Inicia sesión nuevamente.",
           returnTo:
             window.location?.pathname +
             (window.location?.search || "") +
@@ -51,7 +71,7 @@ function emitCustomerUnauthorized({ status, path, message }) {
 }
 
 // ----------------------------------------------------------------------
-// Helper request (JSON) con timeout + auto token + 401 handler
+// Helper request (JSON) con timeout + auto token + 401/403 handler
 // ----------------------------------------------------------------------
 async function request(
   path,
@@ -74,7 +94,7 @@ async function request(
     const tkn = getCustomerToken(token);
     if (tkn) authHeader = { Authorization: `Bearer ${tkn}` };
   } else if (auth === "admin") {
-    const tkn = token || localStorage.getItem("hl_admin_token");
+    const tkn = getAdminToken(token);
     if (tkn) authHeader = { Authorization: `Bearer ${tkn}` };
   }
 
@@ -94,12 +114,23 @@ async function request(
     const isJson = ct.includes("application/json");
     const data = isJson ? await res.json().catch(() => ({})) : null;
 
-    // ✅ Manejo elegante de auth inválida para customer
+    // ✅ Manejo elegante de auth inválida para CUSTOMER
     if ((res.status === 401 || res.status === 403) && auth === "customer") {
       const msg = data?.error || data?.message || "Tu sesión expiró. Inicia sesión nuevamente.";
+      try {
+        localStorage.removeItem("hl_customer_token");
+      } catch {}
       emitCustomerUnauthorized({ status: res.status, path, message: msg });
+      throw new Error(msg);
+    }
 
-      // Importante: igual lanzamos error para que el caller pueda parar loaders
+    // ✅ Manejo elegante de auth inválida para ADMIN
+    if ((res.status === 401 || res.status === 403) && auth === "admin") {
+      const msg = data?.error || data?.message || "Tu sesión de admin expiró. Inicia sesión nuevamente.";
+      try {
+        localStorage.removeItem("hl_admin_token");
+      } catch {}
+      emitAdminUnauthorized({ status: res.status, path, message: msg });
       throw new Error(msg);
     }
 
@@ -118,7 +149,7 @@ async function request(
 
 // ----------------------------------------------------------------------
 // Wake backend (Render / cold start)
-// ✅ IMPORTANTE: usa /api/health para que en DEV pase por proxy también
+// ✅ usa /api/health para que en DEV pase por proxy también
 // ----------------------------------------------------------------------
 async function wake() {
   try {
@@ -156,34 +187,30 @@ export async function registerCustomer(payload) {
 
 export async function meCustomer(token) {
   await wake();
-  // ahora request inyecta auth header si hay token
-  return request(
-    "/api/customer-auth/me",
-    { method: "GET", auth: "customer", token },
-    30000
-  );
+  return request("/api/customer-auth/me", { method: "GET", auth: "customer", token }, 30000);
 }
 
 // ======================================================================
 // ADMIN
 // ======================================================================
-export async function listarLeads() {
+
+export async function listarLeads({ pagina = 1, limit = 10 } = {}) {
   await wake();
-  // request inyecta admin token
   return request(
-    "/api/leads",
+    `/api/leads?pagina=${encodeURIComponent(pagina)}&limit=${encodeURIComponent(limit)}`,
     { method: "GET", auth: "admin" },
     30000
   );
 }
 
+export async function statsLeads() {
+  await wake();
+  return request("/api/leads/stats", { method: "GET", auth: "admin" }, 30000);
+}
+
 export async function updateLead(id, payload) {
   await wake();
-  return request(
-    `/api/leads/${id}`,
-    { method: "PUT", auth: "admin", body: payload || {} },
-    30000
-  );
+  return request(`/api/leads/${id}`, { method: "PUT", auth: "admin", body: payload || {} }, 30000);
 }
 
 // ======================================================================
@@ -196,6 +223,7 @@ export const api = {
   registerCustomer,
   meCustomer,
   listarLeads,
+  statsLeads,
   updateLead,
 };
 

@@ -1,22 +1,50 @@
 // src/pages/Admin.jsx
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { API_BASE } from "../lib/api";
+import AdminLogin from "../components/AdminLogin.jsx";
 
 const LS_ADMIN_TOKEN = "hl_admin_token";
+
+// --- helpers JWT (igual que AdminProtectedRoute) ---
+function decodeJwtPayload(token) {
+  try {
+    const parts = String(token || "").split(".");
+    if (parts.length !== 3) return null;
+
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const pad = "=".repeat((4 - (b64.length % 4)) % 4);
+    const json = decodeURIComponent(
+      atob(b64 + pad)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+function isExpired(payload) {
+  const exp = Number(payload?.exp || 0);
+  if (!exp) return false;
+  const nowSec = Math.floor(Date.now() / 1000);
+  return nowSec >= exp;
+}
+
+function clearAdminSession() {
+  try {
+    localStorage.removeItem(LS_ADMIN_TOKEN);
+    localStorage.removeItem("hl_admin_email");
+  } catch {}
+}
 
 export default function Admin() {
   const nav = useNavigate();
   const loc = useLocation();
 
   const params = new URLSearchParams(loc.search || "");
-  const next = params.get("next") || "/admin/users";
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
+  const returnTo = params.get("returnTo") || "/admin/leads";
 
   const token = useMemo(() => {
     try {
@@ -26,124 +54,31 @@ export default function Admin() {
     }
   }, []);
 
-  const loggedIn = !!token;
+  // Si ya hay token válido, no muestres login: redirige al destino
+  const canAutoEnter = useMemo(() => {
+    if (!token) return false;
+    const payload = decodeJwtPayload(token);
+    if (!payload) return false;
+    if (isExpired(payload)) return false;
+    return true;
+  }, [token]);
 
-  const onLogout = () => {
-    try {
-      localStorage.removeItem(LS_ADMIN_TOKEN);
-    } catch {}
-    nav("/admin", { replace: true });
-    window.location.reload();
-  };
-
-  const onLogin = async (e) => {
-    e.preventDefault();
-    setErr("");
-    setBusy(true);
-
-    try {
-      const r = await fetch(`${API_BASE}/api/admin/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const j = await r.json().catch(() => ({}));
-
-      if (!r.ok || !j?.token) {
-        setErr(j?.message || "No se pudo iniciar sesión (admin)");
-        return;
-      }
-
-      try {
-        localStorage.setItem(LS_ADMIN_TOKEN, j.token);
-      } catch {}
-
-      nav(next, { replace: true });
-      window.location.reload();
-    } catch {
-      setErr("Error de red iniciando sesión");
-    } finally {
-      setBusy(false);
+  React.useEffect(() => {
+    if (canAutoEnter) {
+      nav(returnTo, { replace: true });
+    } else if (token) {
+      // había token pero es inválido/expirado
+      clearAdminSession();
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canAutoEnter, returnTo]);
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-50">
-      <div className="max-w-xl mx-auto px-6 py-10">
-        <h1 className="text-2xl font-semibold">Admin HabitaLibre</h1>
-        <p className="text-slate-300 mt-1">Acceso solo para el equipo HabitaLibre.</p>
-
-        {loggedIn ? (
-          <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm text-slate-300">Sesión activa</div>
-                <div className="text-lg font-semibold mt-1">Panel interno</div>
-              </div>
-              <button
-                onClick={onLogout}
-                className="px-3 py-2 rounded-xl border border-white/15 bg-white/10 hover:bg-white/15"
-              >
-                Cerrar sesión
-              </button>
-            </div>
-
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <button
-                onClick={() => nav("/admin/users")}
-                className="px-4 py-3 rounded-xl bg-emerald-500/90 hover:bg-emerald-500 text-slate-950 font-semibold"
-              >
-                Ver Usuarios
-              </button>
-              <button
-                onClick={() => nav("/admin/leads")}
-                className="px-4 py-3 rounded-xl bg-indigo-500/90 hover:bg-indigo-500 text-white font-semibold"
-              >
-                Ver Leads
-              </button>
-            </div>
-          </div>
-        ) : (
-          <form onSubmit={onLogin} className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6">
-            <div className="text-sm text-slate-300 mb-4">Inicia sesión</div>
-
-            <label className="block text-sm text-slate-200">Email</label>
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="mateo@habitalibre.com"
-              className="mt-1 w-full px-3 py-2 rounded-xl bg-slate-900 border border-white/10 outline-none"
-            />
-
-            <label className="block text-sm text-slate-200 mt-4">Password</label>
-            <input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              type="password"
-              placeholder="••••••••"
-              className="mt-1 w-full px-3 py-2 rounded-xl bg-slate-900 border border-white/10 outline-none"
-            />
-
-            {err ? (
-              <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                {err}
-              </div>
-            ) : null}
-
-            <button
-              disabled={busy}
-              className="mt-5 w-full px-4 py-3 rounded-xl bg-white text-slate-950 font-semibold hover:opacity-95 disabled:opacity-60"
-            >
-              {busy ? "Entrando…" : "Entrar"}
-            </button>
-
-            <div className="mt-3 text-xs text-slate-400">
-              Te redirigirá a: <span className="text-slate-200">{next}</span>
-            </div>
-          </form>
-        )}
-      </div>
-    </main>
+    <AdminLogin
+      onSuccess={() => {
+        // AdminLogin ya guarda token + navega al returnTo (lo dejamos también aquí por seguridad)
+        nav(returnTo, { replace: true });
+      }}
+    />
   );
 }
