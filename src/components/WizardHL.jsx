@@ -236,6 +236,31 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
     } catch {}
   }
 
+  // ✅ CLAVE: inyecta perfil dentro del resultado para que el backend pueda derivar campos “rápidos”
+  function attachPerfilToResult(result, entradaPayload) {
+    const safe = result && typeof result === "object" ? result : {};
+    const perfilPrev = safe.perfil && typeof safe.perfil === "object" ? safe.perfil : {};
+
+    const perfil = {
+      ...perfilPrev,
+
+      // lo que tu backend usa como fallback:
+      afiliadoIess: entradaPayload?.afiliadoIess ?? afiliadoBool,
+      aniosEstabilidad: entradaPayload?.aniosEstabilidad ?? toNum(aniosEstabilidad),
+
+      // ingresoTotal: suma usada en el wizard (incluye pareja solo si formal)
+      ingresoTotal: ingresoUsado,
+
+      // deudas (para deuda_mensual_aprox)
+      otrasDeudasMensuales: entradaPayload?.otrasDeudasMensuales ?? toNum(deudas),
+
+      // opcional: ciudadCompra (si luego lo agregas en el wizard)
+      ciudadCompra: perfilPrev?.ciudadCompra ?? null,
+    };
+
+    return { ...safe, perfil };
+  }
+
   async function handleCalcular() {
     if (loading) return;
 
@@ -250,7 +275,6 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
 
     // =========================================================
     // ✅ QUICK: abre modal YA y guarda input en perfilInput
-    // (también deja __entrada por compatibilidad)
     // =========================================================
     if (!isJourneyMode) {
       const initial = {
@@ -260,7 +284,6 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
       };
 
       if (typeof openLeadNow === "function") {
-        // 2do parámetro: perfilInput (según tu LeadCaptureContext actualizado)
         openLeadNow(initial, entradaPayload);
       } else {
         openLead(initial, entradaPayload);
@@ -268,7 +291,10 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
     }
 
     try {
-      const result = await precalificar(entradaPayload);
+      const resultRaw = await precalificar(entradaPayload);
+
+      // ✅ MUY IMPORTANTE: resultado con perfil
+      const result = attachPerfilToResult(resultRaw, entradaPayload);
 
       persistLastResult(result);
 
@@ -286,7 +312,6 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
         };
 
         if (typeof setLeadResult === "function") {
-          // 2do parámetro: perfilInput
           setLeadResult(merged, entradaPayload);
         } else {
           openLead(merged, entradaPayload);
