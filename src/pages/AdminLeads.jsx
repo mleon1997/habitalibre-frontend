@@ -1,5 +1,5 @@
 // src/pages/AdminLeads.jsx
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import AdminLogin from "../components/AdminLogin.jsx";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { API_BASE } from "../lib/api";
@@ -56,6 +56,27 @@ const formatBoolSiNo = (v) => {
   return "-";
 };
 
+// ✅ Score HL: soporta TODOS los formatos (plano / decision / resultado)
+const getScoreHL = (lead) => {
+  const s1 = toNumOrNull(lead?.scoreHL);
+  if (s1 != null) return s1;
+
+  const s2 = toNumOrNull(lead?.decision?.scoreHL);
+  if (s2 != null) return s2;
+
+  // formatos típicos del scoring
+  const s3 = toNumOrNull(lead?.resultado?.puntajeHabitaLibre?.score);
+  if (s3 != null) return s3;
+
+  const s4 = toNumOrNull(lead?.resultado?.puntajeHabitaLibre?.puntaje);
+  if (s4 != null) return s4;
+
+  const s5 = toNumOrNull(lead?.resultado?.puntajeHabitaLibre);
+  if (s5 != null) return s5;
+
+  return null;
+};
+
 const AdminLeads = () => {
   // -----------------------------
   // Filtros (SIMPLIFICADOS)
@@ -106,9 +127,7 @@ const AdminLeads = () => {
     else color = "bg-rose-50 text-rose-700";
 
     return (
-      <span
-        className={`inline-flex items-center justify-center min-w-[40px] px-2 py-1 rounded-full text-xs font-semibold ${color}`}
-      >
+      <span className={`inline-flex items-center justify-center min-w-[40px] px-2 py-1 rounded-full text-xs font-semibold ${color}`}>
         {score}
       </span>
     );
@@ -235,27 +254,6 @@ const AdminLeads = () => {
   // -------------------------------------------------
   const getDecision = (lead) => lead?.decision || null;
 
-  // ✅ Score HL: soporta TODOS los formatos (plano / decision / resultado)
-const getScoreHL = (lead) => {
-  const s1 = toNumOrNull(lead?.scoreHL);
-  if (s1 != null) return s1;
-
-  const s2 = toNumOrNull(lead?.decision?.scoreHL);
-  if (s2 != null) return s2;
-
-  // formatos típicos del scoring
-  const s3 = toNumOrNull(lead?.resultado?.puntajeHabitaLibre?.score);
-  if (s3 != null) return s3;
-
-  const s4 = toNumOrNull(lead?.resultado?.puntajeHabitaLibre?.puntaje);
-  if (s4 != null) return s4;
-
-  const s5 = toNumOrNull(lead?.resultado?.puntajeHabitaLibre);
-  if (s5 != null) return s5;
-
-  return null;
-};
-
   // ✅ Helpers: ingreso/deuda “plano” con fallback a perfil del scoring
   const getIngresoMensual = (lead) => {
     const r = lead?.resultado || null;
@@ -289,11 +287,7 @@ const getScoreHL = (lead) => {
 
     const label = h === 0 ? "Frío" : h === 1 ? "Tibio" : h === 2 ? "Caliente" : "🔥 Hot";
     const cls =
-      h <= 1
-        ? "bg-slate-100 text-slate-700"
-        : h === 2
-        ? "bg-amber-50 text-amber-700"
-        : "bg-rose-50 text-rose-700";
+      h <= 1 ? "bg-slate-100 text-slate-700" : h === 2 ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700";
 
     return (
       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${cls}`}>
@@ -307,39 +301,19 @@ const getScoreHL = (lead) => {
     if (!e) return <span className="text-xs text-slate-400">-</span>;
 
     if (e === "bancable") {
-      return (
-        <span className="inline-flex items-center px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold">
-          Bancable
-        </span>
-      );
+      return <span className="inline-flex items-center px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold">Bancable</span>;
     }
     if (e === "rescatable") {
-      return (
-        <span className="inline-flex items-center px-2 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold">
-          Rescatable
-        </span>
-      );
+      return <span className="inline-flex items-center px-2 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold">Rescatable</span>;
     }
     if (e === "descartable") {
-      return (
-        <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
-          Descartable
-        </span>
-      );
+      return <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">Descartable</span>;
     }
     if (e === "por_calificar") {
-      return (
-        <span className="inline-flex items-center px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold">
-          Por calificar
-        </span>
-      );
+      return <span className="inline-flex items-center px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold">Por calificar</span>;
     }
 
-    return (
-      <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
-        {estado}
-      </span>
-    );
+    return <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">{estado}</span>;
   };
 
   const chipLlamarHoy = (llamarHoy) => {
@@ -352,11 +326,7 @@ const getScoreHL = (lead) => {
       );
     }
     if (llamarHoy === false) {
-      return (
-        <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
-          No urgente
-        </span>
-      );
+      return <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">No urgente</span>;
     }
     return <span className="text-xs text-slate-400">-</span>;
   };
@@ -693,7 +663,6 @@ const getScoreHL = (lead) => {
 
                 {leads.map((lead) => {
                   const decision = getDecision(lead);
-
                   const ingreso = getIngresoMensual(lead);
                   const deuda = getDeudaMensual(lead);
 
@@ -712,11 +681,8 @@ const getScoreHL = (lead) => {
                       title="Click para ver detalle"
                     >
                       <td className="px-4 py-3 text-xs text-slate-500">{formatDate(lead.createdAt)}</td>
-
                       <td className="px-4 py-3 text-xs font-semibold text-slate-700">{obtenerCodigoLead(lead)}</td>
-
                       <td className="px-4 py-3 text-sm text-slate-900">{lead.nombre || lead.nombreCompleto || "-"}</td>
-
                       <td className="px-4 py-3 text-sm text-slate-700">{lead.ciudad || "-"}</td>
 
                       <td className="px-4 py-3 text-sm font-semibold text-slate-900">
@@ -731,10 +697,9 @@ const getScoreHL = (lead) => {
                         {lead.producto || lead.tipoProducto || decision?.producto || "-"}
                       </td>
 
-                    <td className="px-4 py-3 text-sm font-semibold text-slate-900">
-  {chipScore(getScoreHL(lead))}
-</td>
-
+                      <td className="px-4 py-3 text-sm font-semibold text-slate-900">
+                        {chipScore(getScoreHL(lead))}
+                      </td>
                     </tr>
                   );
                 })}
@@ -856,12 +821,9 @@ function LeadDrawer({
 
   return (
     <div className="fixed inset-0 z-[60]">
-      {/* overlay */}
       <div className="absolute inset-0 bg-slate-900/30" onClick={onClose} />
 
-      {/* panel */}
       <div className="absolute right-0 top-0 h-full w-full sm:w-[520px] bg-white shadow-2xl border-l border-slate-200 flex flex-col">
-        {/* header */}
         <div className="px-5 py-4 border-b border-slate-200 flex items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -881,10 +843,7 @@ function LeadDrawer({
             </div>
 
             <div className="mt-2 text-xs text-slate-500">
-              Creado:{" "}
-              <span className="font-medium text-slate-700">
-                {lead?.createdAt ? formatDate(lead.createdAt) : "-"}
-              </span>
+              Creado: <span className="font-medium text-slate-700">{lead?.createdAt ? formatDate(lead.createdAt) : "-"}</span>
             </div>
           </div>
 
@@ -898,9 +857,7 @@ function LeadDrawer({
           </button>
         </div>
 
-        {/* content */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-          {/* CTAs */}
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold text-slate-700">Acción rápida</p>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -952,7 +909,6 @@ function LeadDrawer({
             )}
           </div>
 
-          {/* Lo que falta */}
           <Card title="Qué le falta para avanzar" subtitle={faltantes.length ? `${faltantes.length} punto(s)` : "—"}>
             {faltantes.length ? (
               <ul className="space-y-2">
@@ -968,7 +924,6 @@ function LeadDrawer({
             )}
           </Card>
 
-          {/* Por qué (razones) */}
           <Card title="Por qué está en este estado">
             {porQue.length ? (
               <ul className="space-y-2">
@@ -984,7 +939,6 @@ function LeadDrawer({
             )}
           </Card>
 
-          {/* Próximos pasos */}
           <Card title="Qué haría yo ahora" subtitle="Checklist operativo">
             {nextActions.length ? (
               <ol className="space-y-2 list-decimal pl-5">
@@ -999,7 +953,6 @@ function LeadDrawer({
             )}
           </Card>
 
-          {/* Scoring / ruta (si existe) */}
           <Card title="Bancabilidad (scoring)">
             <div className="grid grid-cols-2 gap-3">
               <Stat label="Score HL" value={chipScore(getScoreHL(lead))} />
@@ -1014,18 +967,9 @@ function LeadDrawer({
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <Stat
-                label="Ingreso mensual"
-                value={<span className="text-sm font-semibold text-slate-900">{ingresoMensual != null ? `$${formatMoney(ingresoMensual)}` : "-"}</span>}
-              />
-              <Stat
-                label="Deudas mensuales"
-                value={<span className="text-sm font-semibold text-slate-900">{deudaMensual != null ? `$${formatMoney(deudaMensual)}` : "-"}</span>}
-              />
-              <Stat
-                label="DTI sin hipoteca"
-                value={<span className="text-sm font-semibold text-slate-900">{dtiBase != null ? `${Math.round(dtiBase * 100)}%` : "-"}</span>}
-              />
+              <Stat label="Ingreso mensual" value={<span className="text-sm font-semibold text-slate-900">{ingresoMensual != null ? `$${formatMoney(ingresoMensual)}` : "-"}</span>} />
+              <Stat label="Deudas mensuales" value={<span className="text-sm font-semibold text-slate-900">{deudaMensual != null ? `$${formatMoney(deudaMensual)}` : "-"}</span>} />
+              <Stat label="DTI sin hipoteca" value={<span className="text-sm font-semibold text-slate-900">{dtiBase != null ? `${Math.round(dtiBase * 100)}%` : "-"}</span>} />
               <Stat
                 label="Estabilidad / IESS"
                 value={
@@ -1044,10 +988,7 @@ function LeadDrawer({
                     {safe(ruta?.tipo, safe(resultado?.rutaRecomendada?.tipo, "-"))}
                   </span>
                   <span className="text-xs text-slate-500">
-                    Cuota:{" "}
-                    <span className="font-semibold text-slate-800">
-                      ${formatMoney(ruta?.cuota ?? resultado?.cuotaEstimada)}
-                    </span>
+                    Cuota: <span className="font-semibold text-slate-800">${formatMoney(ruta?.cuota ?? resultado?.cuotaEstimada)}</span>
                   </span>
                 </div>
                 <div className="mt-1 text-xs text-slate-500">
@@ -1086,7 +1027,6 @@ function LeadDrawer({
             )}
           </Card>
 
-          {/* Contacto + perfil */}
           <Card title="Contacto y perfil">
             <div className="grid grid-cols-1 gap-2 text-sm">
               <Row label="Teléfono" value={lead?.telefono || "-"} />
@@ -1108,7 +1048,6 @@ function LeadDrawer({
             )}
           </Card>
 
-          {/* Raw JSON (para debug) */}
           <details className="rounded-2xl border border-slate-200 bg-white p-4">
             <summary className="cursor-pointer text-sm font-semibold text-slate-900">Ver datos completos (debug)</summary>
             <pre className="mt-3 text-xs whitespace-pre-wrap text-slate-700 bg-slate-50 border border-slate-200 rounded-xl p-3 overflow-x-auto">
@@ -1117,7 +1056,6 @@ function LeadDrawer({
           </details>
         </div>
 
-        {/* footer */}
         <div className="px-5 py-3 border-t border-slate-200 bg-white">
           <p className="text-[11px] text-slate-500">
             Tip UX: puedes cerrar con <span className="font-semibold">Esc</span>.
@@ -1160,9 +1098,6 @@ function Row({ label, value }) {
   );
 }
 
-// =====================================================
-// KPI
-// =====================================================
 function KpiCard({ label, value, subtitle }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
