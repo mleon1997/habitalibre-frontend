@@ -731,9 +731,10 @@ const getScoreHL = (lead) => {
                         {lead.producto || lead.tipoProducto || decision?.producto || "-"}
                       </td>
 
-                      <td className="px-4 py-3 text-sm font-semibold text-slate-900">
-                        {lead.scoreHL != null ? chipScore(lead.scoreHL) : chipScore(decision?.scoreHL)}
-                      </td>
+                    <td className="px-4 py-3 text-sm font-semibold text-slate-900">
+  {chipScore(getScoreHL(lead))}
+</td>
+
                     </tr>
                   );
                 })}
@@ -1001,7 +1002,7 @@ function LeadDrawer({
           {/* Scoring / ruta (si existe) */}
           <Card title="Bancabilidad (scoring)">
             <div className="grid grid-cols-2 gap-3">
-              <Stat label="Score HL" value={lead?.scoreHL != null ? chipScore(lead.scoreHL) : chipScore(decision?.scoreHL)} />
+              <Stat label="Score HL" value={chipScore(getScoreHL(lead))} />
               <Stat label="Etapa" value={<span className="text-sm font-semibold text-slate-900">{decision?.etapa || "-"}</span>} />
               <Stat label="Producto" value={<span className="text-sm font-semibold text-slate-900">{lead?.producto || decision?.producto || "-"}</span>} />
               <Stat label="Canal / Fuente" value={<span className="text-sm font-semibold text-slate-900">{`${canal || "-"} / ${fuente || "-"}`}</span>} />
