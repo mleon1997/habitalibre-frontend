@@ -155,7 +155,7 @@ export default function Landing({ onStart }) {
               className="px-5 py-2.5 rounded-full bg-blue-500 hover:bg-blue-400
                text-slate-950 font-semibold text-sm shadow-lg transition"
             >
-              Iniciar simulación
+              Iniciar precalificación
             </button>
           </nav>
 
@@ -369,7 +369,7 @@ export default function Landing({ onStart }) {
                 </button>
 
                 <p className="mt-2 text-[10px] text-slate-400 text-center">
-                  Simulación gratuita, sin compromiso con ningún banco.
+                  Precalificación gratuita, sin compromiso con ningún banco.
                 </p>
 
                 <p className="text-[9px] text-slate-500 mt-3 leading-snug">
