@@ -23,6 +23,8 @@ import HLogo from "../assets/HLOGO.png";
 import { trackEvent, trackPageView } from "../lib/analytics";
 import { useNavigate } from "react-router-dom";
 import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
+import WhatsAppFab from "../components/WhatsAppFab.jsx";
+
 
 export default function Landing({ onStart }) {
   const [activeLegalSection, setActiveLegalSection] = useState(null);
@@ -1371,6 +1373,9 @@ export default function Landing({ onStart }) {
           </div>
         </div>
       )}
+
+      <WhatsAppFab />
+
     </main>
   );
 }
