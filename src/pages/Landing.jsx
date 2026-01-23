@@ -27,17 +27,6 @@ import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
 export default function Landing({ onStart }) {
   const [activeLegalSection, setActiveLegalSection] = useState(null);
 
-    const [waOpen, setWaOpen] = useState(true);
-
-  const WA_LINK = "https://wa.me/593985476936?text=Hola";
-
-  const openWhatsApp = (source = "wa_unknown") => {
-    trackEvent("cta_whatsapp_precalificacion_click", { source });
-    // abre en nueva pestaña / app
-    window.open(WA_LINK, "_blank", "noopener,noreferrer");
-  };
-
-
   const navigate = useNavigate();
   const { token } = useCustomerAuth();
 
@@ -57,7 +46,8 @@ export default function Landing({ onStart }) {
     if (typeof onStart === "function") {
       onStart();
     } else {
-      window.location.hash = "#/simular";
+      window.location.hash = "#/precalificar";
+
     }
   };
 
@@ -102,9 +92,6 @@ export default function Landing({ onStart }) {
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50">
-      <div style={{position:"fixed", bottom: 6, left: 6, zIndex: 2147483647, fontSize: 12, padding: "6px 8px", background:"#00ff99", color:"#000", borderRadius: 8}}>
-</div>
-
       {/* NAVBAR */}
       <header className="border-b border-slate-800/70 bg-slate-950/90 backdrop-blur sticky top-0 z-50">
         <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
@@ -1384,98 +1371,6 @@ export default function Landing({ onStart }) {
           </div>
         </div>
       )}
-
-            {/* WHATSAPP FLOATING + MINI POPUP */}
-      <div className="fixed bottom-5 right-5 z-[9999]">
-        {/* Mini Popup */}
-        {waOpen && (
-          <div className="mb-3 w-[320px] max-w-[90vw] rounded-3xl border border-slate-800 bg-slate-950/95 backdrop-blur shadow-[0_24px_70px_rgba(0,0,0,0.55)] overflow-hidden">
-            <div className="p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="h-11 w-11 rounded-2xl bg-slate-900 border border-emerald-400/50 flex items-center justify-center overflow-hidden shadow-[0_0_18px_rgba(16,185,129,0.35)]">
-                    <img src={HIcon} alt="HabitaLibre" className="h-7 w-7 object-contain" />
-                  </div>
-                  <div className="leading-tight">
-                    <p className="text-sm font-semibold text-slate-50">Precalificación por WhatsApp</p>
-                    <p className="text-[11px] text-slate-400">Resultado claro en 1–2 min</p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => {
-                    setWaOpen(false);
-                    trackEvent("wa_widget_close", { source: "landing" });
-                  }}
-                  className="p-1.5 rounded-full border border-slate-800 text-slate-300 hover:bg-slate-900 transition"
-                  aria-label="Cerrar"
-                >
-                  <XMarkIcon className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
-                <p className="text-[12px] text-slate-200 leading-snug">
-                  Te hago 4 preguntas rápidas y te digo si calificas para <span className="text-emerald-300 font-semibold">VIS / VIP / BIESS</span>.
-                </p>
-                <p className="mt-1 text-[11px] text-slate-400">
-                  *No afecta tu buró. Sin compromiso.
-                </p>
-              </div>
-
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => openWhatsApp("wa_widget_start")}
-                  className="col-span-2 inline-flex items-center justify-center gap-2 py-2.5 rounded-2xl bg-emerald-400 text-slate-950 font-semibold text-sm shadow-[0_18px_45px_rgba(16,185,129,0.35)] hover:bg-emerald-300 transition"
-                >
-                  Iniciar precalificación
-                  <span className="text-base">→</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setWaOpen(false);
-                    trackEvent("wa_widget_later", { source: "landing" });
-                  }}
-                  className="py-2.5 rounded-2xl border border-slate-700 text-slate-200 text-xs hover:border-slate-500 hover:text-white transition"
-                >
-                  Ahora no
-                </button>
-
-                <button
-                  onClick={() => {
-                    trackEvent("wa_widget_scroll_simulator", { source: "landing" });
-                    setWaOpen(false);
-                    handleStart("wa_widget_to_simulator");
-                  }}
-                  className="py-2.5 rounded-2xl border border-emerald-400/35 bg-emerald-500/10 text-emerald-200 text-xs hover:bg-emerald-500/15 hover:text-emerald-100 transition"
-                >
-                  Mejor web
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Floating Button */}
-        <button
-          onClick={() => {
-            const next = !waOpen;
-            setWaOpen(next);
-            trackEvent("wa_floating_toggle", { open: next, source: "landing" });
-          }}
-          className="h-14 w-14 rounded-full bg-emerald-400 text-slate-950 font-semibold shadow-[0_18px_55px_rgba(16,185,129,0.45)] hover:bg-emerald-300 transition active:scale-[.97] flex items-center justify-center border border-emerald-200/20"
-          aria-label="Abrir WhatsApp"
-          title="Precalificar por WhatsApp"
-        >
-          {/* Icono WhatsApp simple */}
-          <svg width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-            <path fill="#0B1220" d="M19.11 17.63c-.28-.14-1.66-.82-1.92-.91-.26-.1-.45-.14-.64.14-.19.28-.73.91-.9 1.1-.17.19-.33.21-.61.07-.28-.14-1.19-.44-2.27-1.39-.84-.75-1.4-1.67-1.57-1.95-.17-.28-.02-.43.12-.57.12-.12.28-.33.42-.5.14-.17.19-.28.28-.47.09-.19.05-.35-.02-.5-.07-.14-.64-1.54-.88-2.11-.23-.55-.46-.48-.64-.49l-.55-.01c-.19 0-.5.07-.76.35-.26.28-1 1-1 2.44s1.02 2.84 1.16 3.04c.14.19 2 3.05 4.84 4.28.68.29 1.2.46 1.61.59.68.22 1.3.19 1.79.11.55-.08 1.66-.68 1.9-1.33.23-.65.23-1.21.16-1.33-.07-.12-.26-.19-.54-.33z"/>
-            <path fill="#0B1220" d="M16.02 3C9.39 3 4 8.39 4 15.02c0 2.34.67 4.52 1.84 6.36L4.6 28.9l7.7-1.2c1.78.97 3.82 1.52 5.72 1.52 6.63 0 12.02-5.39 12.02-12.02C30.04 8.39 22.65 3 16.02 3zm0 23.97c-1.79 0-3.45-.52-4.86-1.41l-.35-.21-4.57.71.74-4.45-.23-.36A9.95 9.95 0 0 1 6.02 15c0-5.52 4.49-10 10-10s10 4.48 10 10-4.48 9.97-10 9.97z"/>
-          </svg>
-        </button>
-      </div>
-
     </main>
   );
 }
