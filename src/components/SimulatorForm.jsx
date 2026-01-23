@@ -1,6 +1,6 @@
 // src/components/SimulatorForm.jsx
 import { useMemo, useState, useEffect } from "react";
-import { precalificar, crearLead, API_BASE } from "../lib/api";
+import { precalificar, crearLeadDesdeSimulador, API_BASE } from "../lib/api";
 
 function pmt(rate, nper, pv) {
   if (!rate) return pv / nper;
@@ -144,6 +144,7 @@ export default function SimulatorForm({ onResult }) {
       const ingresoNeto = usarSoloPareja ? ingresoConyuge : ingresoTitular;
       const ingresoParejaPayload = usarSoloPareja ? ingresoConyuge : 0;
 
+      // ✅ ESTE es el payload que debe viajar también al lead (campos planos)
       const payload = {
         ingresoNetoMensual: ingresoNeto,
         ingresoPareja: ingresoParejaPayload,
@@ -171,46 +172,57 @@ export default function SimulatorForm({ onResult }) {
 
       // ✅ Lead (si hay email)
       if (email && /\S+@\S+\.\S+/.test(email)) {
-        const leadPayload = {
-          ...payload,
-          nombre: nombre?.trim() || "Cliente",
-          email: email.trim(),
-          ciudad: ciudad?.trim() || "",
-          origen: "simulador",
-          resultado: {
-            flags: data?.flags || {},
+        const resultadoLead = {
+          flags: data?.flags || {},
 
-            productoElegido: data?.productoElegido ?? null,
-            tipoCreditoElegido: data?.productoElegido ?? null,
+          productoElegido: data?.productoElegido ?? null,
+          tipoCreditoElegido: data?.productoElegido ?? null,
 
-            productoSugerido: data?.productoSugerido ?? null,
-            bancoSugerido: data?.bancoSugerido ?? null,
+          productoSugerido: data?.productoSugerido ?? null,
+          bancoSugerido: data?.bancoSugerido ?? null,
 
-            capacidadPagoPrograma: data?.capacidadPagoPrograma ?? data?.capacidadPago ?? null,
-            capacidadPago: data?.capacidadPago ?? null,
+          capacidadPagoPrograma: data?.capacidadPagoPrograma ?? data?.capacidadPago ?? null,
+          capacidadPago: data?.capacidadPago ?? null,
 
-            cuotaEstimada: data?.cuotaEstimada ?? null,
-            cuotaStress: data?.cuotaStress ?? null,
+          cuotaEstimada: data?.cuotaEstimada ?? null,
+          cuotaStress: data?.cuotaStress ?? null,
 
-            tasaAnual: data?.tasaAnual ?? null,
-            plazoMeses: data?.plazoMeses ?? null,
+          tasaAnual: data?.tasaAnual ?? null,
+          plazoMeses: data?.plazoMeses ?? null,
 
-            ltv: data?.ltv ?? null,
-            dtiConHipoteca: data?.dtiConHipoteca ?? null,
+          ltv: data?.ltv ?? null,
+          dtiConHipoteca: data?.dtiConHipoteca ?? null,
 
-            montoMaximo: data?.montoMaximo ?? null,
-            precioMaxVivienda: data?.precioMaxVivienda ?? null,
+          montoMaximo: data?.montoMaximo ?? null,
+          precioMaxVivienda: data?.precioMaxVivienda ?? null,
 
-            escenarios: data?.escenariosHL ?? data?.escenarios ?? null,
-            puntajeHabitaLibre: data?.puntajeHabitaLibre ?? null,
-            scoreHL: data?.scoreHL ?? null,
-          },
+          escenarios: data?.escenariosHL ?? data?.escenarios ?? null,
+          puntajeHabitaLibre: data?.puntajeHabitaLibre ?? null,
+          scoreHL: data?.scoreHL ?? null,
         };
 
+        // ✅ Definimos tipoCompra para alimentar decision + dashboard
+        const tipoCompra = usarSoloPareja ? "pareja" : "solo";
+        const tipoCompraNumero = usarSoloPareja ? 2 : 1;
+
         try {
-          await crearLead(leadPayload);
+          await crearLeadDesdeSimulador({
+            contacto: {
+              nombre: nombre?.trim() || "Cliente",
+              email: email.trim(),
+              ciudad: ciudad?.trim() || "",
+              aceptaTerminos: true,
+              aceptaCompartir: true,
+              tiempoCompra: horizonteCompra || null,
+              sustentoIndependiente: declaracionBuro || null,
+              tipoCompra,
+              tipoCompraNumero,
+            },
+            precalif: payload,        // ✅ aquí viaja ingreso/deudas/estabilidad/IESS/valor/entrada
+            resultado: resultadoLead, // ✅ el resultado que ya estabas construyendo
+          });
         } catch (e) {
-          console.warn("crearLead falló:", e);
+          console.warn("crearLeadDesdeSimulador falló:", e);
         }
       }
 
