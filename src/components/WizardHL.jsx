@@ -415,7 +415,7 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold tracking-tight">
-            {isJourneyMode ? "Camino HabitaLibre" : "Simulador HabitaLibre"}
+            {isJourneyMode ? "Camino HabitaLibre" : "Precalificador HabitaLibre"}
           </h2>
           <p className="text-[11px] text-slate-400">
             Completa los pasos y te mostramos un resultado claro en menos de 2 minutos.
@@ -834,7 +834,7 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
           <div className="mt-4 flex items-start gap-2">
             <span className="text-slate-500 text-lg">⚖️</span>
             <p className="text-[11px] text-slate-500 leading-relaxed">
-              Las simulaciones generadas por HabitaLibre son estimaciones referenciales. No constituyen aprobación ni oferta formal.
+              Las precalificaciones generadas por HabitaLibre son estimaciones referenciales. No constituyen aprobación ni oferta formal.
             </p>
           </div>
         </div>
