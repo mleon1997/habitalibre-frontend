@@ -66,7 +66,7 @@ export default function Landing({ onStart }) {
       localStorage.setItem("hl_entry_mode", "journey");
     } catch {}
 
-    const returnTo = "/simular?mode=journey";
+    const returnTo = "/precalificar?mode=journey";
     navigate(`/login?intent=register&returnTo=${encodeURIComponent(returnTo)}`);
   };
 
