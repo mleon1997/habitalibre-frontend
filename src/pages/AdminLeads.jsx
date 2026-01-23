@@ -235,6 +235,27 @@ const AdminLeads = () => {
   // -------------------------------------------------
   const getDecision = (lead) => lead?.decision || null;
 
+  // ✅ Score HL: soporta TODOS los formatos (plano / decision / resultado)
+const getScoreHL = (lead) => {
+  const s1 = toNumOrNull(lead?.scoreHL);
+  if (s1 != null) return s1;
+
+  const s2 = toNumOrNull(lead?.decision?.scoreHL);
+  if (s2 != null) return s2;
+
+  // formatos típicos del scoring
+  const s3 = toNumOrNull(lead?.resultado?.puntajeHabitaLibre?.score);
+  if (s3 != null) return s3;
+
+  const s4 = toNumOrNull(lead?.resultado?.puntajeHabitaLibre?.puntaje);
+  if (s4 != null) return s4;
+
+  const s5 = toNumOrNull(lead?.resultado?.puntajeHabitaLibre);
+  if (s5 != null) return s5;
+
+  return null;
+};
+
   // ✅ Helpers: ingreso/deuda “plano” con fallback a perfil del scoring
   const getIngresoMensual = (lead) => {
     const r = lead?.resultado || null;
