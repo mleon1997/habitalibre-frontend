@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 export default function WhatsAppFab({
-  phone = "593XXXXXXXXX", // <-- CAMBIA (sin +)
+  phone = "593985476936", // <-- CAMBIA (sin +)
   message = "Hola HabitaLibre 👋 Quiero precalificar mi crédito hipotecario.",
   position = "bottom-right", // "bottom-right" | "bottom-left"
   showNudge = true, // burbuja “saludo”
