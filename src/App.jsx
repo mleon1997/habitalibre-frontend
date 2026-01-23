@@ -1,6 +1,7 @@
-// src/App.jsx
+]// src/App.jsx
 import React from "react";
 import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import AdminAuthListener from "./components/AdminAuthListener.jsx";
 
 import "./App.css";
 
@@ -44,6 +45,7 @@ export default function App() {
       <LeadCaptureProvider>
         {/* escucha auth del customer */}
         <CustomerAuthListener />
+        <AdminAuthListener />
 
         {/* modal global de lead (WizardHL, etc.) */}
         <LeadModalBare />
@@ -54,7 +56,12 @@ export default function App() {
              ========================= */}
           <Route element={<AppLayoutShell />}>
             <Route path="/" element={<Landing />} />
-            <Route path="/simular" element={<SimuladorPage />} />
+
+            {/* NUEVO: ruta “bonita” */}
+            <Route path="/precalificar" element={<SimuladorPage />} />
+
+            {/* Opcional (recomendado): mantener compatibilidad y forzar el nombre nuevo */}
+            <Route path="/simular" element={<Navigate to="/precalificar" replace />} />
 
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
