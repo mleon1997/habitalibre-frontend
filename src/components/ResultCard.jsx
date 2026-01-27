@@ -197,10 +197,10 @@ function ResultCard({ data }) {
       <div className="h-full flex items-center justify-center text-slate-500 text-center">
         <div>
           <p className="font-medium text-slate-200 mb-1">
-            Tu simulación aparecerá aquí 👇
+            Tu precalificación aparecerá aquí 👇
           </p>
           <p className="text-sm text-slate-400">
-            Completa el simulador para ver resultados personalizados.
+            Completa el precalificador para ver resultados personalizados.
           </p>
         </div>
       </div>

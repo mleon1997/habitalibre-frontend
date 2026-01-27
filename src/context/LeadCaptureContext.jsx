@@ -10,8 +10,24 @@ export function LeadCaptureProvider({ children }) {
   // ✅ cada apertura incrementa nonce para remontear el modal y evitar estados “pegados”
   const [nonce, setNonce] = useState(0);
 
+  // --------------------------------------------
+  // Helper: merge seguro de resultado + inputs
+  // --------------------------------------------
+  const buildResult = (dataResultado, perfilInput) => {
+    const base = dataResultado && typeof dataResultado === "object" ? dataResultado : null;
+    const input = perfilInput && typeof perfilInput === "object" ? perfilInput : null;
+
+    if (!base) return input ? { perfilInput: input } : null;
+
+    // ✅ si ya venía perfilInput adentro, no lo pisamos
+    if (base.perfilInput || !input) return base;
+
+    return { ...base, perfilInput: input };
+  };
+
   // ✅ legacy: abre el modal + setea resultado (como hoy)
-  const openLead = (dataResultado) => {
+  // ✅ NUEVO: permite 2do parámetro opcional "perfilInput"
+  const openLead = (dataResultado, perfilInput = null) => {
     // reset “duro” primero (evita parpadeos en StrictMode)
     setIsOpen(false);
     setResult(null);
@@ -19,27 +35,28 @@ export function LeadCaptureProvider({ children }) {
     // abre en el siguiente tick
     queueMicrotask(() => {
       setNonce((n) => n + 1);
-      setResult(dataResultado || null);
+      setResult(buildResult(dataResultado, perfilInput));
       setIsOpen(true);
     });
   };
 
   // ✅ NUEVO: abre el modal inmediatamente con data inicial (puede ser {__loading:true})
-  // No rompe nada porque es adicional y no altera openLead.
-  const openLeadNow = (initialData = null) => {
+  // ✅ opcional: perfilInput
+  const openLeadNow = (initialData = null, perfilInput = null) => {
     setIsOpen(false);
     setResult(null);
 
     queueMicrotask(() => {
       setNonce((n) => n + 1);
-      setResult(initialData || null);
+      setResult(buildResult(initialData, perfilInput));
       setIsOpen(true);
     });
   };
 
   // ✅ NUEVO: permite actualizar el resultado sin cerrar/remontear el modal
-  const setLeadResult = (dataResultado) => {
-    setResult(dataResultado || null);
+  // ✅ opcional: perfilInput
+  const setLeadResult = (dataResultado, perfilInput = null) => {
+    setResult(buildResult(dataResultado, perfilInput));
   };
 
   const closeLead = () => setIsOpen(false);
@@ -54,9 +71,9 @@ export function LeadCaptureProvider({ children }) {
       isOpen,
       result,
       nonce,
-      openLead, // legacy
-      openLeadNow, // new
-      setLeadResult, // new
+      openLead, // legacy + perfilInput opcional
+      openLeadNow, // new + perfilInput opcional
+      setLeadResult, // new + perfilInput opcional
       closeLead,
       resetLeadCapture,
     }),

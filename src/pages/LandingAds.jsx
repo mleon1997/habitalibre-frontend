@@ -55,7 +55,7 @@ function LandingAds({ onStart }) {
                 HabitaLibre
               </div>
               <div className="text-[11px] text-emerald-300/90">
-                Simulación hipotecaria · VIS · VIP · BIESS
+                Precalificación hipotecaria · VIS · VIP · BIESS
               </div>
             </div>
           </div>
@@ -65,7 +65,7 @@ function LandingAds({ onStart }) {
             className="px-5 py-2.5 rounded-full bg-blue-500 hover:bg-blue-400 text-slate-950 
                        font-semibold text-sm shadow-lg shadow-blue-500/40 transition"
           >
-            Iniciar simulación
+            Iniciar precalificación
           </button>
         </div>
       </header>
@@ -103,7 +103,7 @@ function LandingAds({ onStart }) {
               </div>
 
               <div className="text-[11px] text-slate-400">
-                Simulación gratuita · Sin compromiso con ningún banco
+                Precalificación gratuita · Sin compromiso con ningún banco
               </div>
             </motion.div>
 
@@ -182,7 +182,7 @@ function LandingAds({ onStart }) {
                   onClick={() => handleStart("card_primary_ads")}
                   className="w-full py-3 rounded-xl bg-blue-500 hover:bg-blue-400 text-slate-950 font-semibold text-sm transition"
                 >
-                  Iniciar simulación ahora
+                  Iniciar precalificación ahora
                 </button>
 
                 <p className="mt-2 text-[10px] text-slate-400 text-center">

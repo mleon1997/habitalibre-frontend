@@ -127,7 +127,9 @@ const AdminLeads = () => {
     else color = "bg-rose-50 text-rose-700";
 
     return (
-      <span className={`inline-flex items-center justify-center min-w-[40px] px-2 py-1 rounded-full text-xs font-semibold ${color}`}>
+      <span
+        className={`inline-flex items-center justify-center min-w-[40px] px-2 py-1 rounded-full text-xs font-semibold ${color}`}
+      >
         {score}
       </span>
     );
@@ -208,6 +210,7 @@ const AdminLeads = () => {
   // Código único “bonito” para el lead
   const obtenerCodigoLead = (lead) => {
     if (!lead) return "-";
+    if (lead.codigo) return lead.codigo; // ✅ tu campo real
     if (lead.codigoHL) return lead.codigoHL;
     if (lead.codigoUnico) return lead.codigoUnico;
     if (lead.codigoLead) return lead.codigoLead;
@@ -265,6 +268,11 @@ const AdminLeads = () => {
     const b = toNumOrNull(perfil?.ingresoTotal);
     if (b != null) return b;
 
+    // ✅ tu doc real también trae perfil.ingresoTotal (ya cubierto)
+    // y podría traer lead.ingresoTotal directo:
+    const c = toNumOrNull(lead?.ingresoTotal);
+    if (c != null) return c;
+
     return null;
   };
 
@@ -287,7 +295,11 @@ const AdminLeads = () => {
 
     const label = h === 0 ? "Frío" : h === 1 ? "Tibio" : h === 2 ? "Caliente" : "🔥 Hot";
     const cls =
-      h <= 1 ? "bg-slate-100 text-slate-700" : h === 2 ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700";
+      h <= 1
+        ? "bg-slate-100 text-slate-700"
+        : h === 2
+        ? "bg-amber-50 text-amber-700"
+        : "bg-rose-50 text-rose-700";
 
     return (
       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${cls}`}>
@@ -301,19 +313,39 @@ const AdminLeads = () => {
     if (!e) return <span className="text-xs text-slate-400">-</span>;
 
     if (e === "bancable") {
-      return <span className="inline-flex items-center px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold">Bancable</span>;
+      return (
+        <span className="inline-flex items-center px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold">
+          Bancable
+        </span>
+      );
     }
     if (e === "rescatable") {
-      return <span className="inline-flex items-center px-2 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold">Rescatable</span>;
+      return (
+        <span className="inline-flex items-center px-2 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold">
+          Rescatable
+        </span>
+      );
     }
     if (e === "descartable") {
-      return <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">Descartable</span>;
+      return (
+        <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
+          Descartable
+        </span>
+      );
     }
     if (e === "por_calificar") {
-      return <span className="inline-flex items-center px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold">Por calificar</span>;
+      return (
+        <span className="inline-flex items-center px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold">
+          Por calificar
+        </span>
+      );
     }
 
-    return <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">{estado}</span>;
+    return (
+      <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
+        {estado}
+      </span>
+    );
   };
 
   const chipLlamarHoy = (llamarHoy) => {
@@ -326,7 +358,11 @@ const AdminLeads = () => {
       );
     }
     if (llamarHoy === false) {
-      return <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">No urgente</span>;
+      return (
+        <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
+          No urgente
+        </span>
+      );
     }
     return <span className="text-xs text-slate-400">-</span>;
   };
@@ -341,12 +377,63 @@ const AdminLeads = () => {
     setAdminEmail("");
 
     const returnTo =
-      window.location?.pathname +
-      (window.location?.search || "") +
-      (window.location?.hash || "");
+      window.location?.pathname + (window.location?.search || "") + (window.location?.hash || "");
 
-    window.location.href = `#/admin?returnTo=${encodeURIComponent(returnTo)}&reason=${encodeURIComponent(reason)}`;
+    window.location.href = `#/admin?returnTo=${encodeURIComponent(returnTo)}&reason=${encodeURIComponent(
+      reason
+    )}`;
   };
+
+  // =====================================================
+  // ✅ PDF bajo pedido (Ficha Comercial v1.2)
+  // =====================================================
+  const descargarFichaPDF = useCallback(
+    async (codigo) => {
+      try {
+        const currentToken = localStorage.getItem("hl_admin_token");
+        if (!currentToken) {
+          forceAdminRelogin("expired");
+          return;
+        }
+
+        const code = String(codigo || "").trim();
+        if (!code || code === "-") {
+          alert("Este lead no tiene código para generar PDF.");
+          return;
+        }
+
+        const url = `${API_BASE_URL}/api/reportes/ficha/${encodeURIComponent(code)}`;
+
+        const res = await fetch(url, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${currentToken}` },
+        });
+
+        if (res.status === 401 || res.status === 403) {
+          forceAdminRelogin("expired");
+          return;
+        }
+
+        if (!res.ok) {
+          const txt = await res.text().catch(() => "");
+          console.error("PDF error:", res.status, txt);
+          alert(`No se pudo generar el PDF (status ${res.status}).`);
+          return;
+        }
+
+        const blob = await res.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+
+        window.open(blobUrl, "_blank", "noopener,noreferrer");
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 30_000);
+      } catch (err) {
+        console.error("descargarFichaPDF error:", err);
+        alert("Error generando el PDF.");
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [API_BASE_URL]
+  );
 
   // =====================================================
   // Fetch Leads
@@ -568,7 +655,11 @@ const AdminLeads = () => {
 
         {/* KPIs RÁPIDOS */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <KpiCard label="Leads hoy" value={stats.hoy} subtitle={loadingStats ? "Calculando…" : "Ingresados desde 00:00"} />
+          <KpiCard
+            label="Leads hoy"
+            value={stats.hoy}
+            subtitle={loadingStats ? "Calculando…" : "Ingresados desde 00:00"}
+          />
           <KpiCard label="Esta semana" value={stats.semanaActual} subtitle="Total captados desde lunes" />
           <KpiCard label="Semana anterior" value={stats.semanaAnterior} subtitle="Para comparar rendimiento" />
           <KpiCard label="Total en base" value={stats.total || totalLeads} subtitle="Leads históricos registrados" />
@@ -649,13 +740,14 @@ const AdminLeads = () => {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Deudas</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Producto</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Score HL</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">PDF</th>
                 </tr>
               </thead>
 
               <tbody>
                 {!loading && leads.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-6 text-center text-sm text-slate-400">
+                    <td colSpan={9} className="px-4 py-6 text-center text-sm text-slate-400">
                       No hay leads para los filtros seleccionados.
                     </td>
                   </tr>
@@ -700,13 +792,28 @@ const AdminLeads = () => {
                       <td className="px-4 py-3 text-sm font-semibold text-slate-900">
                         {chipScore(getScoreHL(lead))}
                       </td>
+
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const codigo = lead.codigo || obtenerCodigoLead(lead);
+                            descargarFichaPDF(codigo);
+                          }}
+                          className="h-8 px-3 rounded-full border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                          title="Descargar Ficha Comercial (PDF)"
+                        >
+                          PDF
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
 
                 {loading && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-6 text-center text-sm text-slate-400">
+                    <td colSpan={9} className="px-4 py-6 text-center text-sm text-slate-400">
                       Cargando leads…
                     </td>
                   </tr>
@@ -764,6 +871,7 @@ const AdminLeads = () => {
         obtenerCodigoLead={obtenerCodigoLead}
         getIngresoMensual={getIngresoMensual}
         getDeudaMensual={getDeudaMensual}
+        descargarFichaPDF={descargarFichaPDF}
       />
     </div>
   );
@@ -790,6 +898,7 @@ function LeadDrawer({
   obtenerCodigoLead,
   getIngresoMensual,
   getDeudaMensual,
+  descargarFichaPDF,
 }) {
   if (!open) return null;
 
@@ -812,10 +921,10 @@ function LeadDrawer({
   // ✅ perfil financiero (plano → fallback perfil scoring)
   const ingresoMensual = getIngresoMensual ? getIngresoMensual(lead) : null;
   const deudaMensual = getDeudaMensual ? getDeudaMensual(lead) : null;
-  const dtiBase = ingresoMensual && ingresoMensual > 0 && deudaMensual != null ? deudaMensual / ingresoMensual : null;
+  const dtiBase =
+    ingresoMensual && ingresoMensual > 0 && deudaMensual != null ? deudaMensual / ingresoMensual : null;
 
-  const aniosEstabilidad =
-    toNumOrNull(lead?.anios_estabilidad) ?? toNumOrNull(perfil?.aniosEstabilidad) ?? null;
+  const aniosEstabilidad = toNumOrNull(lead?.anios_estabilidad) ?? toNumOrNull(perfil?.aniosEstabilidad) ?? null;
 
   const afiliadoIess = lead?.afiliado_iess != null ? lead.afiliado_iess : perfil?.afiliadoIess ?? null;
 
@@ -843,7 +952,8 @@ function LeadDrawer({
             </div>
 
             <div className="mt-2 text-xs text-slate-500">
-              Creado: <span className="font-medium text-slate-700">{lead?.createdAt ? formatDate(lead.createdAt) : "-"}</span>
+              Creado:{" "}
+              <span className="font-medium text-slate-700">{lead?.createdAt ? formatDate(lead.createdAt) : "-"}</span>
             </div>
           </div>
 
@@ -861,6 +971,17 @@ function LeadDrawer({
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold text-slate-700">Acción rápida</p>
             <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const codigo = lead?.codigo || obtenerCodigoLead(lead);
+                  descargarFichaPDF?.(codigo);
+                }}
+                className="h-9 px-4 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800"
+              >
+                Ficha PDF
+              </button>
+
               {lead?.telefono && waLink && (
                 <a
                   href={waLink}
@@ -956,20 +1077,41 @@ function LeadDrawer({
           <Card title="Bancabilidad (scoring)">
             <div className="grid grid-cols-2 gap-3">
               <Stat label="Score HL" value={chipScore(getScoreHL(lead))} />
-              <Stat label="Etapa" value={<span className="text-sm font-semibold text-slate-900">{decision?.etapa || "-"}</span>} />
-              <Stat label="Producto" value={<span className="text-sm font-semibold text-slate-900">{lead?.producto || decision?.producto || "-"}</span>} />
-              <Stat label="Canal / Fuente" value={<span className="text-sm font-semibold text-slate-900">{`${canal || "-"} / ${fuente || "-"}`}</span>} />
+              <Stat
+                label="Etapa"
+                value={<span className="text-sm font-semibold text-slate-900">{decision?.etapa || "-"}</span>}
+              />
+              <Stat
+                label="Producto"
+                value={<span className="text-sm font-semibold text-slate-900">{lead?.producto || decision?.producto || "-"}</span>}
+              />
+              <Stat
+                label="Canal / Fuente"
+                value={<span className="text-sm font-semibold text-slate-900">{`${canal || "-"} / ${fuente || "-"}`}</span>}
+              />
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <Stat label="DTI con hipoteca" value={<span className="text-sm font-semibold text-slate-900">{formatPct(resultado?.dtiConHipoteca)}</span>} />
+              <Stat
+                label="DTI con hipoteca"
+                value={<span className="text-sm font-semibold text-slate-900">{formatPct(resultado?.dtiConHipoteca)}</span>}
+              />
               <Stat label="LTV estimado" value={<span className="text-sm font-semibold text-slate-900">{formatPct(resultado?.ltv)}</span>} />
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <Stat label="Ingreso mensual" value={<span className="text-sm font-semibold text-slate-900">{ingresoMensual != null ? `$${formatMoney(ingresoMensual)}` : "-"}</span>} />
-              <Stat label="Deudas mensuales" value={<span className="text-sm font-semibold text-slate-900">{deudaMensual != null ? `$${formatMoney(deudaMensual)}` : "-"}</span>} />
-              <Stat label="DTI sin hipoteca" value={<span className="text-sm font-semibold text-slate-900">{dtiBase != null ? `${Math.round(dtiBase * 100)}%` : "-"}</span>} />
+              <Stat
+                label="Ingreso mensual"
+                value={<span className="text-sm font-semibold text-slate-900">{ingresoMensual != null ? `$${formatMoney(ingresoMensual)}` : "-"}</span>}
+              />
+              <Stat
+                label="Deudas mensuales"
+                value={<span className="text-sm font-semibold text-slate-900">{deudaMensual != null ? `$${formatMoney(deudaMensual)}` : "-"}</span>}
+              />
+              <Stat
+                label="DTI sin hipoteca"
+                value={<span className="text-sm font-semibold text-slate-900">{dtiBase != null ? `${Math.round(dtiBase * 100)}%` : "-"}</span>}
+              />
               <Stat
                 label="Estabilidad / IESS"
                 value={
@@ -988,7 +1130,10 @@ function LeadDrawer({
                     {safe(ruta?.tipo, safe(resultado?.rutaRecomendada?.tipo, "-"))}
                   </span>
                   <span className="text-xs text-slate-500">
-                    Cuota: <span className="font-semibold text-slate-800">${formatMoney(ruta?.cuota ?? resultado?.cuotaEstimada)}</span>
+                    Cuota:{" "}
+                    <span className="font-semibold text-slate-800">
+                      ${formatMoney(ruta?.cuota ?? resultado?.cuotaEstimada)}
+                    </span>
                   </span>
                 </div>
                 <div className="mt-1 text-xs text-slate-500">

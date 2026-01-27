@@ -97,7 +97,7 @@ export default function HeaderHL({ hideOnPaths = [] }) {
             className="px-5 py-2.5 rounded-full bg-blue-500 hover:bg-blue-400
                        text-slate-950 font-semibold text-sm shadow-lg transition"
           >
-            Iniciar simulación
+            Iniciar precalificación
           </button>
         </nav>
 
