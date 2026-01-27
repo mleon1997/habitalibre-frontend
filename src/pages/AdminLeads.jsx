@@ -383,57 +383,76 @@ const AdminLeads = () => {
       reason
     )}`;
   };
-
-  // =====================================================
-  // ✅ PDF bajo pedido (Ficha Comercial v1.2)
-  // =====================================================
-  const descargarFichaPDF = useCallback(
-    async (codigo) => {
-      try {
-        const currentToken = localStorage.getItem("hl_admin_token");
-        if (!currentToken) {
-          forceAdminRelogin("expired");
-          return;
-        }
-
-        const code = String(codigo || "").trim();
-        if (!code || code === "-") {
-          alert("Este lead no tiene código para generar PDF.");
-          return;
-        }
-
-        const url = `${API_BASE_URL}/api/reportes/ficha/${encodeURIComponent(code)}`;
-
-        const res = await fetch(url, {
-          method: "GET",
-          headers: { Authorization: `Bearer ${currentToken}` },
-        });
-
-        if (res.status === 401 || res.status === 403) {
-          forceAdminRelogin("expired");
-          return;
-        }
-
-        if (!res.ok) {
-          const txt = await res.text().catch(() => "");
-          console.error("PDF error:", res.status, txt);
-          alert(`No se pudo generar el PDF (status ${res.status}).`);
-          return;
-        }
-
-        const blob = await res.blob();
-        const blobUrl = window.URL.createObjectURL(blob);
-
-        window.open(blobUrl, "_blank", "noopener,noreferrer");
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 30_000);
-      } catch (err) {
-        console.error("descargarFichaPDF error:", err);
-        alert("Error generando el PDF.");
+// =====================================================
+// ✅ PDF bajo pedido (Ficha Comercial v1.2) - FIX descarga
+// =====================================================
+const descargarFichaPDF = useCallback(
+  async (codigo) => {
+    try {
+      const currentToken = localStorage.getItem("hl_admin_token");
+      if (!currentToken) {
+        forceAdminRelogin("missing_token");
+        return;
       }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [API_BASE_URL]
-  );
+
+      const code = String(codigo || "").trim();
+      if (!code || code === "-") {
+        alert("Este lead no tiene código para generar PDF.");
+        return;
+      }
+
+      const url = `${API_BASE_URL}/api/reportes/ficha/${encodeURIComponent(code)}`;
+
+      console.log("🧾 PDF -> URL:", url);
+      console.log("🧾 PDF -> token len:", currentToken.length);
+
+      const res = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${currentToken}`,
+          Accept: "application/pdf",
+        },
+        cache: "no-store",
+      });
+
+      // DEBUG útil
+      console.log("🧾 PDF -> status:", res.status);
+      console.log("🧾 PDF -> content-type:", res.headers.get("content-type"));
+
+      if (res.status === 401 || res.status === 403) {
+        // OJO: aquí está tu “me bota al login”
+        forceAdminRelogin("expired_or_forbidden");
+        return;
+      }
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        console.error("🧾 PDF -> error body:", txt);
+        alert(`No se pudo generar el PDF (status ${res.status}).`);
+        return;
+      }
+
+      const blob = await res.blob();
+
+      // ✅ Descargar SIN abrir pestaña (más estable)
+      const a = document.createElement("a");
+      const blobUrl = window.URL.createObjectURL(blob);
+      a.href = blobUrl;
+      a.download = `Ficha_Comercial_${code}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+    } catch (err) {
+      console.error("🧾 descargarFichaPDF error:", err);
+      alert("Error generando el PDF.");
+    }
+  },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [API_BASE_URL]
+);
+
 
   // =====================================================
   // Fetch Leads
@@ -798,7 +817,7 @@ const AdminLeads = () => {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            const codigo = lead.codigo || obtenerCodigoLead(lead);
+                            const codigo = lead?.codigo ? lead.codigo : obtenerCodigoLead(lead);
                             descargarFichaPDF(codigo);
                           }}
                           className="h-8 px-3 rounded-full border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50"
