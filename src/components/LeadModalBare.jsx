@@ -3,7 +3,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useLeadCapture } from "../context/LeadCaptureContext.jsx";
 import ModalLead from "./ModalLead.jsx";
-import { crearLead } from "../lib/api.js";
+import { crearLeadDesdeSimulador } from "../lib/api.js";
 
 // -------------------------------
 // Helpers
@@ -44,10 +44,10 @@ export default function LeadModalBare() {
     navigate("/gracias");
   };
 
-  const handleSubmitLead = async (payload) => {
+  const handleSubmitLead = async (payloadContacto) => {
     try {
       // ---------------------------------------------
-      // ✅ 1) Intentar leer inputs originales del simulador
+      // ✅ 1) Inputs originales del simulador (deben venir por openLead(data, precalifPayload))
       // ---------------------------------------------
       const inputs =
         result?.perfilInput ||
@@ -59,8 +59,7 @@ export default function LeadModalBare() {
         null;
 
       // ---------------------------------------------
-      // ✅ 2) Normalizar y mergear campos "planos"
-      //     (para que tu dashboard no quede con nulls)
+      // ✅ 2) Normalizar inputs (incluyendo LOS QUE TE FALTAN)
       // ---------------------------------------------
       const afiliadoIess = toBool(inputs?.afiliadoIess ?? inputs?.afiliado_iess);
       const aniosEstabilidad = toNum(inputs?.aniosEstabilidad ?? inputs?.anios_estabilidad);
@@ -78,7 +77,6 @@ export default function LeadModalBare() {
           inputs?.ingresoParejaMensual
       );
 
-      // si viene separado, sumamos
       const ingresoTotal =
         ingresoIndividual != null || ingresoPareja != null
           ? Number(ingresoIndividual || 0) + Number(ingresoPareja || 0)
@@ -96,7 +94,7 @@ export default function LeadModalBare() {
           inputs?.ciudadCompra ??
             inputs?.ciudad_compra ??
             inputs?.ciudad ??
-            payload?.ciudad ??
+            payloadContacto?.ciudad ??
             ""
         ).trim() || null;
 
@@ -106,23 +104,42 @@ export default function LeadModalBare() {
           ? toNum(inputs?.tipo_compra_numero)
           : mapTipoCompraNumero(tipoCompra);
 
-      const payloadFinal = {
-        ...payload,
+      // ✅ LOS QUE TE ESTÁN SALIENDO NULL EN BD
+      const valorVivienda = toNum(inputs?.valorVivienda ?? inputs?.valor_vivienda ?? inputs?.valor);
+      const entradaDisponible = toNum(inputs?.entradaDisponible ?? inputs?.entrada_disponible ?? inputs?.entrada);
 
-        // ✅ CAMPOS PLANOS: los que ves como null en tu screenshot
-        afiliado_iess: afiliadoIess,
-        ingreso_mensual: ingresoTotal,
-        anios_estabilidad: aniosEstabilidad,
-        deuda_mensual_aprox: deudas,
-        ciudad_compra: ciudadCompra,
-        tipo_compra: tipoCompra,
-        tipo_compra_numero: tipoCompraNumero,
+      const edad = toNum(inputs?.edad);
+      const tipoIngreso =
+        String(inputs?.tipoIngreso ?? inputs?.tipo_ingreso ?? "").trim() || null;
 
-        // ✅ opcional: deja rastro de qué inputs se usaron (debug)
-        // metadata: { ...(payload?.metadata || {}), inputsFromResult: !!inputs },
-      };
+      // ---------------------------------------------
+      // ✅ 3) Enviar usando el helper correcto (inputs + resultado)
+      // ---------------------------------------------
+      const resp = await crearLeadDesdeSimulador({
+        contacto: {
+          ...payloadContacto,
+          // si en tu UI lo capturas, puedes meter tipoCompra aquí también, pero preferimos leerlo de inputs
+        },
+        precalif: {
+          // aquí mandamos el payload del simulador (inputs)
+          ...(inputs || {}),
+          // y aseguramos claves "canónicas"
+          afiliadoIess,
+          aniosEstabilidad,
+          ingresoNetoMensual: ingresoIndividual,
+          ingresoPareja: ingresoPareja,
+          otrasDeudasMensuales: deudas,
+          ciudadCompra,
+          tipoCompra,
+          tipoCompraNumero,
+          valorVivienda,
+          entradaDisponible,
+          edad,
+          tipoIngreso,
+        },
+        resultado: result, // lo que vino de /api/precalificar
+      });
 
-      const resp = await crearLead(payloadFinal);
       return resp;
     } catch (err) {
       return {
