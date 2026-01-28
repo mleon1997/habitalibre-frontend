@@ -194,16 +194,20 @@ const toStrOrUndef = (v) => {
 
 /**
  * ✅ Construye el payload correcto para /api/leads
- * IMPORTANTE: tu BD (LeadSchema) usa snake_case:
- *  - tipo_ingreso, valor_vivienda, entrada_disponible, afiliado_iess, etc.
- * Este helper manda snake_case para que NO queden null.
+ * - contacto: { nombre, email, telefono, ciudad, aceptaTerminos, aceptaCompartir, tiempoCompra, sustentoIndependiente, tipoCompra, tipoCompraNumero }
+ * - precalif: el payload que mandaste a /api/precalificar (ingresos, deudas, valor, entrada, estabilidad, iess...)
+ * - resultado: respuesta del motor /api/precalificar
+ * - extras: override manual
  */
-function buildLeadPayloadFromSimulator({ contacto = {}, precalif = {}, resultado, extras = {} }) {
+function buildLeadPayloadFromSimulator({
+  contacto = {},
+  precalif = {},
+  resultado,
+  extras = {},
+}) {
   const p = precalif || {};
 
-  // ----------------------------
-  // 1) Canonizar inputs (camel)
-  // ----------------------------
+  // mapeo flexible por si tus keys varían un poquito en UI
   const ingresoNetoMensual =
     toNumOrUndef(p.ingresoNetoMensual) ??
     toNumOrUndef(p.ingreso_mensual) ??
@@ -213,12 +217,8 @@ function buildLeadPayloadFromSimulator({ contacto = {}, precalif = {}, resultado
   const ingresoPareja =
     toNumOrUndef(p.ingresoPareja) ??
     toNumOrUndef(p.ingreso_pareja) ??
+    toNumOrUndef(p.ingresoParejaMensual) ??
     undefined;
-
-  const ingresoTotal =
-    (ingresoNetoMensual != null || ingresoPareja != null)
-      ? Number(ingresoNetoMensual || 0) + Number(ingresoPareja || 0)
-      : undefined;
 
   const otrasDeudasMensuales =
     toNumOrUndef(p.otrasDeudasMensuales) ??
@@ -250,34 +250,32 @@ function buildLeadPayloadFromSimulator({ contacto = {}, precalif = {}, resultado
     toNumOrUndef(p.entrada) ??
     undefined;
 
-  const edad =
-    toNumOrUndef(p.edad) ??
-    undefined;
-
-  const tipoIngreso =
-    toStrOrUndef(p.tipoIngreso) ??
-    toStrOrUndef(p.tipo_ingreso) ??
-    undefined;
-
   const ciudadCompra =
     toStrOrUndef(p.ciudadCompra) ??
     toStrOrUndef(p.ciudad_compra) ??
     toStrOrUndef(contacto.ciudad) ??
     undefined;
 
-  const tipoCompra =
-    toStrOrUndef(p.tipoCompra) ??
-    toStrOrUndef(p.tipo_compra) ??
+  const edad =
+    toNumOrUndef(p.edad) ??
+    toNumOrUndef(extras?.edad) ??
     undefined;
 
-  const tipoCompraNumero =
-    toNumOrUndef(p.tipoCompraNumero) ??
-    toNumOrUndef(p.tipo_compra_numero) ??
+  const tipoIngreso =
+    toStrOrUndef(p.tipoIngreso) ??
+    toStrOrUndef(p.tipo_ingreso) ??
+    toStrOrUndef(extras?.tipoIngreso) ??
     undefined;
 
-  // ----------------------------
-  // 2) Payload FINAL (snake_case)
-  // ----------------------------
+  // ✅ sinOferta consistente (viene del motor)
+  const sinOferta =
+    typeof extras?.sinOferta === "boolean"
+      ? extras.sinOferta
+      : (resultado?.sinOferta ??
+          resultado?.flags?.sinOferta ??
+          false);
+
+  // payload final: mandamos camelCase + snake_case para compat total
   return {
     // contacto
     nombre: toStrOrUndef(contacto.nombre),
@@ -291,25 +289,12 @@ function buildLeadPayloadFromSimulator({ contacto = {}, precalif = {}, resultado
     tiempoCompra: toStrOrUndef(contacto.tiempoCompra),
     sustentoIndependiente: toStrOrUndef(contacto.sustentoIndependiente),
 
-    // ✅ CAMPOS PLANOS QUE TU BD ESPERA (snake_case)
-    edad,
-    tipo_ingreso: tipoIngreso,
-    valor_vivienda: valorVivienda,
-    entrada_disponible: entradaDisponible,
+    tipoCompra: toStrOrUndef(contacto.tipoCompra),
+    tipoCompraNumero: toNumOrUndef(contacto.tipoCompraNumero),
 
-    afiliado_iess: afiliadoIess,
-    anios_estabilidad: aniosEstabilidad,
-    ingreso_mensual: ingresoTotal ?? ingresoNetoMensual, // fallback
-    deuda_mensual_aprox: otrasDeudasMensuales,
-    ciudad_compra: ciudadCompra,
-
-    tipo_compra: tipoCompra,
-    tipo_compra_numero: tipoCompraNumero,
-
-    // motor
-    resultado,
-
-    // ✅ opcional: también mandamos camelCase por compat/debug (no estorba)
+    // ============================
+    // ✅ CANÓNICOS (camelCase)
+    // ============================
     afiliadoIess,
     aniosEstabilidad,
     ingresoNetoMensual,
@@ -318,9 +303,29 @@ function buildLeadPayloadFromSimulator({ contacto = {}, precalif = {}, resultado
     ciudadCompra,
     valorVivienda,
     entradaDisponible,
+    edad,
     tipoIngreso,
 
-    // overrides si quieres forzar algo
+    // ============================
+    // ✅ BACKEND/BD (snake_case)
+    // (esto evita nulls en tu dashboard/PDF)
+    // ============================
+    afiliado_iess: afiliadoIess,
+    anios_estabilidad: aniosEstabilidad,
+    ingreso_mensual: ingresoNetoMensual, // si quieres TOTAL con pareja, lo cambiamos aquí
+    deuda_mensual_aprox: otrasDeudasMensuales,
+    ciudad_compra: ciudadCompra,
+    valor_vivienda: valorVivienda,
+    entrada_disponible: entradaDisponible,
+    tipo_ingreso: tipoIngreso,
+
+    // flags
+    sinOferta,
+
+    // motor
+    resultado,
+
+    // overrides
     ...(extras || {}),
   };
 }
@@ -337,6 +342,10 @@ export async function precalificar(payload) {
   );
 }
 
+/**
+ * Backwards-compatible: manda lo que le pases.
+ * ⚠️ Si aquí NO mandas ingreso/deudas/estabilidad/IESS, el dashboard seguirá null.
+ */
 export async function crearLead(payload) {
   await wake();
   return request(
@@ -346,10 +355,46 @@ export async function crearLead(payload) {
   );
 }
 
-export async function crearLeadDesdeSimulador({ contacto, precalif, resultado, extras } = {}) {
-  const body = buildLeadPayloadFromSimulator({ contacto, precalif, resultado, extras });
-  return crearLead(body);
+/**
+ * ✅ RECOMENDADO: úsalo desde el simulador
+ * - Esto asegura que se manden ingreso/deudas/estabilidad/IESS/valor/entrada al backend
+ * - Resultado: tu dashboard deja de mostrar null en esos campos
+ */
+export async function crearLeadDesdeSimulador(payload) {
+  console.log("🚀 API crearLeadDesdeSimulador payload:", payload);
+
+  const url = `${API_BASE}/api/leads/desde-simulador`;
+
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  let data = null;
+  try {
+    data = await resp.json();
+  } catch (e) {
+    console.error("❌ No se pudo parsear JSON", e);
+  }
+
+  console.log("📡 API response:", data);
+
+  if (!resp.ok) {
+    return {
+      ok: false,
+      error: data?.error || "Error al enviar lead",
+    };
+  }
+
+  return {
+    ok: true,
+    data,
+  };
 }
+
 
 // ======================================================================
 // CUSTOMER AUTH (Journey)
@@ -387,7 +432,9 @@ export async function meCustomer(token) {
 export async function listarLeads({ pagina = 1, limit = 10 } = {}) {
   await wake();
   return request(
-    `/api/leads?pagina=${encodeURIComponent(pagina)}&limit=${encodeURIComponent(limit)}`,
+    `/api/leads?pagina=${encodeURIComponent(pagina)}&limit=${encodeURIComponent(
+      limit
+    )}`,
     { method: "GET", auth: "admin" },
     30000
   );
@@ -413,7 +460,7 @@ export async function updateLead(id, payload) {
 export const api = {
   precalificar,
   crearLead,
-  crearLeadDesdeSimulador,
+  crearLeadDesdeSimulador, // ✅ NUEVO
   loginCustomer,
   registerCustomer,
   meCustomer,

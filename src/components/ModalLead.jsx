@@ -60,10 +60,8 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
   const [sentOK, setSentOK] = useState(false);
   const [err, setErr] = useState("");
 
-  // ✅ Si el wizard abrió el modal “al instante”, puede venir en modo loading
   const resultadoLoading = !!dataResultado?.__loading;
 
-  // ✅ Reset cada vez que se abre el modal
   useEffect(() => {
     if (!open) return;
     setNombre("");
@@ -91,16 +89,9 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
   const nombreOk = (nombre || "").trim().length >= 2;
 
   const canSubmit =
-    nombreOk &&
-    emailOk &&
-    telOk &&
-    aceptaTerminos &&
-    aceptaCompartir &&
-    !loading;
+    nombreOk && emailOk && telOk && aceptaTerminos && aceptaCompartir && !loading;
 
   async function handleSubmit(e) {
-    const entrada = dataResultado?.__entrada || null;
-
     e?.preventDefault?.();
     setErr("");
 
@@ -112,58 +103,24 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
     try {
       setLoading(true);
 
-      // =========================================================
-      // ✅ 1) Recupera el input del wizard (perfil)
-      // =========================================================
-      const perfilInput =
-        dataResultado?.perfilInput ||
-        dataResultado?.__entrada ||
-        null;
+      // ✅ SOLO CONTACTO.
+      // LeadModalBare ya se encarga de: inputs del wizard + resultado + normalización + llamada API.
+      const payloadContacto = {
+        nombre: nombre.trim(),
+        email: email.trim(),
+        telefono: telefono.trim(),
+        ciudad: ciudad.trim(),
+        tiempoCompra: horizonteCompra || null,
+        aceptaTerminos,
+        aceptaCompartir,
+      };
 
-      // =========================================================
-      // ✅ 2) Mapea ese input a los campos que guarda tu Lead
-      // (snake_case como se ve en tu panel admin)
-      // =========================================================
-      const perfilMapped = mapPerfilInputToLeadFields(perfilInput);
+      // ✅ Debug visible en Console del browser
+      console.log("🔥 ModalLead submit -> payloadContacto", payloadContacto);
 
-      // =========================================================
-      // ✅ 3) Resultado (solo si ya llegó)
-      // =========================================================
-      const resultadoSan = sanitizeResultado(dataResultado);
+      const resp = await onSubmitLead?.(payloadContacto);
 
-      // =========================================================
-      // ✅ 4) Payload final (contacto + perfil + resultado)
-      // - canal/origen: ponlos coherentes con WEB
-      // =========================================================
-      const payload = {
-         nombre: nombre.trim(),
-  email: email.trim(),
-  telefono: telefono.trim(),
-  ciudad: ciudad.trim(),
-
-  canal: "WhatsApp", // (puedes dejarlo, backend lo fuerza a web en upsert web)
-  aceptaTerminos,
-  aceptaCompartir,
-  aceptaMarketing: false,
-  origen: "simulador",
-  tiempoCompra: horizonteCompra || null,
-
-  // ✅ CAMPOS RÁPIDOS (del wizard)
-  afiliadoIess: entrada?.afiliadoIess ?? null,
-  aniosEstabilidad: entrada?.aniosEstabilidad ?? null,
-  ingresoNetoMensual: entrada?.ingresoNetoMensual ?? null,
-  otrasDeudasMensuales: entrada?.otrasDeudasMensuales ?? null,
-  ciudadCompra: entrada?.ciudadCompra ?? entrada?.ciudad ?? null,
-  tipoCompra: entrada?.tipoCompra ?? null,
-  tipoCompraNumero: entrada?.tipoCompraNumero ?? null,
-
-  // ✅ Resultado (sanitizado)
-  resultado: sanitizeResultado(dataResultado),
-};
-
-      const resp = await onSubmitLead?.(payload);
-      if (!resp?.ok)
-        throw new Error(resp?.error || "No se pudo guardar tu solicitud.");
+      if (!resp?.ok) throw new Error(resp?.error || "No se pudo guardar tu solicitud.");
 
       setSentOK(true);
       setTimeout(() => onLeadSaved?.(), 350);
@@ -177,7 +134,6 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
 
   return (
     <div className="hl-modal-panel max-h-[90dvh] overflow-y-auto overscroll-contain">
-      {/* X */}
       <button
         onClick={onClose}
         className="absolute right-5 top-5 text-slate-500 hover:text-slate-700"
@@ -196,8 +152,7 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
             ¡Gracias! 🎉
           </h3>
           <p className="text-slate-600 text-sm">
-            Guardamos tus datos. Ahora podrás ver tu resultado y continuar el
-            proceso.
+            Guardamos tus datos. Ahora podrás ver tu resultado y continuar el proceso.
           </p>
 
           <div className="mt-6 flex gap-3">
@@ -220,11 +175,9 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
           </h2>
 
           <p className="text-sm text-slate-600 mb-5">
-            No afecta tu buró, no pedimos claves bancarias y puedes pedir que
-            eliminemos tus datos cuando quieras.
+            No afecta tu buró, no pedimos claves bancarias y puedes pedir que eliminemos tus datos cuando quieras.
           </p>
 
-          {/* ✅ Banner “calculando” si el modal se abrió antes de tener resultado */}
           {resultadoLoading && (
             <div className="mb-4 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-[12px] text-slate-700 flex items-center gap-2">
               <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -282,9 +235,7 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
               </div>
 
               <div className="sm:col-span-2">
-                <label className="label">
-                  ¿Cuándo quisieras adquirir tu vivienda?
-                </label>
+                <label className="label">¿Cuándo quisieras adquirir tu vivienda?</label>
                 <select
                   className="input"
                   value={horizonteCompra}
@@ -299,7 +250,6 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
               </div>
             </div>
 
-            {/* Checks “lindos” */}
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
               <label className="flex items-start gap-3 text-sm text-slate-700">
                 <input
@@ -329,25 +279,15 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
                   className="mt-1"
                 />
                 <span>
-                  Autorizo que HabitaLibre comparta mis datos y el resultado de mi
-                  simulación con{" "}
-                  <b>bancos, cooperativas y desarrolladores inmobiliarios</b>{" "}
-                  aliados para analizar y ofrecerme opciones hipotecarias y
-                  contactarme sobre mi proceso.
+                  Autorizo que HabitaLibre comparta mis datos y el resultado de mi simulación con{" "}
+                  <b>bancos, cooperativas y desarrolladores inmobiliarios</b> aliados.
                 </span>
               </label>
 
               <p className="text-[12px] text-slate-500">
-                Para continuar y ver tu resultado completo debes aceptar ambas
-                casillas. Nunca vendemos tus datos. Puedes pedir que los eliminemos
-                en cualquier momento escribiendo a <b>hola@habitalibre.com</b>.
+                Para continuar y ver tu resultado completo debes aceptar ambas casillas.
               </p>
             </div>
-
-            <p className="text-[12px] text-slate-400">
-              Tu información se procesa de forma segura. No afecta tu buró de
-              crédito.
-            </p>
 
             <div className="flex items-center justify-end gap-3 pt-1">
               <button onClick={onClose} type="button" className="btn-secondary">
@@ -370,88 +310,4 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
       )}
     </div>
   );
-}
-
-function sanitizeResultado(r = {}) {
-  // ✅ si todavía está calculando (modal instantáneo), no mandes basura
-  if (!r || r.__loading) return null;
-
-  const safe = (n) => (Number.isFinite(Number(n)) ? Number(n) : null);
-
-  const producto =
-    r.productoSugerido ?? r.productoElegido ?? r.tipoCreditoElegido ?? "";
-  const banco = r.bancoSugerido ?? r.mejorBanco?.banco ?? r.banco ?? null;
-
-  const out = {
-    productoElegido: producto,
-    tipoCreditoElegido: producto,
-    productoSugerido: r.productoSugerido ?? producto,
-    bancoSugerido: banco,
-
-    capacidadPago: safe(r.capacidadPago),
-    cuotaEstimada: safe(r.cuotaEstimada),
-    cuotaStress: safe(r.cuotaStress),
-    tasaAnual: safe(r.tasaAnual),
-    plazoMeses: safe(r.plazoMeses),
-    ltv: safe(r.ltv),
-    dtiConHipoteca: safe(r.dtiConHipoteca),
-    montoMaximo: safe(r.montoMaximo),
-    precioMaxVivienda: safe(r.precioMaxVivienda),
-    escenarios: r.escenarios || null,
-    puntajeHabitaLibre: r.puntajeHabitaLibre || null,
-  };
-
-  return out;
-}
-
-/**
- * Mapea el input del Wizard a los campos que tu backend ya está mostrando
- * (snake_case como en "Ver datos completos (debug)")
- */
-function mapPerfilInputToLeadFields(input) {
-  if (!input) return {};
-
-  const toNum = (v) => {
-    const n = Number((v ?? "").toString().replace(/[^0-9.]/g, ""));
-    return Number.isFinite(n) ? n : null;
-  };
-
-  // ojo: el wizard usa boolean en afiliadoIess; también puede venir string.
-  const afiliado =
-    typeof input.afiliadoIess === "boolean"
-      ? input.afiliadoIess
-      : String(input.afiliadoIess || "").toLowerCase() === "sí";
-
-  const ingresoMensual = toNum(input.ingresoNetoMensual);
-  const deudaMensual = toNum(input.otrasDeudasMensuales);
-  const valorVivienda = toNum(input.valorVivienda);
-  const entradaDisp = toNum(input.entradaDisponible);
-
-  return {
-    // lo que te salía NULL en admin:
-    afiliado_iess: afiliado,
-    anios_estabilidad: toNum(input.aniosEstabilidad),
-    ingreso_mensual: ingresoMensual,
-    deuda_mensual_aprox: deudaMensual,
-
-    // extra útil (te queda para analítica / segmentación)
-    ingreso_pareja: toNum(input.ingresoPareja),
-    estado_civil: input.estadoCivil || null,
-    edad: toNum(input.edad),
-
-    tipoIngreso: input.tipoIngreso || null,
-    sustentoDependiente: input.sustentoIndependiente || null,
-
-    valor_vivienda_objetivo: valorVivienda,
-    entrada_disponible: entradaDisp,
-
-    iess_aportes_totales: toNum(input.iessAportesTotales),
-    iess_aportes_consecutivos: toNum(input.iessAportesConsecutivos),
-
-    tiene_vivienda: typeof input.tieneVivienda === "boolean" ? input.tieneVivienda : null,
-    primera_vivienda: typeof input.primeraVivienda === "boolean" ? input.primeraVivienda : null,
-    tipo_vivienda: input.tipoVivienda || null,
-
-    tiempoCompra: input.tiempoCompra || null,
-  };
 }
