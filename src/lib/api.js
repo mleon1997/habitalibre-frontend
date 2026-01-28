@@ -23,7 +23,7 @@ const API_BASE = pick(
   env.VITE_SERVER_URL,
   env.VITE_API,
   "http://localhost:3001"
-).replace(/\/+$/, ""); // sin trailing slash
+).replace(/\/+$/, "");
 
 // Debug toggle: DEV o localStorage HL_DEBUG=1
 const DEBUG =
@@ -32,11 +32,8 @@ const DEBUG =
     (window?.localStorage?.getItem("HL_DEBUG") === "1" ||
       window?.localStorage?.getItem("HL_DEBUG") === "true"));
 
-// Log inicial (como el que ya te sale)
 try {
-  // eslint-disable-next-line no-console
   console.log("[API] IS_DEV:", IS_DEV);
-  // eslint-disable-next-line no-console
   console.log("[API] API_BASE usado:", API_BASE);
 } catch (_) {}
 
@@ -67,34 +64,68 @@ function normalizeErrorMessage(payload, fallback = "Error de red") {
   );
 }
 
+function tryParseJson(body) {
+  try {
+    return JSON.parse(body);
+  } catch {
+    return body;
+  }
+}
+
+function buildQuery(params = {}) {
+  const qs = new URLSearchParams();
+  Object.entries(params || {}).forEach(([k, v]) => {
+    if (v == null) return;
+    const s = String(v).trim();
+    if (!s) return;
+    qs.set(k, s);
+  });
+  const out = qs.toString();
+  return out ? `?${out}` : "";
+}
+
+function getStoredToken() {
+  try {
+    return (
+      window.localStorage.getItem("HL_TOKEN") ||
+      window.localStorage.getItem("token") ||
+      window.localStorage.getItem("adminToken") ||
+      null
+    );
+  } catch {
+    return null;
+  }
+}
+
 // =====================================================
 // Core fetch wrapper
 // =====================================================
 export async function apiFetch(path, opts = {}) {
   const rid = shortId();
-  const url = path.startsWith("http") ? path : `${API_BASE}${path.startsWith("/") ? "" : "/"}${path}`;
+  const url = path.startsWith("http")
+    ? path
+    : `${API_BASE}${path.startsWith("/") ? "" : "/"}${path}`;
 
   const method = (opts.method || "GET").toUpperCase();
 
   // headers
   const headers = {
-    "Content-Type": "application/json",
     ...(opts.headers || {}),
   };
 
-  // auth token optional (si lo usas)
-  // Si tú no usas token, no pasa nada.
-  try {
-    const token =
-      typeof window !== "undefined"
-        ? window.localStorage.getItem("HL_TOKEN") ||
-          window.localStorage.getItem("token") ||
-          null
-        : null;
-    if (token && !headers.Authorization) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-  } catch (_) {}
+  // Si body es FormData NO pongas Content-Type
+  const isFormData =
+    typeof FormData !== "undefined" && opts.body instanceof FormData;
+
+  if (!isFormData && !headers["Content-Type"] && !headers["content-type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  // auth token optional
+  const token = getStoredToken();
+  if (token && !headers.Authorization) {
+    headers.Authorization = `Bearer ${token}`;
+  }
 
   const finalOpts = {
     ...opts,
@@ -104,10 +135,14 @@ export async function apiFetch(path, opts = {}) {
   };
 
   if (DEBUG) {
-    // eslint-disable-next-line no-console
     console.log(`[${rid}] [API] -> ${method} ${url}`, {
       headers,
-      body: finalOpts.body ? tryParseJson(finalOpts.body) : undefined,
+      body:
+        finalOpts.body && !isFormData
+          ? tryParseJson(finalOpts.body)
+          : isFormData
+            ? "[FormData]"
+            : undefined,
     });
   }
 
@@ -115,17 +150,13 @@ export async function apiFetch(path, opts = {}) {
   try {
     res = await fetch(url, finalOpts);
   } catch (e) {
-    if (DEBUG) {
-      // eslint-disable-next-line no-console
-      console.error(`[${rid}] [API] fetch failed`, e);
-    }
+    if (DEBUG) console.error(`[${rid}] [API] fetch failed`, e);
     return { ok: false, error: e?.message || "No se pudo conectar" };
   }
 
   const payload = await safeJson(res);
 
   if (DEBUG) {
-    // eslint-disable-next-line no-console
     console.log(`[${rid}] [API] <- ${method} ${url} [${res.status}]`, payload);
   }
 
@@ -141,52 +172,35 @@ export async function apiFetch(path, opts = {}) {
   return { ok: true, status: res.status, data: payload };
 }
 
-function tryParseJson(body) {
-  try {
-    return JSON.parse(body);
-  } catch {
-    return body;
-  }
-}
-
 // =====================================================
 // Endpoints HabitaLibre
 // =====================================================
 
 // 1) Precalificar
 export async function precalificar(payload) {
-  // payload: { ingresoNetoMensual, ingresoPareja, otrasDeudasMensuales, valorVivienda, entradaDisponible, ... }
   const resp = await apiFetch("/api/precalificar", {
     method: "POST",
     body: JSON.stringify(payload || {}),
   });
 
-  // Tu app suele esperar el objeto resultado directo
+  // tu frontend suele esperar "resultado" plano
   if (!resp.ok) return resp;
   return { ok: true, ...resp.data };
 }
 
 // 2) Crear lead desde simulador (contacto + precalif + resultado)
-// Soporta 2 formatos:
-// A) { contacto: {...}, precalif: {...}, resultado: {...} }  (como tu LeadModalBare)
-// B) payload plano (por compatibilidad)
 export async function crearLeadDesdeSimulador(payload) {
   const body = payload || {};
 
-  // Intento 1 (más probable por tu naming)
+  // intento 1
   const attempt1 = await apiFetch("/api/leads/crear-desde-simulador", {
     method: "POST",
     body: JSON.stringify(body),
   });
-
   if (attempt1.ok) return attempt1;
 
-  // Si tu backend no tiene esa ruta, probamos fallback comunes
-  // (evita que te quedes trabado por un mismatch de path)
-  const status = attempt1.status;
-
-  // Solo intentamos fallback si parece "ruta no existe" o "not found"
-  if (status === 404) {
+  // fallback si la ruta no existe
+  if (attempt1.status === 404) {
     const attempt2 = await apiFetch("/api/leads", {
       method: "POST",
       body: JSON.stringify(body),
@@ -198,6 +212,50 @@ export async function crearLeadDesdeSimulador(payload) {
       body: JSON.stringify(body),
     });
     return attempt3;
+  }
+
+  return attempt1;
+}
+
+// 3) ✅ LISTAR LEADS (para src/pages/Leads.jsx)
+// - soporta filtros comunes: q, page, limit, canal, producto, estado, desde, hasta, etc.
+// - si tu backend responde { ok:true, leads:[...], total } o { data:{...} } lo devuelves tal cual
+export async function listarLeads(params = {}) {
+  const qs = buildQuery(params);
+
+  // tu backend puede tener una de estas rutas:
+  // /api/leads
+  // /api/admin/leads
+  // /api/leads/listar
+  const attempt1 = await apiFetch(`/api/leads${qs}`, { method: "GET" });
+  if (attempt1.ok) return attempt1;
+
+  if (attempt1.status === 404) {
+    const attempt2 = await apiFetch(`/api/admin/leads${qs}`, { method: "GET" });
+    if (attempt2.ok) return attempt2;
+
+    const attempt3 = await apiFetch(`/api/leads/listar${qs}`, { method: "GET" });
+    return attempt3;
+  }
+
+  return attempt1;
+}
+
+// 4) (Opcional) Login admin, si tu AdminLogin lo usa
+export async function adminLogin(email, password) {
+  const attempt1 = await apiFetch("/api/admin/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+  if (attempt1.ok) return attempt1;
+
+  if (attempt1.status === 404) {
+    // fallback típico
+    const attempt2 = await apiFetch("/api/admin/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+    return attempt2;
   }
 
   return attempt1;
