@@ -1,17 +1,21 @@
 // src/pages/Leads.jsx
-import React, { useEffect, useState, useMemo } from "react";
-import { listarLeads } from "../lib/api";
-import AdminLogin from "../components/AdminLogin.jsx"; // ⬅️ Login admin
+import React, { useEffect, useMemo, useState } from "react";
+import AdminLogin from "../components/AdminLogin.jsx";
+import { listarLeads } from "../lib/api.js";
 
 export default function Leads() {
   const [token, setToken] = useState(
-    () => localStorage.getItem("hl_admin_token") || ""
+    () =>
+      localStorage.getItem("hl_admin_token") ||
+      localStorage.getItem("HL_ADMIN_TOKEN") ||
+      ""
   );
+
   const [leads, setLeads] = useState([]);
   const [busqueda, setBusqueda] = useState("");
   const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState("");
 
-  // Si no hay token, no intentamos cargar leads todavía
   useEffect(() => {
     if (!token) return;
     cargarLeads();
@@ -21,40 +25,69 @@ export default function Leads() {
   async function cargarLeads() {
     try {
       setCargando(true);
-      const data = await listarLeads();
+      setError("");
 
-      // Si tu API devuelve { leads: [...] }, descomenta esta línea:
-      // setLeads(data?.leads || []);
+      const resp = await listarLeads();
 
-      // Si ya devuelve un array directo, deja esta:
-      setLeads(data || []);
+      // ✅ Caso A: api.js devuelve wrapper de error { ok:false, status, error }
+      if (resp && resp.ok === false) {
+        const status = resp.status;
+        const msg = resp.error || "No se pudo cargar leads";
+
+        if (status === 401 || status === 403) {
+          localStorage.removeItem("hl_admin_token");
+          localStorage.removeItem("HL_ADMIN_TOKEN");
+          setToken("");
+          setError("Sesión expirada. Vuelve a iniciar sesión.");
+          return;
+        }
+
+        throw new Error(msg);
+      }
+
+      // ✅ Caso B: backend devuelve { ok:true, leads:[...] }
+      // ✅ Caso C: backend devuelve { leads:[...] }
+      // ✅ Caso D: backend devuelve directamente [...]
+      const nextLeads = Array.isArray(resp)
+        ? resp
+        : Array.isArray(resp?.leads)
+          ? resp.leads
+          : Array.isArray(resp?.data?.leads)
+            ? resp.data.leads
+            : [];
+
+      setLeads(nextLeads);
     } catch (err) {
       console.error("Error cargando leads:", err);
-
-      // Si el backend respondió 401/403, forzamos logout y mostramos login
-      if (err?.message?.includes("No autorizado")) {
-        localStorage.removeItem("hl_admin_token");
-        setToken("");
-      }
+      setError(err?.message || "Error cargando leads");
     } finally {
       setCargando(false);
     }
   }
 
-  // 🔐 Gate: si no hay token, mostramos el login admin
   if (!token) {
-    return <AdminLogin onSuccess={setToken} />;
+    return (
+      <AdminLogin
+        onSuccess={(newToken) => {
+          const t = String(newToken || "").trim();
+          if (!t) return;
+          localStorage.setItem("hl_admin_token", t);
+          setToken(t);
+        }}
+      />
+    );
   }
 
-  // Filtrado rápido por nombre, email, ciudad o código HL
   const leadsFiltrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     if (!q) return leads;
-    return leads.filter((l) => {
-      const nombre = l.nombre?.toLowerCase() || "";
-      const email = l.email?.toLowerCase() || "";
-      const ciudad = l.ciudad?.toLowerCase() || "";
-      const codigo = l.codigoUnico?.toLowerCase() || "";
+
+    return (leads || []).filter((l) => {
+      const nombre = (l?.nombre || "").toLowerCase();
+      const email = (l?.email || "").toLowerCase();
+      const ciudad = (l?.ciudad || "").toLowerCase();
+      const codigo = (l?.codigoHL || l?.codigoUnico || l?.codigo || "").toLowerCase();
+
       return (
         nombre.includes(q) ||
         email.includes(q) ||
@@ -73,15 +106,34 @@ export default function Leads() {
             Monitorea los contactos generados por el simulador y landing.
           </p>
         </div>
-        <button
-          onClick={cargarLeads}
-          className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:opacity-90"
-        >
-          {cargando ? "Actualizando..." : "↻ Actualizar"}
-        </button>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              localStorage.removeItem("hl_admin_token");
+              localStorage.removeItem("HL_ADMIN_TOKEN");
+              setToken("");
+            }}
+            className="px-3 py-2 text-sm bg-white border rounded-lg hover:bg-gray-50"
+          >
+            Cerrar sesión
+          </button>
+
+          <button
+            onClick={cargarLeads}
+            className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:opacity-90"
+          >
+            {cargando ? "Actualizando..." : "↻ Actualizar"}
+          </button>
+        </div>
       </div>
 
-      {/* Buscador */}
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
       <div className="mb-4 flex items-center">
         <input
           type="text"
@@ -92,94 +144,141 @@ export default function Leads() {
         />
       </div>
 
-      {/* Tabla */}
       <div className="overflow-x-auto bg-white rounded-xl shadow-sm border">
         <table className="min-w-full text-sm text-gray-700">
           <thead className="bg-gray-100 text-gray-600 uppercase text-[11px]">
             <tr>
               <th className="px-4 py-2 text-left">Nombre</th>
-              <th className="px-4 py-2 text-left">Código HL</th>{/* ⭐ NUEVO */}
+              <th className="px-4 py-2 text-left">Código HL</th>
               <th className="px-4 py-2 text-left">Email</th>
               <th className="px-4 py-2 text-left">Teléfono</th>
               <th className="px-4 py-2 text-left">Ciudad</th>
-              <th className="px-4 py-2 text-left">Origen</th>
+              <th className="px-4 py-2 text-left">Canal</th>
+              <th className="px-4 py-2 text-left">Producto</th>
               <th className="px-4 py-2 text-left">Capacidad Pago</th>
               <th className="px-4 py-2 text-left">Monto Máx.</th>
               <th className="px-4 py-2 text-left">Score HL</th>
               <th className="px-4 py-2 text-left">Fecha</th>
             </tr>
           </thead>
+
           <tbody>
             {leadsFiltrados.length === 0 && (
               <tr>
-                <td colSpan="10" className="px-4 py-6 text-center text-gray-400">
+                <td colSpan="11" className="px-4 py-6 text-center text-gray-400">
                   {cargando ? "Cargando leads..." : "No se encontraron leads."}
                 </td>
               </tr>
             )}
-            {leadsFiltrados.map((lead) => (
-              <tr
-                key={lead._id}
-                className="border-t hover:bg-indigo-50/40 transition-colors"
-              >
-                <td className="px-4 py-2 font-medium text-gray-800">
-                  {lead.nombre || "—"}
-                </td>
-                <td className="px-4 py-2 text-xs font-mono text-gray-700">
-                  {lead.codigoUnico || "—"}
-                </td>
-                <td className="px-4 py-2">{lead.email || "—"}</td>
-                <td className="px-4 py-2">{lead.telefono || "—"}</td>
-                <td className="px-4 py-2">{lead.ciudad || "—"}</td>
-                <td className="px-4 py-2 text-xs">
-                  <Badge tipo={lead.origen || "—"} />
-                </td>
-                <td className="px-4 py-2">
-                  {lead.resultado?.capacidadPago
-                    ? `$${lead.resultado.capacidadPago.toLocaleString()}`
-                    : "—"}
-                </td>
-                <td className="px-4 py-2">
-                  {lead.resultado?.montoMaximo
-                    ? `$${lead.resultado.montoMaximo.toLocaleString()}`
-                    : "—"}
-                </td>
-                <td className="px-4 py-2">
-                  {lead.resultado?.puntajeHabitaLibre?.score ?? "—"}
-                </td>
-                <td className="px-4 py-2 text-xs text-gray-500">
-                  {lead.createdAt
-                    ? new Date(lead.createdAt).toLocaleDateString("es-EC", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      })
-                    : "—"}
-                </td>
-              </tr>
-            ))}
+
+            {leadsFiltrados.map((lead) => {
+              const capacidadPago =
+                lead?.resultado?.capacidadPago ??
+                lead?.decision?.capacidadPago ??
+                lead?.decision?.capacidadPago ??
+                null;
+
+              const montoMaximo =
+                lead?.resultado?.montoMaximo ??
+                lead?.decision?.montoMaximo ??
+                null;
+
+              // ✅ Prioridad real (según tu documento):
+              // lead.scoreHL (top-level) -> lead.decision.scoreHL -> resultado.puntajeHabitaLibre
+              const score =
+                lead?.scoreHL ??
+                lead?.decision?.scoreHL ??
+                lead?.resultado?.puntajeHabitaLibre?.score ??
+                lead?.resultado?.scoreHL?.total ??
+                null;
+
+              return (
+                <tr
+                  key={lead?._id || lead?.id}
+                  className="border-t hover:bg-indigo-50/40 transition-colors"
+                >
+                  <td className="px-4 py-2 font-medium text-gray-800">
+                    {lead?.nombre || "—"}
+                  </td>
+
+                  <td className="px-4 py-2 text-xs font-mono text-gray-700">
+                    {lead?.codigoHL || lead?.codigoUnico || "—"}
+                  </td>
+
+                  <td className="px-4 py-2">{lead?.email || "—"}</td>
+                  <td className="px-4 py-2">{lead?.telefono || "—"}</td>
+                  <td className="px-4 py-2">{lead?.ciudad || "—"}</td>
+
+                  <td className="px-4 py-2 text-xs">
+                    <Badge tipo={lead?.canal || "—"} />
+                  </td>
+
+                  <td className="px-4 py-2 text-xs">
+                    <Badge
+                      tipo={lead?.producto || lead?.resultado?.productoSugerido || "—"}
+                    />
+                  </td>
+
+                  <td className="px-4 py-2">
+                    {capacidadPago != null
+                      ? `$${Number(capacidadPago).toLocaleString("es-EC")}`
+                      : "—"}
+                  </td>
+
+                  <td className="px-4 py-2">
+                    {montoMaximo != null
+                      ? `$${Number(montoMaximo).toLocaleString("es-EC")}`
+                      : "—"}
+                  </td>
+
+                  <td className="px-4 py-2 font-semibold">
+                    {score != null ? Number(score) : "—"}
+                  </td>
+
+                  <td className="px-4 py-2 text-xs text-gray-500">
+                    {lead?.createdAt
+                      ? new Date(lead.createdAt).toLocaleDateString("es-EC", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "—"}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
       <p className="mt-4 text-[11px] text-gray-500 text-center">
-        📈 Total de leads: {leadsFiltrados.length.toLocaleString()}
+        📈 Total de leads: {leadsFiltrados.length.toLocaleString("es-EC")}
       </p>
     </div>
   );
 }
 
 /* ===========================================================
-   🏷️ Badge de origen (Landing / Simulador)
-   =========================================================== */
+   🏷️ Badge pequeño
+=========================================================== */
 function Badge({ tipo }) {
+  const key = String(tipo || "").toLowerCase();
+
   const map = {
     simulador: "bg-indigo-100 text-indigo-700",
     landing: "bg-emerald-100 text-emerald-700",
     referidos: "bg-amber-100 text-amber-700",
+    web: "bg-slate-100 text-slate-700",
+    whatsapp: "bg-green-100 text-green-700",
+    instagram: "bg-pink-100 text-pink-700",
+    vip: "bg-indigo-100 text-indigo-700",
+    vis: "bg-emerald-100 text-emerald-700",
+    biess: "bg-amber-100 text-amber-700",
+    "sin oferta viable hoy": "bg-red-100 text-red-700",
   };
-  const key = (tipo || "").toLowerCase();
+
   const cls = map[key] || "bg-gray-100 text-gray-600";
+
   const label =
     typeof tipo === "string" && tipo.length > 0
       ? tipo.charAt(0).toUpperCase() + tipo.slice(1)

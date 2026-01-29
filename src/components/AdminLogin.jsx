@@ -1,7 +1,7 @@
 // src/components/AdminLogin.jsx
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { API_BASE } from "../lib/api";
+import { API_BASE, adminLogin as apiAdminLogin } from "../lib/api.js";
 
 // Detectamos entorno y fijamos el backend correcto (fallback si API_BASE viniera vacío en dev)
 const IS_DEV = import.meta.env.DEV;
@@ -10,20 +10,8 @@ const FALLBACK_BASE_URL = IS_DEV
   ? "http://localhost:4000"
   : "https://habitalibre-backend.onrender.com";
 
-// ✅ Define aquí el endpoint REAL de tu backend (elige UNO)
-// Si tu backend usa /api/admin/login, cambia esto a "/api/admin/login"
-const ADMIN_LOGIN_PATH = "/api/admin/login";
-
 export default function AdminLogin({ onSuccess }) {
   const nav = useNavigate();
-
-  const BASE_URL = useMemo(() => {
-    // En DEV, API_BASE puede ser "" (proxy). Si está vacío, devolvemos "" para pegar a /api/... por proxy
-    const base = (API_BASE || "").trim();
-    return base ? base : "";
-  }, []);
-
-  const FALLBACK = useMemo(() => FALLBACK_BASE_URL, []);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,44 +28,56 @@ export default function AdminLogin({ onSuccess }) {
     setLoading(true);
 
     try {
-      // En PROD: BASE_URL será https://...
-      // En DEV:
-      //  - si usas proxy => BASE_URL = "" y fetch a "/api/..."
-      //  - si NO usas proxy => usa fallback localhost:4000
-      const origin = BASE_URL || FALLBACK;
+      // ======================================================
+      // ✅ 1) Intento por api.js (recomendado)
+      // ======================================================
+      let resp = await apiAdminLogin(email, password);
 
-      console.log("[AdminLogin] POST a:", `${origin}${ADMIN_LOGIN_PATH}`);
+      // ======================================================
+      // ✅ 2) Fallback manual (por si proxy/env/base te falla)
+      // ======================================================
+      if (!resp?.ok) {
+        const base = (API_BASE || "").trim();
+        const origin = base || FALLBACK_BASE_URL;
 
-      const res = await fetch(`${origin}${ADMIN_LOGIN_PATH}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+        const res = await fetch(`${origin}/api/admin/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
 
-      const ct = res.headers.get("content-type") || "";
-      let data = null;
+        const ct = res.headers.get("content-type") || "";
+        let data = null;
 
-      if (ct.includes("application/json")) {
-        data = await res.json();
-      } else {
-        const text = await res.text();
-        console.error("[AdminLogin] Respuesta NO JSON:", text);
-        throw new Error(
-          `Respuesta no válida del servidor (no es JSON): ${text.slice(0, 120)}...`
-        );
+        if (ct.includes("application/json")) {
+          data = await res.json();
+        } else {
+          const text = await res.text();
+          throw new Error(
+            `Respuesta no válida del servidor (no es JSON): ${text.slice(0, 120)}...`
+          );
+        }
+
+        if (!res.ok) {
+          throw new Error(data?.error || data?.message || "Error iniciando sesión");
+        }
+
+        resp = { ok: true, data };
       }
 
-      if (!res.ok) {
-        throw new Error(data?.error || data?.message || "Error iniciando sesión");
-      }
+      const data = resp?.data || {};
+      const token = data?.token;
 
-      const token = data.token;
       if (!token) {
         throw new Error("Respuesta sin token de autenticación");
       }
 
-      // Guardar token + email en localStorage
-      localStorage.setItem("hl_admin_token", token);
+      // ======================================================
+      // ✅ CLAVE: guardar token en las llaves que tu apiFetch sí lee
+      // ======================================================
+      localStorage.setItem("hl_admin_token", token); // lo que ya usabas
+      localStorage.setItem("adminToken", token);     // ✅ apiFetch lo lee
+      localStorage.setItem("HL_TOKEN", token);       // ✅ apiFetch lo lee
       localStorage.setItem("hl_admin_email", email);
 
       // Si venimos desde un redirect por sesión expirada, respetamos returnTo
@@ -91,7 +91,7 @@ export default function AdminLogin({ onSuccess }) {
       nav(returnTo, { replace: true });
     } catch (err) {
       console.error("Error login admin:", err);
-      setError(err.message || "Error iniciando sesión");
+      setError(err?.message || "Error iniciando sesión");
     } finally {
       setLoading(false);
     }

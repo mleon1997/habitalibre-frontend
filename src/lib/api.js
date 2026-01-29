@@ -86,10 +86,12 @@ function buildQuery(params = {}) {
 
 function getStoredToken() {
   try {
+    // ✅ FIX: incluir hl_admin_token (tu AdminLogin lo guarda así)
     return (
+      window.localStorage.getItem("hl_admin_token") ||
+      window.localStorage.getItem("adminToken") ||
       window.localStorage.getItem("HL_TOKEN") ||
       window.localStorage.getItem("token") ||
-      window.localStorage.getItem("adminToken") ||
       null
     );
   } catch {
@@ -139,20 +141,37 @@ function flattenLeadPayload(raw = {}) {
 
   // Canoniza desde precalif (puede venir camelCase)
   const afiliadoIess = toBool(precalif.afiliadoIess ?? precalif.afiliado_iess);
-  const aniosEstabilidad = toNum(precalif.aniosEstabilidad ?? precalif.anios_estabilidad);
-  const ingresoMensual = toNum(precalif.ingresoNetoMensual ?? precalif.ingreso_mensual);
+  const aniosEstabilidad = toNum(
+    precalif.aniosEstabilidad ?? precalif.anios_estabilidad
+  );
+  const ingresoMensual = toNum(
+    precalif.ingresoNetoMensual ?? precalif.ingreso_mensual
+  );
   const ingresoPareja = toNum(precalif.ingresoPareja ?? precalif.ingreso_pareja);
-  const deudaMensual = toNum(precalif.otrasDeudasMensuales ?? precalif.deuda_mensual_aprox);
-  const ciudadCompra = (precalif.ciudadCompra ?? precalif.ciudad_compra ?? null) || null;
+  const deudaMensual = toNum(
+    precalif.otrasDeudasMensuales ?? precalif.deuda_mensual_aprox
+  );
+  const ciudadCompra =
+    (precalif.ciudadCompra ?? precalif.ciudad_compra ?? null) || null;
 
-  const tipoCompra = (precalif.tipoCompra ?? precalif.tipo_compra ?? null) || null;
-  const tipoCompraNumero = toNum(precalif.tipoCompraNumero ?? precalif.tipo_compra_numero);
+  const tipoCompra =
+    (precalif.tipoCompra ?? precalif.tipo_compra ?? null) || null;
+  const tipoCompraNumero = toNum(
+    precalif.tipoCompraNumero ?? precalif.tipo_compra_numero
+  );
 
-  const valorVivienda = toNum(precalif.valorVivienda ?? precalif.valor_vivienda ?? precalif.valor);
-  const entradaDisponible = toNum(precalif.entradaDisponible ?? precalif.entrada_disponible ?? precalif.entrada);
+  const valorVivienda = toNum(
+    precalif.valorVivienda ?? precalif.valor_vivienda ?? precalif.valor
+  );
+  const entradaDisponible = toNum(
+    precalif.entradaDisponible ??
+      precalif.entrada_disponible ??
+      precalif.entrada
+  );
 
   const edad = toNum(precalif.edad);
-  const tipoIngreso = (precalif.tipoIngreso ?? precalif.tipo_ingreso ?? null) || null;
+  const tipoIngreso =
+    (precalif.tipoIngreso ?? precalif.tipo_ingreso ?? null) || null;
 
   // Algunos campos de contacto pueden venir con nombre distinto
   const nombre = String(contacto.nombre ?? "").trim() || null;
@@ -195,7 +214,7 @@ function flattenLeadPayload(raw = {}) {
     resultado: resultado,
   };
 
-  // Limpia null/undefined vacíos (opcional pero ayuda a no ensuciar)
+  // Limpia undefined (para no ensuciar)
   Object.keys(out).forEach((k) => {
     if (out[k] === undefined) delete out[k];
   });
@@ -247,8 +266,8 @@ export async function apiFetch(path, opts = {}) {
         finalOpts.body && !isFormData
           ? tryParseJson(finalOpts.body)
           : isFormData
-            ? "[FormData]"
-            : undefined,
+          ? "[FormData]"
+          : undefined,
     });
   }
 
@@ -299,13 +318,12 @@ export async function crearLeadDesdeSimulador(payload) {
   // ✅ Siempre manda PLANO para que el backend no te devuelva 400
   const bodyPlano = flattenLeadPayload(payload || {});
 
-  // Si un día creas esta ruta en backend, puedes re-activarla.
-  // Por ahora, tu screenshot muestra 404, así que vamos directo a /api/leads
+  // Por ahora tu backend usa POST /api/leads
   const attempt1 = await apiFetch("/api/leads", {
     method: "POST",
     body: JSON.stringify(bodyPlano),
   });
-  if (attempt1.ok) return attempt1;
+  if (attempt1.ok) return attempt1.data;
 
   // Fallbacks por si tu backend usa otra ruta
   if (attempt1.status === 404) {
@@ -313,12 +331,14 @@ export async function crearLeadDesdeSimulador(payload) {
       method: "POST",
       body: JSON.stringify(bodyPlano),
     });
-    if (attempt2.ok) return attempt2;
+    if (attempt2.ok) return attempt2.data;
 
     const attempt3 = await apiFetch("/api/leads/crear-desde-simulador", {
       method: "POST",
       body: JSON.stringify(bodyPlano),
     });
+    if (attempt3.ok) return attempt3.data;
+
     return attempt3;
   }
 
@@ -329,37 +349,39 @@ export async function crearLeadDesdeSimulador(payload) {
 export async function listarLeads(params = {}) {
   const qs = buildQuery(params);
 
-  const attempt1 = await apiFetch(`/api/leads${qs}`, { method: "GET" });
-  if (attempt1.ok) return attempt1;
+  const r1 = await apiFetch(`/api/leads${qs}`, { method: "GET" });
+  if (r1.ok) return r1.data; // ✅ FIX: devolvemos payload real
 
-  if (attempt1.status === 404) {
-    const attempt2 = await apiFetch(`/api/admin/leads${qs}`, { method: "GET" });
-    if (attempt2.ok) return attempt2;
+  if (r1.status === 404) {
+    const r2 = await apiFetch(`/api/admin/leads${qs}`, { method: "GET" });
+    if (r2.ok) return r2.data;
 
-    const attempt3 = await apiFetch(`/api/leads/listar${qs}`, { method: "GET" });
-    return attempt3;
+    const r3 = await apiFetch(`/api/leads/listar${qs}`, { method: "GET" });
+    if (r3.ok) return r3.data;
+
+    return r3;
   }
 
-  return attempt1;
+  return r1;
 }
 
-// 4) (Opcional) Login admin
+// 4) Login admin
 export async function adminLogin(email, password) {
-  const attempt1 = await apiFetch("/api/admin/login", {
+  const r1 = await apiFetch("/api/admin/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
-  if (attempt1.ok) return attempt1;
+  if (r1.ok) return r1; // aquí sí devolvemos wrapper para que AdminLogin lea r1.data
 
-  if (attempt1.status === 404) {
-    const attempt2 = await apiFetch("/api/admin/auth/login", {
+  if (r1.status === 404) {
+    const r2 = await apiFetch("/api/admin/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
-    return attempt2;
+    return r2;
   }
 
-  return attempt1;
+  return r1;
 }
 
 export { API_BASE, IS_DEV };
