@@ -3,7 +3,7 @@
 // =====================================================
 // Config base
 // =====================================================
-const env = (import.meta?.env || {});
+const env = import.meta?.env || {};
 const IS_DEV = !!env.DEV;
 
 const pick = (...vals) => {
@@ -98,6 +98,112 @@ function getStoredToken() {
 }
 
 // =====================================================
+// Normalización LEAD (clave para evitar 400)
+// =====================================================
+const toNum = (v) => {
+  if (v == null) return null;
+  const n = Number(String(v).trim());
+  return Number.isFinite(n) ? n : null;
+};
+
+const toBool = (v) => {
+  if (v === true || v === false) return v;
+  const s = String(v ?? "").trim().toLowerCase();
+  if (["si", "sí", "true", "1"].includes(s)) return true;
+  if (["no", "false", "0"].includes(s)) return false;
+  return null;
+};
+
+/**
+ * Convierte payload tipo:
+ * { contacto:{}, precalif:{}, resultado:{} }
+ * a un body PLANO que tu backend ya está guardando:
+ * { nombre,email,telefono, afiliado_iess, valor_vivienda, entrada_disponible, ... , resultado }
+ */
+function flattenLeadPayload(raw = {}) {
+  // Si ya viene plano (ModalLead.jsx manda plano), respétalo
+  const looksFlat =
+    raw &&
+    (raw.nombre || raw.email || raw.telefono) &&
+    (raw.afiliado_iess != null ||
+      raw.anios_estabilidad != null ||
+      raw.ingreso_mensual != null ||
+      raw.valor_vivienda != null ||
+      raw.entrada_disponible != null);
+
+  if (looksFlat) return raw;
+
+  const contacto = raw?.contacto || raw || {};
+  const precalif = raw?.precalif || {};
+  const resultado = raw?.resultado ?? raw?.result ?? null;
+
+  // Canoniza desde precalif (puede venir camelCase)
+  const afiliadoIess = toBool(precalif.afiliadoIess ?? precalif.afiliado_iess);
+  const aniosEstabilidad = toNum(precalif.aniosEstabilidad ?? precalif.anios_estabilidad);
+  const ingresoMensual = toNum(precalif.ingresoNetoMensual ?? precalif.ingreso_mensual);
+  const ingresoPareja = toNum(precalif.ingresoPareja ?? precalif.ingreso_pareja);
+  const deudaMensual = toNum(precalif.otrasDeudasMensuales ?? precalif.deuda_mensual_aprox);
+  const ciudadCompra = (precalif.ciudadCompra ?? precalif.ciudad_compra ?? null) || null;
+
+  const tipoCompra = (precalif.tipoCompra ?? precalif.tipo_compra ?? null) || null;
+  const tipoCompraNumero = toNum(precalif.tipoCompraNumero ?? precalif.tipo_compra_numero);
+
+  const valorVivienda = toNum(precalif.valorVivienda ?? precalif.valor_vivienda ?? precalif.valor);
+  const entradaDisponible = toNum(precalif.entradaDisponible ?? precalif.entrada_disponible ?? precalif.entrada);
+
+  const edad = toNum(precalif.edad);
+  const tipoIngreso = (precalif.tipoIngreso ?? precalif.tipo_ingreso ?? null) || null;
+
+  // Algunos campos de contacto pueden venir con nombre distinto
+  const nombre = String(contacto.nombre ?? "").trim() || null;
+  const email = String(contacto.email ?? "").trim() || null;
+  const telefono = String(contacto.telefono ?? "").trim() || null;
+  const ciudad = String(contacto.ciudad ?? "").trim() || null;
+
+  // Mantén flags/metadata que tu backend ya usa
+  const out = {
+    // contacto
+    nombre,
+    email,
+    telefono,
+    ciudad,
+
+    aceptaTerminos: !!contacto.aceptaTerminos,
+    aceptaCompartir: !!contacto.aceptaCompartir,
+    aceptaMarketing: !!contacto.aceptaMarketing,
+
+    tiempoCompra: contacto.tiempoCompra ?? null,
+    origen: contacto.origen ?? "Simulador Hipoteca Exprés",
+    canal: contacto.canal ?? "web",
+    fuente: contacto.fuente ?? "form",
+
+    // perfil (snake_case)
+    afiliado_iess: afiliadoIess,
+    anios_estabilidad: aniosEstabilidad,
+    ingreso_mensual: ingresoMensual,
+    ingreso_pareja: ingresoPareja,
+    deuda_mensual_aprox: deudaMensual,
+    ciudad_compra: ciudadCompra,
+    tipo_compra: tipoCompra,
+    tipo_compra_numero: tipoCompraNumero,
+    valor_vivienda: valorVivienda,
+    entrada_disponible: entradaDisponible,
+    edad,
+    tipo_ingreso: tipoIngreso,
+
+    // resultado (lo guardas en Lead.resultado)
+    resultado: resultado,
+  };
+
+  // Limpia null/undefined vacíos (opcional pero ayuda a no ensuciar)
+  Object.keys(out).forEach((k) => {
+    if (out[k] === undefined) delete out[k];
+  });
+
+  return out;
+}
+
+// =====================================================
 // Core fetch wrapper
 // =====================================================
 export async function apiFetch(path, opts = {}) {
@@ -188,28 +294,30 @@ export async function precalificar(payload) {
   return { ok: true, ...resp.data };
 }
 
-// 2) Crear lead desde simulador (contacto + precalif + resultado)
+// 2) Crear lead desde simulador
 export async function crearLeadDesdeSimulador(payload) {
-  const body = payload || {};
+  // ✅ Siempre manda PLANO para que el backend no te devuelva 400
+  const bodyPlano = flattenLeadPayload(payload || {});
 
-  // intento 1
-  const attempt1 = await apiFetch("/api/leads/crear-desde-simulador", {
+  // Si un día creas esta ruta en backend, puedes re-activarla.
+  // Por ahora, tu screenshot muestra 404, así que vamos directo a /api/leads
+  const attempt1 = await apiFetch("/api/leads", {
     method: "POST",
-    body: JSON.stringify(body),
+    body: JSON.stringify(bodyPlano),
   });
   if (attempt1.ok) return attempt1;
 
-  // fallback si la ruta no existe
+  // Fallbacks por si tu backend usa otra ruta
   if (attempt1.status === 404) {
-    const attempt2 = await apiFetch("/api/leads", {
+    const attempt2 = await apiFetch("/api/leads/crear", {
       method: "POST",
-      body: JSON.stringify(body),
+      body: JSON.stringify(bodyPlano),
     });
     if (attempt2.ok) return attempt2;
 
-    const attempt3 = await apiFetch("/api/leads/crear", {
+    const attempt3 = await apiFetch("/api/leads/crear-desde-simulador", {
       method: "POST",
-      body: JSON.stringify(body),
+      body: JSON.stringify(bodyPlano),
     });
     return attempt3;
   }
@@ -217,16 +325,10 @@ export async function crearLeadDesdeSimulador(payload) {
   return attempt1;
 }
 
-// 3) ✅ LISTAR LEADS (para src/pages/Leads.jsx)
-// - soporta filtros comunes: q, page, limit, canal, producto, estado, desde, hasta, etc.
-// - si tu backend responde { ok:true, leads:[...], total } o { data:{...} } lo devuelves tal cual
+// 3) LISTAR LEADS (para src/pages/Leads.jsx)
 export async function listarLeads(params = {}) {
   const qs = buildQuery(params);
 
-  // tu backend puede tener una de estas rutas:
-  // /api/leads
-  // /api/admin/leads
-  // /api/leads/listar
   const attempt1 = await apiFetch(`/api/leads${qs}`, { method: "GET" });
   if (attempt1.ok) return attempt1;
 
@@ -241,7 +343,7 @@ export async function listarLeads(params = {}) {
   return attempt1;
 }
 
-// 4) (Opcional) Login admin, si tu AdminLogin lo usa
+// 4) (Opcional) Login admin
 export async function adminLogin(email, password) {
   const attempt1 = await apiFetch("/api/admin/login", {
     method: "POST",
@@ -250,7 +352,6 @@ export async function adminLogin(email, password) {
   if (attempt1.ok) return attempt1;
 
   if (attempt1.status === 404) {
-    // fallback típico
     const attempt2 = await apiFetch("/api/admin/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
@@ -261,5 +362,4 @@ export async function adminLogin(email, password) {
   return attempt1;
 }
 
-// Exporta también constantes por si las usas en otros lados
 export { API_BASE, IS_DEV };
