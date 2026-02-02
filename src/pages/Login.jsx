@@ -23,7 +23,7 @@ function isValidEcMobile(v) {
 function getQS(location) {
   const sp = new URLSearchParams(location.search || "");
   return {
-    intent: (sp.get("intent") || "login").toLowerCase(), // login | register
+    intent: (sp.get("intent") || "login").toLowerCase(),
     returnTo: sp.get("returnTo") || "/progreso",
   };
 }
@@ -35,8 +35,9 @@ export default function Login() {
 
   const { token, setToken } = useCustomerAuth();
 
-  // ✅ ref del form (para requestSubmit)
-  const loginFormRef = useRef(null);
+  // ✅ refs para leer SIEMPRE lo que está en el input (autofill-safe)
+  const emailRef = useRef(null);
+  const passRef = useRef(null);
 
   // UI state
   const [mode, setMode] = useState(qs.intent === "register" ? "register" : "login");
@@ -45,7 +46,7 @@ export default function Login() {
 
   // Fields
   const [nombre, setNombre] = useState("");
-  const [apellido, setApellido] = useState(""); // ✅ nuevo
+  const [apellido, setApellido] = useState("");
   const [email, setEmail] = useState("");
   const [telefono, setTelefono] = useState("");
   const [password, setPassword] = useState("");
@@ -53,7 +54,6 @@ export default function Login() {
   // Legal checkbox (solo register)
   const [acepta, setAcepta] = useState(true);
 
-  // If already logged in
   useEffect(() => {
     trackPageView("customer_login");
     if (token) {
@@ -66,7 +66,6 @@ export default function Login() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sync mode if intent changes in URL
   useEffect(() => {
     setMode(qs.intent === "register" ? "register" : "login");
   }, [qs.intent]);
@@ -104,19 +103,18 @@ export default function Login() {
     }
   };
 
-  const onSubmitLogin = async (e) => {
-    e.preventDefault();
+  // ✅ Login por click directo (NO depende del submit del form)
+  const doLogin = async () => {
+    if (busy) return;
     setError("");
 
-    // ✅ Autofill-safe: lee valores reales del form
-    const form = e.currentTarget;
-    const emailDom = form?.elements?.email?.value ?? "";
-    const passDom = form?.elements?.password?.value ?? "";
+    const domEmail = emailRef.current?.value ?? "";
+    const domPass = passRef.current?.value ?? "";
 
-    const finalEmail = String(email || emailDom).trim().toLowerCase();
-    const finalPass = String(password || passDom);
+    const finalEmail = String(email || domEmail).trim().toLowerCase();
+    const finalPass = String(password || domPass);
 
-    const ok = isEmail(finalEmail) && String(finalPass || "").length >= 6;
+    const ok = isEmail(finalEmail) && finalPass.length >= 6;
     if (!ok) {
       setError("Revisa tu email y tu contraseña.");
       return;
@@ -128,7 +126,7 @@ export default function Login() {
 
       const resp = await customerApi.loginCustomer({
         email: finalEmail,
-        password: String(finalPass),
+        password: finalPass,
       });
 
       if (!resp?.token) {
@@ -151,30 +149,12 @@ export default function Login() {
     e.preventDefault();
     setError("");
 
-    if (String(nombre || "").trim().length < 2) {
-      setError("Por favor ingresa tu nombre.");
-      return;
-    }
-    if (String(apellido || "").trim().length < 2) {
-      setError("Por favor ingresa tu apellido.");
-      return;
-    }
-    if (!isEmail(email)) {
-      setError("Revisa tu email.");
-      return;
-    }
-    if (!isValidEcMobile(telefono)) {
-      setError("Revisa tu teléfono (ej: 09XXXXXXXX o +5939XXXXXXXX).");
-      return;
-    }
-    if (String(password || "").length < 6) {
-      setError("Tu contraseña debe tener mínimo 6 caracteres.");
-      return;
-    }
-    if (!acepta) {
-      setError("Debes aceptar los términos para crear tu cuenta.");
-      return;
-    }
+    if (String(nombre || "").trim().length < 2) return setError("Por favor ingresa tu nombre.");
+    if (String(apellido || "").trim().length < 2) return setError("Por favor ingresa tu apellido.");
+    if (!isEmail(email)) return setError("Revisa tu email.");
+    if (!isValidEcMobile(telefono)) return setError("Revisa tu teléfono (ej: 09XXXXXXXX o +5939XXXXXXXX).");
+    if (String(password || "").length < 6) return setError("Tu contraseña debe tener mínimo 6 caracteres.");
+    if (!acepta) return setError("Debes aceptar los términos para crear tu cuenta.");
 
     setBusy(true);
     try {
@@ -191,9 +171,7 @@ export default function Login() {
 
       const resp = await customerApi.registerCustomer(payload);
 
-      if (!resp?.token) {
-        throw new Error(resp?.message || "No se pudo crear la cuenta.");
-      }
+      if (!resp?.token) throw new Error(resp?.message || "No se pudo crear la cuenta.");
 
       setToken(resp.token);
       trackEvent("customer_register_success", {});
@@ -201,10 +179,7 @@ export default function Login() {
     } catch (err) {
       console.error(err);
       trackEvent("customer_register_error", { message: String(err?.message || err) });
-      setError(
-        err?.message ||
-          "No se pudo crear tu cuenta. Si ya tienes cuenta, inicia sesión."
-      );
+      setError(err?.message || "No se pudo crear tu cuenta. Si ya tienes cuenta, inicia sesión.");
     } finally {
       setBusy(false);
     }
@@ -213,7 +188,7 @@ export default function Login() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50 flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-5xl grid gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center">
-        {/* LEFT: Value */}
+        {/* LEFT */}
         <section className="hidden md:block">
           <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-7 shadow-[0_30px_80px_rgba(15,23,42,0.95)]">
             <div className="text-[11px] tracking-[0.2em] uppercase text-slate-400 mb-3">
@@ -251,7 +226,7 @@ export default function Login() {
           </div>
         </section>
 
-        {/* RIGHT: Form */}
+        {/* RIGHT */}
         <section className="w-full">
           <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 md:p-7 shadow-[0_30px_80px_rgba(15,23,42,0.95)]">
             <div className="mb-5">
@@ -264,7 +239,6 @@ export default function Login() {
               <p className="mt-2 text-sm text-slate-400 md:hidden">{subtitle}</p>
             </div>
 
-            {/* Tabs */}
             <div className="grid grid-cols-2 gap-2 mb-5">
               <button
                 type="button"
@@ -308,10 +282,11 @@ export default function Login() {
             )}
 
             {mode === "login" ? (
-              <form ref={loginFormRef} onSubmit={onSubmitLogin} className="space-y-4">
+              <div className="space-y-4">
                 <div>
                   <label className="block text-[12px] text-slate-300 mb-1">Email</label>
                   <input
+                    ref={emailRef}
                     name="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -326,10 +301,14 @@ export default function Login() {
                 <div>
                   <label className="block text-[12px] text-slate-300 mb-1">Contraseña</label>
                   <input
+                    ref={passRef}
                     name="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     onInput={(e) => setPassword(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") doLogin(); // ✅ Enter funciona siempre
+                    }}
                     type="password"
                     autoComplete="current-password"
                     className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400"
@@ -337,22 +316,10 @@ export default function Login() {
                   />
                 </div>
 
-                {/* ✅ Botón NO depende del submit nativo */}
                 <button
                   type="button"
                   disabled={busy}
-                  onClick={() => {
-                    setError("");
-                    // requestSubmit dispara onSubmit de forma consistente
-                    if (loginFormRef.current?.requestSubmit) {
-                      loginFormRef.current.requestSubmit();
-                    } else {
-                      // fallback viejo
-                      loginFormRef.current?.dispatchEvent(
-                        new Event("submit", { bubbles: true, cancelable: true })
-                      );
-                    }
-                  }}
+                  onClick={doLogin}
                   className={[
                     "w-full rounded-2xl py-3 text-sm font-semibold transition",
                     busy
@@ -389,7 +356,7 @@ export default function Login() {
                     Volver al inicio
                   </button>
                 </div>
-              </form>
+              </div>
             ) : (
               <form onSubmit={onSubmitRegister} className="space-y-4">
                 <div>
