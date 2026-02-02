@@ -5,21 +5,20 @@ import { trackEvent, trackPageView } from "../lib/analytics";
 import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
 import * as customerApi from "../lib/customerApi.js";
 
+const LOGIN_BUILD = "LOGIN_BUILD__2026-02-02__overlayfix_v1";
+
 function isEmail(v) {
   const s = String(v || "").trim().toLowerCase();
   return s.includes("@") && s.includes(".");
 }
-
 function cleanPhone(v) {
   return String(v || "").replace(/[^\d]/g, "");
 }
-
 function isValidEcMobile(v) {
   const d = cleanPhone(v);
   if (d.startsWith("593")) return d.length === 12 && d.slice(3, 4) === "9";
   return d.length === 10 && d.startsWith("09");
 }
-
 function getQS(location) {
   const sp = new URLSearchParams(location.search || "");
   return {
@@ -35,9 +34,13 @@ export default function Login() {
 
   const { token, setToken } = useCustomerAuth();
 
-  // ✅ refs para leer SIEMPRE lo que está en el input (autofill-safe)
+  // refs autofill-safe
   const emailRef = useRef(null);
   const passRef = useRef(null);
+
+  // debug
+  const [clicks, setClicks] = useState(0);
+  const [lastEvt, setLastEvt] = useState("");
 
   // UI state
   const [mode, setMode] = useState(qs.intent === "register" ? "register" : "login");
@@ -51,7 +54,6 @@ export default function Login() {
   const [telefono, setTelefono] = useState("");
   const [password, setPassword] = useState("");
 
-  // Legal checkbox (solo register)
   const [acepta, setAcepta] = useState(true);
 
   useEffect(() => {
@@ -103,10 +105,12 @@ export default function Login() {
     }
   };
 
-  // ✅ Login por click directo (NO depende del submit del form)
   const doLogin = async () => {
     if (busy) return;
     setError("");
+
+    // DEBUG (visible en consola SIEMPRE)
+    console.log("[LOGIN] doLogin() called", { build: LOGIN_BUILD });
 
     const domEmail = emailRef.current?.value ?? "";
     const domPass = passRef.current?.value ?? "";
@@ -227,8 +231,9 @@ export default function Login() {
         </section>
 
         {/* RIGHT */}
-        <section className="w-full">
-          <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 md:p-7 shadow-[0_30px_80px_rgba(15,23,42,0.95)]">
+        <section className="w-full relative z-50 pointer-events-auto">
+          {/* ✅ z-50 + pointer-events-auto para matar overlays invisibles */}
+          <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 md:p-7 shadow-[0_30px_80px_rgba(15,23,42,0.95)] relative z-50 pointer-events-auto">
             <div className="mb-5">
               <div className="text-[11px] tracking-[0.2em] uppercase text-slate-400">
                 {mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
@@ -237,6 +242,11 @@ export default function Login() {
                 {mode === "login" ? "Bienvenido de vuelta" : "Guarda tu plan"}
               </h2>
               <p className="mt-2 text-sm text-slate-400 md:hidden">{subtitle}</p>
+
+              {/* DEBUG LINE visible */}
+              <p className="mt-2 text-[10px] text-slate-600">
+                {LOGIN_BUILD} · clicks:{clicks} · last:{lastEvt || "-"}
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-2 mb-5">
@@ -248,7 +258,7 @@ export default function Login() {
                   trackEvent("customer_login_tab", {});
                 }}
                 className={[
-                  "rounded-2xl px-4 py-2 text-sm font-semibold border transition",
+                  "rounded-2xl px-4 py-2 text-sm font-semibold border transition pointer-events-auto relative z-50",
                   mode === "login"
                     ? "bg-emerald-400 text-slate-950 border-emerald-300"
                     : "bg-slate-950/30 text-slate-200 border-slate-700 hover:border-slate-500",
@@ -265,7 +275,7 @@ export default function Login() {
                   trackEvent("customer_register_tab", {});
                 }}
                 className={[
-                  "rounded-2xl px-4 py-2 text-sm font-semibold border transition",
+                  "rounded-2xl px-4 py-2 text-sm font-semibold border transition pointer-events-auto relative z-50",
                   mode === "register"
                     ? "bg-emerald-400 text-slate-950 border-emerald-300"
                     : "bg-slate-950/30 text-slate-200 border-slate-700 hover:border-slate-500",
@@ -282,7 +292,7 @@ export default function Login() {
             )}
 
             {mode === "login" ? (
-              <div className="space-y-4">
+              <div className="space-y-4 pointer-events-auto relative z-50">
                 <div>
                   <label className="block text-[12px] text-slate-300 mb-1">Email</label>
                   <input
@@ -293,7 +303,7 @@ export default function Login() {
                     onInput={(e) => setEmail(e.target.value)}
                     type="email"
                     autoComplete="email"
-                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400"
+                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400 pointer-events-auto relative z-50"
                     placeholder="tuemail@correo.com"
                   />
                 </div>
@@ -307,11 +317,11 @@ export default function Login() {
                     onChange={(e) => setPassword(e.target.value)}
                     onInput={(e) => setPassword(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") doLogin(); // ✅ Enter funciona siempre
+                      if (e.key === "Enter") doLogin();
                     }}
                     type="password"
                     autoComplete="current-password"
-                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400"
+                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400 pointer-events-auto relative z-50"
                     placeholder="••••••••"
                   />
                 </div>
@@ -319,13 +329,27 @@ export default function Login() {
                 <button
                   type="button"
                   disabled={busy}
-                  onClick={doLogin}
+                  onPointerDownCapture={() => {
+                    setClicks((c) => c + 1);
+                    setLastEvt("pointerdown(capture)");
+                    console.log("[LOGIN] pointerdown capture");
+                  }}
+                  onClickCapture={() => {
+                    setLastEvt("click(capture)");
+                    console.log("[LOGIN] click capture");
+                  }}
+                  onClick={() => {
+                    setLastEvt("click(bubble)");
+                    console.log("[LOGIN] click bubble -> doLogin()");
+                    doLogin();
+                  }}
                   className={[
-                    "w-full rounded-2xl py-3 text-sm font-semibold transition",
+                    "w-full rounded-2xl py-3 text-sm font-semibold transition pointer-events-auto relative z-50",
                     busy
                       ? "bg-slate-700 text-slate-300 cursor-not-allowed"
                       : "bg-emerald-400 text-slate-950 hover:bg-emerald-300 shadow-[0_16px_40px_rgba(16,185,129,0.45)]",
                   ].join(" ")}
+                  style={{ pointerEvents: "auto", zIndex: 9999 }}
                 >
                   {busy ? "Entrando..." : "Entrar y continuar"}
                 </button>
@@ -343,7 +367,7 @@ export default function Login() {
                       trackEvent("customer_forgot_password_click", {});
                       nav("/forgot-password");
                     }}
-                    className="hover:text-slate-200 underline underline-offset-4"
+                    className="hover:text-slate-200 underline underline-offset-4 pointer-events-auto relative z-50"
                   >
                     Olvidé mi contraseña
                   </button>
@@ -351,14 +375,14 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => nav("/")}
-                    className="hover:text-slate-200 underline underline-offset-4"
+                    className="hover:text-slate-200 underline underline-offset-4 pointer-events-auto relative z-50"
                   >
                     Volver al inicio
                   </button>
                 </div>
               </div>
             ) : (
-              <form onSubmit={onSubmitRegister} className="space-y-4">
+              <form onSubmit={onSubmitRegister} className="space-y-4 pointer-events-auto relative z-50">
                 <div>
                   <label className="block text-[12px] text-slate-300 mb-1">Nombre</label>
                   <input
@@ -366,7 +390,7 @@ export default function Login() {
                     onChange={(e) => setNombre(e.target.value)}
                     type="text"
                     autoComplete="given-name"
-                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400"
+                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400 pointer-events-auto relative z-50"
                     placeholder="Tu nombre"
                   />
                 </div>
@@ -378,7 +402,7 @@ export default function Login() {
                     onChange={(e) => setApellido(e.target.value)}
                     type="text"
                     autoComplete="family-name"
-                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400"
+                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400 pointer-events-auto relative z-50"
                     placeholder="Tu apellido"
                   />
                 </div>
@@ -390,7 +414,7 @@ export default function Login() {
                     onChange={(e) => setEmail(e.target.value)}
                     type="email"
                     autoComplete="email"
-                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400"
+                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400 pointer-events-auto relative z-50"
                     placeholder="tuemail@correo.com"
                   />
                 </div>
@@ -401,7 +425,7 @@ export default function Login() {
                     value={telefono}
                     onChange={(e) => setTelefono(e.target.value)}
                     inputMode="tel"
-                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400"
+                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400 pointer-events-auto relative z-50"
                     placeholder="09xxxxxxxx o +5939xxxxxxxx"
                   />
                   <p className="mt-1 text-[11px] text-slate-500">
@@ -416,12 +440,12 @@ export default function Login() {
                     onChange={(e) => setPassword(e.target.value)}
                     type="password"
                     autoComplete="new-password"
-                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400"
+                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400 pointer-events-auto relative z-50"
                     placeholder="mínimo 6 caracteres"
                   />
                 </div>
 
-                <label className="flex items-start gap-2 text-[12px] text-slate-400">
+                <label className="flex items-start gap-2 text-[12px] text-slate-400 pointer-events-auto relative z-50">
                   <input
                     type="checkbox"
                     checked={acepta}
@@ -435,7 +459,7 @@ export default function Login() {
                   type="submit"
                   disabled={busy || !canRegister}
                   className={[
-                    "w-full rounded-2xl py-3 text-sm font-semibold transition",
+                    "w-full rounded-2xl py-3 text-sm font-semibold transition pointer-events-auto relative z-50",
                     busy || !canRegister
                       ? "bg-slate-700 text-slate-300 cursor-not-allowed"
                       : "bg-emerald-400 text-slate-950 hover:bg-emerald-300 shadow-[0_16px_40px_rgba(16,185,129,0.45)]",
@@ -448,7 +472,7 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => nav("/")}
-                    className="hover:text-slate-200 underline underline-offset-4"
+                    className="hover:text-slate-200 underline underline-offset-4 pointer-events-auto relative z-50"
                   >
                     Volver al inicio
                   </button>
@@ -456,7 +480,7 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => setMode("login")}
-                    className="hover:text-slate-200 underline underline-offset-4"
+                    className="hover:text-slate-200 underline underline-offset-4 pointer-events-auto relative z-50"
                   >
                     Ya tengo cuenta
                   </button>
