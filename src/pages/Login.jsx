@@ -15,7 +15,6 @@ function cleanPhone(v) {
 }
 
 function isValidEcMobile(v) {
-  // Ecuador móvil típico: 09XXXXXXXX (10 dígitos) o +5939XXXXXXXX (12+)
   const d = cleanPhone(v);
   if (d.startsWith("593")) return d.length === 12 && d.slice(3, 4) === "9";
   return d.length === 10 && d.startsWith("09");
@@ -24,7 +23,7 @@ function isValidEcMobile(v) {
 function getQS(location) {
   const sp = new URLSearchParams(location.search || "");
   return {
-    intent: (sp.get("intent") || "login").toLowerCase(), // login | register
+    intent: (sp.get("intent") || "login").toLowerCase(),
     returnTo: sp.get("returnTo") || "/progreso",
   };
 }
@@ -43,7 +42,7 @@ export default function Login() {
 
   // Fields
   const [nombre, setNombre] = useState("");
-  const [apellido, setApellido] = useState(""); // ✅ nuevo
+  const [apellido, setApellido] = useState("");
   const [email, setEmail] = useState("");
   const [telefono, setTelefono] = useState("");
   const [password, setPassword] = useState("");
@@ -51,7 +50,14 @@ export default function Login() {
   // Legal checkbox (solo register)
   const [acepta, setAcepta] = useState(true);
 
-  // If already logged in
+  // Diagnóstico
+  const [lastAction, setLastAction] = useState("");
+
+  const dbg = (...args) => {
+    // eslint-disable-next-line no-console
+    console.log("[LOGIN]", ...args);
+  };
+
   useEffect(() => {
     trackPageView("customer_login");
     if (token) {
@@ -64,7 +70,6 @@ export default function Login() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sync mode if intent changes in URL
   useEffect(() => {
     setMode(qs.intent === "register" ? "register" : "login");
   }, [qs.intent]);
@@ -77,7 +82,6 @@ export default function Login() {
     return "Accede a tu progreso y a tu checklist personalizado.";
   }, [qs.returnTo]);
 
-  // NOTE: mantenemos canLogin/canRegister para UI, pero NO bloqueamos submit por autofill
   const canLogin = useMemo(() => {
     if (!isEmail(email)) return false;
     if (String(password || "").length < 6) return false;
@@ -86,7 +90,7 @@ export default function Login() {
 
   const canRegister = useMemo(() => {
     if (String(nombre || "").trim().length < 2) return false;
-    if (String(apellido || "").trim().length < 2) return false; // ✅ nuevo
+    if (String(apellido || "").trim().length < 2) return false;
     if (!isEmail(email)) return false;
     if (!isValidEcMobile(telefono)) return false;
     if (String(password || "").length < 6) return false;
@@ -107,7 +111,10 @@ export default function Login() {
     e.preventDefault();
     setError("");
 
-    // ✅ Autofill-safe: lee valores reales del form (por si Chrome no dispara onChange)
+    dbg("✅ submit fired");
+    setLastAction("✅ submit fired");
+
+    // Autofill-safe: lee valores reales del form
     const form = e.currentTarget;
     const emailDom = form?.elements?.email?.value ?? "";
     const passDom = form?.elements?.password?.value ?? "";
@@ -115,8 +122,9 @@ export default function Login() {
     const finalEmail = String(email || emailDom).trim().toLowerCase();
     const finalPass = String(password || passDom);
 
-    const ok = isEmail(finalEmail) && String(finalPass || "").length >= 6;
+    dbg("payload", { finalEmail, passLen: String(finalPass || "").length });
 
+    const ok = isEmail(finalEmail) && String(finalPass || "").length >= 6;
     if (!ok) {
       setError("Revisa tu email y tu contraseña.");
       return;
@@ -126,22 +134,29 @@ export default function Login() {
     try {
       trackEvent("customer_login_submit", { returnTo: qs.returnTo });
 
+      dbg("➡️ calling customerApi.loginCustomer");
+      setLastAction("➡️ calling customerApi.loginCustomer");
+
       const resp = await customerApi.loginCustomer({
         email: finalEmail,
         password: String(finalPass),
       });
 
+      dbg("⬅️ response", resp);
+      setLastAction("⬅️ response received");
+
       if (!resp?.token) {
-        throw new Error(resp?.message || "No se pudo iniciar sesión.");
+        throw new Error(resp?.message || "No se pudo iniciar sesión (sin token).");
       }
 
       setToken(resp.token);
       trackEvent("customer_login_success", {});
       goReturn();
     } catch (err) {
-      console.error(err);
+      dbg("❌ login error", err);
       trackEvent("customer_login_error", { message: String(err?.message || err) });
       setError(err?.message || "Error iniciando sesión. Intenta de nuevo.");
+      setLastAction("❌ login error");
     } finally {
       setBusy(false);
     }
@@ -151,7 +166,6 @@ export default function Login() {
     e.preventDefault();
     setError("");
 
-    // ✅ error más específico para UX
     if (String(nombre || "").trim().length < 2) {
       setError("Por favor ingresa tu nombre.");
       return;
@@ -183,7 +197,7 @@ export default function Login() {
 
       const payload = {
         nombre: String(nombre).trim(),
-        apellido: String(apellido).trim(), // ✅ nuevo
+        apellido: String(apellido).trim(),
         email: String(email).trim().toLowerCase(),
         telefono: cleanPhone(telefono),
         password: String(password),
@@ -200,7 +214,7 @@ export default function Login() {
       trackEvent("customer_register_success", {});
       goReturn();
     } catch (err) {
-      console.error(err);
+      dbg("❌ register error", err);
       trackEvent("customer_register_error", { message: String(err?.message || err) });
       setError(
         err?.message ||
@@ -214,7 +228,7 @@ export default function Login() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50 flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-5xl grid gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center">
-        {/* LEFT: Value */}
+        {/* LEFT */}
         <section className="hidden md:block">
           <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-7 shadow-[0_30px_80px_rgba(15,23,42,0.95)]">
             <div className="text-[11px] tracking-[0.2em] uppercase text-slate-400 mb-3">
@@ -252,10 +266,9 @@ export default function Login() {
           </div>
         </section>
 
-        {/* RIGHT: Form */}
+        {/* RIGHT */}
         <section className="w-full">
           <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 md:p-7 shadow-[0_30px_80px_rgba(15,23,42,0.95)]">
-            {/* Header */}
             <div className="mb-5">
               <div className="text-[11px] tracking-[0.2em] uppercase text-slate-400">
                 {mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
@@ -310,9 +323,23 @@ export default function Login() {
               </div>
             )}
 
-            {/* Forms */}
+            {/* Diagnóstico visible */}
+            {lastAction && (
+              <div className="mb-4 rounded-2xl border border-slate-700 bg-slate-950/40 px-4 py-3 text-[12px] text-slate-300">
+                <span className="text-slate-400">Debug:</span> {lastAction}
+              </div>
+            )}
+
             {mode === "login" ? (
-              <form onSubmit={onSubmitLogin} className="space-y-4">
+              <form
+                id="loginForm"
+                onSubmit={onSubmitLogin}
+                onSubmitCapture={() => {
+                  dbg("🟦 onSubmitCapture fired");
+                  setLastAction("🟦 onSubmitCapture fired");
+                }}
+                className="space-y-4"
+              >
                 <div>
                   <label className="block text-[12px] text-slate-300 mb-1">Email</label>
                   <input
@@ -345,7 +372,20 @@ export default function Login() {
 
                 <button
                   type="submit"
-                  disabled={busy} // ✅ evita “botón muerto” por autofill
+                  disabled={busy}
+                  onClick={() => {
+                    dbg("🟩 button click fired");
+                    setLastAction("🟩 button click fired");
+                    // Si el click se dispara, pero el submit no: hay algo raro con el form
+                    setTimeout(() => {
+                      // si no cambió a submit fired, te avisamos
+                      setLastAction((prev) =>
+                        prev.includes("submit fired")
+                          ? prev
+                          : "⚠️ Click llegó, pero submit no se disparó (revisar form/DOM)"
+                      );
+                    }, 150);
+                  }}
                   className={[
                     "w-full rounded-2xl py-3 text-sm font-semibold transition",
                     busy
@@ -356,7 +396,6 @@ export default function Login() {
                   {busy ? "Entrando..." : "Entrar y continuar"}
                 </button>
 
-                {/* Hint opcional: si quieres mostrar validación sin bloquear */}
                 {!busy && !canLogin && (
                   <p className="text-[11px] text-slate-500">
                     Tip: revisa tu email y contraseña (mínimo 6 caracteres).
@@ -399,9 +438,7 @@ export default function Login() {
                 </div>
 
                 <div>
-                  <label className="block text-[12px] text-slate-300 mb-1">
-                    Apellido
-                  </label>
+                  <label className="block text-[12px] text-slate-300 mb-1">Apellido</label>
                   <input
                     value={apellido}
                     onChange={(e) => setApellido(e.target.value)}
@@ -425,9 +462,7 @@ export default function Login() {
                 </div>
 
                 <div>
-                  <label className="block text-[12px] text-slate-300 mb-1">
-                    Teléfono
-                  </label>
+                  <label className="block text-[12px] text-slate-300 mb-1">Teléfono</label>
                   <input
                     value={telefono}
                     onChange={(e) => setTelefono(e.target.value)}
@@ -441,9 +476,7 @@ export default function Login() {
                 </div>
 
                 <div>
-                  <label className="block text-[12px] text-slate-300 mb-1">
-                    Contraseña
-                  </label>
+                  <label className="block text-[12px] text-slate-300 mb-1">Contraseña</label>
                   <input
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -498,8 +531,7 @@ export default function Login() {
             )}
 
             <p className="mt-5 text-center text-[11px] text-slate-500">
-              Datos cifrados · sin consultas al buró · puedes borrar tu cuenta cuando
-              quieras
+              Datos cifrados · sin consultas al buró · puedes borrar tu cuenta cuando quieras
             </p>
           </div>
         </section>
