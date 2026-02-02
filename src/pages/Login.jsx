@@ -5,7 +5,7 @@ import { trackEvent, trackPageView } from "../lib/analytics";
 import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
 import * as customerApi from "../lib/customerApi.js";
 
-const LOGIN_BUILD = "LOGIN_BUILD__2026-02-02__overlayfix_v1";
+const LOGIN_BUILD = "LOGIN_BUILD__2026-02-02__diag_v2";
 
 function isEmail(v) {
   const s = String(v || "").trim().toLowerCase();
@@ -27,6 +27,21 @@ function getQS(location) {
   };
 }
 
+function withTimeout(promise, ms = 12000) {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error("Timeout: el servidor no respondió.")), ms);
+    promise
+      .then((v) => {
+        clearTimeout(t);
+        resolve(v);
+      })
+      .catch((e) => {
+        clearTimeout(t);
+        reject(e);
+      });
+  });
+}
+
 export default function Login() {
   const nav = useNavigate();
   const location = useLocation();
@@ -34,20 +49,13 @@ export default function Login() {
 
   const { token, setToken } = useCustomerAuth();
 
-  // refs autofill-safe
   const emailRef = useRef(null);
   const passRef = useRef(null);
 
-  // debug
-  const [clicks, setClicks] = useState(0);
-  const [lastEvt, setLastEvt] = useState("");
-
-  // UI state
   const [mode, setMode] = useState(qs.intent === "register" ? "register" : "login");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  // Fields
   const [nombre, setNombre] = useState("");
   const [apellido, setApellido] = useState("");
   const [email, setEmail] = useState("");
@@ -56,17 +64,22 @@ export default function Login() {
 
   const [acepta, setAcepta] = useState(true);
 
+  // ✅ track + si ya hay token, manda a progreso
   useEffect(() => {
     trackPageView("customer_login");
     if (token) {
-      try {
-        nav(qs.returnTo || "/progreso");
-      } catch {
-        nav("/progreso");
-      }
+      nav(qs.returnTo || "/progreso", { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ✅ importantísimo: si el token cambia, redirige (evita “me devuelve al login” por timing)
+  useEffect(() => {
+    if (token) {
+      nav(qs.returnTo || "/progreso", { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   useEffect(() => {
     setMode(qs.intent === "register" ? "register" : "login");
@@ -74,9 +87,7 @@ export default function Login() {
 
   const subtitle = useMemo(() => {
     const rt = String(qs.returnTo || "");
-    if (rt.includes("journey")) {
-      return "Guarda tu plan y retoma tu camino a la vivienda propia cuando quieras.";
-    }
+    if (rt.includes("journey")) return "Guarda tu plan y retoma tu camino a la vivienda propia cuando quieras.";
     return "Accede a tu progreso y a tu checklist personalizado.";
   }, [qs.returnTo]);
 
@@ -96,21 +107,9 @@ export default function Login() {
     return true;
   }, [nombre, apellido, email, telefono, password, acepta]);
 
-  const goReturn = () => {
-    const target = qs.returnTo || "/progreso";
-    try {
-      nav(target);
-    } catch {
-      window.location.hash = "#/progreso";
-    }
-  };
-
   const doLogin = async () => {
     if (busy) return;
     setError("");
-
-    // DEBUG (visible en consola SIEMPRE)
-    console.log("[LOGIN] doLogin() called", { build: LOGIN_BUILD });
 
     const domEmail = emailRef.current?.value ?? "";
     const domPass = passRef.current?.value ?? "";
@@ -126,22 +125,34 @@ export default function Login() {
 
     setBusy(true);
     try {
+      console.log("[LOGIN]", "doLogin() start", { build: LOGIN_BUILD, finalEmail, returnTo: qs.returnTo });
+
       trackEvent("customer_login_submit", { returnTo: qs.returnTo });
 
-      const resp = await customerApi.loginCustomer({
-        email: finalEmail,
-        password: finalPass,
-      });
+      // ✅ timeout para evitar “se queda pegado”
+      const resp = await withTimeout(
+        customerApi.loginCustomer({ email: finalEmail, password: finalPass }),
+        12000
+      );
+
+      console.log("[LOGIN]", "loginCustomer resp:", resp);
 
       if (!resp?.token) {
-        throw new Error(resp?.message || "No se pudo iniciar sesión.");
+        const msg = resp?.message || "No se pudo iniciar sesión (sin token).";
+        const status = resp?.status || resp?.statusCode;
+        throw new Error(status ? `${msg} (status ${status})` : msg);
       }
 
       setToken(resp.token);
       trackEvent("customer_login_success", {});
-      goReturn();
+
+      console.log("[LOGIN]", "token seteado. Navegando…", { to: qs.returnTo || "/progreso" });
+
+      // Nota: la navegación principal ocurre en el useEffect([token]) con replace:true
+      // pero igual dejamos esto por redundancia:
+      nav(qs.returnTo || "/progreso", { replace: true });
     } catch (err) {
-      console.error(err);
+      console.error("[LOGIN] error:", err);
       trackEvent("customer_login_error", { message: String(err?.message || err) });
       setError(err?.message || "Error iniciando sesión. Intenta de nuevo.");
     } finally {
@@ -173,13 +184,13 @@ export default function Login() {
         aceptaTerminos: true,
       };
 
-      const resp = await customerApi.registerCustomer(payload);
+      const resp = await withTimeout(customerApi.registerCustomer(payload), 12000);
 
       if (!resp?.token) throw new Error(resp?.message || "No se pudo crear la cuenta.");
 
       setToken(resp.token);
       trackEvent("customer_register_success", {});
-      goReturn();
+      nav(qs.returnTo || "/progreso", { replace: true });
     } catch (err) {
       console.error(err);
       trackEvent("customer_register_error", { message: String(err?.message || err) });
@@ -195,12 +206,8 @@ export default function Login() {
         {/* LEFT */}
         <section className="hidden md:block">
           <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-7 shadow-[0_30px_80px_rgba(15,23,42,0.95)]">
-            <div className="text-[11px] tracking-[0.2em] uppercase text-slate-400 mb-3">
-              HabitaLibre · Cuenta
-            </div>
-            <h1 className="text-3xl font-semibold tracking-tight text-slate-50">
-              Guarda tu plan y avanza más rápido
-            </h1>
+            <div className="text-[11px] tracking-[0.2em] uppercase text-slate-400 mb-3">HabitaLibre · Cuenta</div>
+            <h1 className="text-3xl font-semibold tracking-tight text-slate-50">Guarda tu plan y avanza más rápido</h1>
             <p className="mt-3 text-sm text-slate-300 max-w-md">{subtitle}</p>
 
             <div className="mt-6 grid gap-3 text-sm">
@@ -212,28 +219,21 @@ export default function Login() {
               </div>
               <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
                 <p className="font-semibold text-slate-50">✓ Tu progreso guardado</p>
-                <p className="text-slate-400 text-[12px] mt-1">
-                  Retoma donde te quedaste, sin volver a empezar.
-                </p>
+                <p className="text-slate-400 text-[12px] mt-1">Retoma donde te quedaste, sin volver a empezar.</p>
               </div>
               <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
                 <p className="font-semibold text-slate-50">✓ Asesoría sin costo</p>
-                <p className="text-slate-400 text-[12px] mt-1">
-                  Si quieres, te acompañamos a ordenar tu caso para el banco.
-                </p>
+                <p className="text-slate-400 text-[12px] mt-1">Si quieres, te acompañamos a ordenar tu caso para el banco.</p>
               </div>
             </div>
 
-            <p className="mt-6 text-[11px] text-slate-500">
-              Datos cifrados · sin consultas al buró · sin spam
-            </p>
+            <p className="mt-6 text-[11px] text-slate-500">Datos cifrados · sin consultas al buró · sin spam</p>
           </div>
         </section>
 
         {/* RIGHT */}
-        <section className="w-full relative z-50 pointer-events-auto">
-          {/* ✅ z-50 + pointer-events-auto para matar overlays invisibles */}
-          <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 md:p-7 shadow-[0_30px_80px_rgba(15,23,42,0.95)] relative z-50 pointer-events-auto">
+        <section className="w-full">
+          <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 md:p-7 shadow-[0_30px_80px_rgba(15,23,42,0.95)]">
             <div className="mb-5">
               <div className="text-[11px] tracking-[0.2em] uppercase text-slate-400">
                 {mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
@@ -242,11 +242,7 @@ export default function Login() {
                 {mode === "login" ? "Bienvenido de vuelta" : "Guarda tu plan"}
               </h2>
               <p className="mt-2 text-sm text-slate-400 md:hidden">{subtitle}</p>
-
-              {/* DEBUG LINE visible */}
-              <p className="mt-2 text-[10px] text-slate-600">
-                {LOGIN_BUILD} · clicks:{clicks} · last:{lastEvt || "-"}
-              </p>
+              <p className="mt-2 text-[10px] text-slate-600">{LOGIN_BUILD}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-2 mb-5">
@@ -258,7 +254,7 @@ export default function Login() {
                   trackEvent("customer_login_tab", {});
                 }}
                 className={[
-                  "rounded-2xl px-4 py-2 text-sm font-semibold border transition pointer-events-auto relative z-50",
+                  "rounded-2xl px-4 py-2 text-sm font-semibold border transition",
                   mode === "login"
                     ? "bg-emerald-400 text-slate-950 border-emerald-300"
                     : "bg-slate-950/30 text-slate-200 border-slate-700 hover:border-slate-500",
@@ -275,7 +271,7 @@ export default function Login() {
                   trackEvent("customer_register_tab", {});
                 }}
                 className={[
-                  "rounded-2xl px-4 py-2 text-sm font-semibold border transition pointer-events-auto relative z-50",
+                  "rounded-2xl px-4 py-2 text-sm font-semibold border transition",
                   mode === "register"
                     ? "bg-emerald-400 text-slate-950 border-emerald-300"
                     : "bg-slate-950/30 text-slate-200 border-slate-700 hover:border-slate-500",
@@ -292,7 +288,7 @@ export default function Login() {
             )}
 
             {mode === "login" ? (
-              <div className="space-y-4 pointer-events-auto relative z-50">
+              <div className="space-y-4">
                 <div>
                   <label className="block text-[12px] text-slate-300 mb-1">Email</label>
                   <input
@@ -303,7 +299,7 @@ export default function Login() {
                     onInput={(e) => setEmail(e.target.value)}
                     type="email"
                     autoComplete="email"
-                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400 pointer-events-auto relative z-50"
+                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400"
                     placeholder="tuemail@correo.com"
                   />
                 </div>
@@ -321,7 +317,7 @@ export default function Login() {
                     }}
                     type="password"
                     autoComplete="current-password"
-                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400 pointer-events-auto relative z-50"
+                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400"
                     placeholder="••••••••"
                   />
                 </div>
@@ -329,36 +325,16 @@ export default function Login() {
                 <button
                   type="button"
                   disabled={busy}
-                  onPointerDownCapture={() => {
-                    setClicks((c) => c + 1);
-                    setLastEvt("pointerdown(capture)");
-                    console.log("[LOGIN] pointerdown capture");
-                  }}
-                  onClickCapture={() => {
-                    setLastEvt("click(capture)");
-                    console.log("[LOGIN] click capture");
-                  }}
-                  onClick={() => {
-                    setLastEvt("click(bubble)");
-                    console.log("[LOGIN] click bubble -> doLogin()");
-                    doLogin();
-                  }}
+                  onClick={doLogin}
                   className={[
-                    "w-full rounded-2xl py-3 text-sm font-semibold transition pointer-events-auto relative z-50",
+                    "w-full rounded-2xl py-3 text-sm font-semibold transition",
                     busy
                       ? "bg-slate-700 text-slate-300 cursor-not-allowed"
                       : "bg-emerald-400 text-slate-950 hover:bg-emerald-300 shadow-[0_16px_40px_rgba(16,185,129,0.45)]",
                   ].join(" ")}
-                  style={{ pointerEvents: "auto", zIndex: 9999 }}
                 >
                   {busy ? "Entrando..." : "Entrar y continuar"}
                 </button>
-
-                {!busy && !canLogin && (
-                  <p className="text-[11px] text-slate-500">
-                    Tip: revisa tu email y contraseña (mínimo 6 caracteres).
-                  </p>
-                )}
 
                 <div className="flex items-center justify-between text-[12px] text-slate-400">
                   <button
@@ -367,22 +343,18 @@ export default function Login() {
                       trackEvent("customer_forgot_password_click", {});
                       nav("/forgot-password");
                     }}
-                    className="hover:text-slate-200 underline underline-offset-4 pointer-events-auto relative z-50"
+                    className="hover:text-slate-200 underline underline-offset-4"
                   >
                     Olvidé mi contraseña
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => nav("/")}
-                    className="hover:text-slate-200 underline underline-offset-4 pointer-events-auto relative z-50"
-                  >
+                  <button type="button" onClick={() => nav("/")} className="hover:text-slate-200 underline underline-offset-4">
                     Volver al inicio
                   </button>
                 </div>
               </div>
             ) : (
-              <form onSubmit={onSubmitRegister} className="space-y-4 pointer-events-auto relative z-50">
+              <form onSubmit={onSubmitRegister} className="space-y-4">
                 <div>
                   <label className="block text-[12px] text-slate-300 mb-1">Nombre</label>
                   <input
@@ -390,7 +362,7 @@ export default function Login() {
                     onChange={(e) => setNombre(e.target.value)}
                     type="text"
                     autoComplete="given-name"
-                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400 pointer-events-auto relative z-50"
+                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400"
                     placeholder="Tu nombre"
                   />
                 </div>
@@ -402,7 +374,7 @@ export default function Login() {
                     onChange={(e) => setApellido(e.target.value)}
                     type="text"
                     autoComplete="family-name"
-                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400 pointer-events-auto relative z-50"
+                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400"
                     placeholder="Tu apellido"
                   />
                 </div>
@@ -414,7 +386,7 @@ export default function Login() {
                     onChange={(e) => setEmail(e.target.value)}
                     type="email"
                     autoComplete="email"
-                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400 pointer-events-auto relative z-50"
+                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400"
                     placeholder="tuemail@correo.com"
                   />
                 </div>
@@ -425,12 +397,10 @@ export default function Login() {
                     value={telefono}
                     onChange={(e) => setTelefono(e.target.value)}
                     inputMode="tel"
-                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400 pointer-events-auto relative z-50"
+                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400"
                     placeholder="09xxxxxxxx o +5939xxxxxxxx"
                   />
-                  <p className="mt-1 text-[11px] text-slate-500">
-                    Usamos tu teléfono solo para contactarte si tú lo pides.
-                  </p>
+                  <p className="mt-1 text-[11px] text-slate-500">Usamos tu teléfono solo para contactarte si tú lo pides.</p>
                 </div>
 
                 <div>
@@ -440,12 +410,12 @@ export default function Login() {
                     onChange={(e) => setPassword(e.target.value)}
                     type="password"
                     autoComplete="new-password"
-                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400 pointer-events-auto relative z-50"
+                    className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400"
                     placeholder="mínimo 6 caracteres"
                   />
                 </div>
 
-                <label className="flex items-start gap-2 text-[12px] text-slate-400 pointer-events-auto relative z-50">
+                <label className="flex items-start gap-2 text-[12px] text-slate-400">
                   <input
                     type="checkbox"
                     checked={acepta}
@@ -459,7 +429,7 @@ export default function Login() {
                   type="submit"
                   disabled={busy || !canRegister}
                   className={[
-                    "w-full rounded-2xl py-3 text-sm font-semibold transition pointer-events-auto relative z-50",
+                    "w-full rounded-2xl py-3 text-sm font-semibold transition",
                     busy || !canRegister
                       ? "bg-slate-700 text-slate-300 cursor-not-allowed"
                       : "bg-emerald-400 text-slate-950 hover:bg-emerald-300 shadow-[0_16px_40px_rgba(16,185,129,0.45)]",
@@ -469,19 +439,10 @@ export default function Login() {
                 </button>
 
                 <div className="flex items-center justify-between text-[12px] text-slate-400">
-                  <button
-                    type="button"
-                    onClick={() => nav("/")}
-                    className="hover:text-slate-200 underline underline-offset-4 pointer-events-auto relative z-50"
-                  >
+                  <button type="button" onClick={() => nav("/")} className="hover:text-slate-200 underline underline-offset-4">
                     Volver al inicio
                   </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setMode("login")}
-                    className="hover:text-slate-200 underline underline-offset-4 pointer-events-auto relative z-50"
-                  >
+                  <button type="button" onClick={() => setMode("login")} className="hover:text-slate-200 underline underline-offset-4">
                     Ya tengo cuenta
                   </button>
                 </div>
