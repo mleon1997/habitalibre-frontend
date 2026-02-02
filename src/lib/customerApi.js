@@ -1,5 +1,5 @@
 // src/lib/customerApi.js
-import { API_BASE } from "./api";
+import { API_BASE } from "./api"; // en Vite esto está OK
 
 const LS_TOKEN = "hl_customer_token";
 
@@ -51,7 +51,7 @@ export async function loginCustomer(payload) {
     body: JSON.stringify(payload),
   });
 
-  // opcional: guarda token automáticamente si viene
+  // ✅ guarda token automáticamente si viene
   if (data?.token) setCustomerToken(data.token);
 
   return data;
@@ -63,14 +63,18 @@ export async function registerCustomer(payload) {
     body: JSON.stringify(payload),
   });
 
-  // opcional: guarda token automáticamente si viene
   if (data?.token) setCustomerToken(data.token);
 
   return data;
 }
 
-export async function meCustomer() {
-  const token = getCustomerToken();
+/**
+ * ✅ Robusto:
+ * - si pasas tokenOverride, lo usa (evita race conditions)
+ * - si no, lee de localStorage (fallback)
+ */
+export async function meCustomer(tokenOverride) {
+  const token = String(tokenOverride || getCustomerToken() || "").trim();
   if (!token) return null;
 
   return apiFetch("/api/customer-auth/me", {
@@ -83,7 +87,7 @@ export async function meCustomer() {
 ========================= */
 
 export async function saveJourney(payload, tokenOverride) {
-  const token = tokenOverride || getCustomerToken();
+  const token = String(tokenOverride || getCustomerToken() || "").trim();
   if (!token) throw new Error("NO_TOKEN");
 
   return apiFetch("/api/customer/leads/save-journey", {
@@ -97,8 +101,6 @@ export async function saveJourney(payload, tokenOverride) {
    FORGOT / RESET PASSWORD
 ========================= */
 
-// POST /api/customer-auth/forgot-password
-// body: { email }
 export async function forgotPassword(payload) {
   return apiFetch("/api/customer-auth/forgot-password", {
     method: "POST",
@@ -106,8 +108,6 @@ export async function forgotPassword(payload) {
   });
 }
 
-// POST /api/customer-auth/reset-password
-// body: { token, newPassword }
 export async function resetPassword(payload) {
   return apiFetch("/api/customer-auth/reset-password", {
     method: "POST",

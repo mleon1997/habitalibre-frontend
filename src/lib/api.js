@@ -84,9 +84,11 @@ function buildQuery(params = {}) {
   return out ? `?${out}` : "";
 }
 
-function getStoredToken() {
+// =====================================================
+// ✅ Tokens (ADMIN vs CUSTOMER)
+// =====================================================
+function getAdminToken() {
   try {
-    // ✅ FIX: incluir hl_admin_token (tu AdminLogin lo guarda así)
     return (
       window.localStorage.getItem("hl_admin_token") ||
       window.localStorage.getItem("adminToken") ||
@@ -97,6 +99,43 @@ function getStoredToken() {
   } catch {
     return null;
   }
+}
+
+function getCustomerToken() {
+  try {
+    return (
+      window.localStorage.getItem("hl_customer_token") || // ✅ tu CustomerAuthContext usa este
+      window.localStorage.getItem("customerToken") ||
+      window.localStorage.getItem("HL_CUSTOMER_TOKEN") ||
+      null
+    );
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * ✅ Selecciona token según endpoint (SIN CONTAMINAR)
+ * - /api/admin/... => admin token
+ * - /api/customer-auth/... o /api/customer/... => customer token (SOLO customer)
+ * - resto => NO adjunta token por defecto (solo si caller pasa Authorization)
+ */
+function getStoredTokenForPath(path = "") {
+  const p = String(path || "");
+
+  const isAdminEndpoint = p.startsWith("/api/admin") || p.includes("/api/admin/");
+  if (isAdminEndpoint) return getAdminToken();
+
+  const isCustomerEndpoint =
+    p.startsWith("/api/customer-auth") ||
+    p.includes("/api/customer-auth/") ||
+    p.startsWith("/api/customer") ||
+    p.includes("/api/customer/");
+
+  if (isCustomerEndpoint) return getCustomerToken();
+
+  // ✅ por defecto: NO metas tokens donde no corresponde
+  return null;
 }
 
 // =====================================================
@@ -116,14 +155,7 @@ const toBool = (v) => {
   return null;
 };
 
-/**
- * Convierte payload tipo:
- * { contacto:{}, precalif:{}, resultado:{} }
- * a un body PLANO que tu backend ya está guardando:
- * { nombre,email,telefono, afiliado_iess, valor_vivienda, entrada_disponible, ... , resultado }
- */
 function flattenLeadPayload(raw = {}) {
-  // Si ya viene plano (ModalLead.jsx manda plano), respétalo
   const looksFlat =
     raw &&
     (raw.nombre || raw.email || raw.telefono) &&
@@ -139,7 +171,6 @@ function flattenLeadPayload(raw = {}) {
   const precalif = raw?.precalif || {};
   const resultado = raw?.resultado ?? raw?.result ?? null;
 
-  // Canoniza desde precalif (puede venir camelCase)
   const afiliadoIess = toBool(precalif.afiliadoIess ?? precalif.afiliado_iess);
   const aniosEstabilidad = toNum(
     precalif.aniosEstabilidad ?? precalif.anios_estabilidad
@@ -173,15 +204,12 @@ function flattenLeadPayload(raw = {}) {
   const tipoIngreso =
     (precalif.tipoIngreso ?? precalif.tipo_ingreso ?? null) || null;
 
-  // Algunos campos de contacto pueden venir con nombre distinto
   const nombre = String(contacto.nombre ?? "").trim() || null;
   const email = String(contacto.email ?? "").trim() || null;
   const telefono = String(contacto.telefono ?? "").trim() || null;
   const ciudad = String(contacto.ciudad ?? "").trim() || null;
 
-  // Mantén flags/metadata que tu backend ya usa
   const out = {
-    // contacto
     nombre,
     email,
     telefono,
@@ -196,7 +224,6 @@ function flattenLeadPayload(raw = {}) {
     canal: contacto.canal ?? "web",
     fuente: contacto.fuente ?? "form",
 
-    // perfil (snake_case)
     afiliado_iess: afiliadoIess,
     anios_estabilidad: aniosEstabilidad,
     ingreso_mensual: ingresoMensual,
@@ -210,11 +237,9 @@ function flattenLeadPayload(raw = {}) {
     edad,
     tipo_ingreso: tipoIngreso,
 
-    // resultado (lo guardas en Lead.resultado)
     resultado: resultado,
   };
 
-  // Limpia undefined (para no ensuciar)
   Object.keys(out).forEach((k) => {
     if (out[k] === undefined) delete out[k];
   });
@@ -223,22 +248,68 @@ function flattenLeadPayload(raw = {}) {
 }
 
 // =====================================================
+// Unauthorized event dispatcher (scoped)
+// =====================================================
+function getScopeForPath(path = "") {
+  const p = String(path || "");
+  if (p.startsWith("/api/admin") || p.includes("/api/admin/")) return "admin";
+  if (
+    p.startsWith("/api/customer-auth") ||
+    p.includes("/api/customer-auth/") ||
+    p.startsWith("/api/customer") ||
+    p.includes("/api/customer/")
+  )
+    return "customer";
+  return "";
+}
+
+function getReturnToHashRouter() {
+  try {
+    // HashRouter: la ruta vive dentro del hash (#/progreso?x=1)
+    const h = String(window.location.hash || "");
+    if (h.startsWith("#")) return h.slice(1) || "/";
+    return "/";
+  } catch {
+    return "/";
+  }
+}
+
+function dispatchUnauthorized(scope, message, path) {
+  try {
+    if (!scope) return;
+
+    const eventName =
+      scope === "admin" ? "hl:admin-unauthorized" : "hl:customer-unauthorized";
+
+    window.dispatchEvent(
+      new CustomEvent(eventName, {
+        detail: {
+          scope,
+          message,
+          path: String(path || ""),
+          returnTo: getReturnToHashRouter(),
+        },
+      })
+    );
+  } catch (_) {}
+}
+
+// =====================================================
 // Core fetch wrapper
 // =====================================================
 export async function apiFetch(path, opts = {}) {
   const rid = shortId();
+
   const url = path.startsWith("http")
     ? path
     : `${API_BASE}${path.startsWith("/") ? "" : "/"}${path}`;
 
   const method = (opts.method || "GET").toUpperCase();
 
-  // headers
   const headers = {
     ...(opts.headers || {}),
   };
 
-  // Si body es FormData NO pongas Content-Type
   const isFormData =
     typeof FormData !== "undefined" && opts.body instanceof FormData;
 
@@ -246,10 +317,11 @@ export async function apiFetch(path, opts = {}) {
     headers["Content-Type"] = "application/json";
   }
 
-  // auth token optional
-  const token = getStoredToken();
-  if (token && !headers.Authorization) {
-    headers.Authorization = `Bearer ${token}`;
+  // ✅ auth token optional (elige customer vs admin según path)
+  // ✅ y respeta Authorization si ya lo pasaste
+  const storedToken = getStoredTokenForPath(path);
+  if (storedToken && !headers.Authorization) {
+    headers.Authorization = `Bearer ${storedToken}`;
   }
 
   const finalOpts = {
@@ -285,6 +357,13 @@ export async function apiFetch(path, opts = {}) {
     console.log(`[${rid}] [API] <- ${method} ${url} [${res.status}]`, payload);
   }
 
+  // ✅ Auto-dispatch unauthorized con scope correcto
+  if (res.status === 401 || res.status === 403) {
+    const scope = getScopeForPath(path);
+    const msg = normalizeErrorMessage(payload, "No autorizado");
+    dispatchUnauthorized(scope, msg, path);
+  }
+
   if (!res.ok) {
     return {
       ok: false,
@@ -301,6 +380,19 @@ export async function apiFetch(path, opts = {}) {
 // Endpoints HabitaLibre
 // =====================================================
 
+// 0) ✅ ME Customer (para CustomerProtectedRoute)
+// ✅ FIX: endpoint correcto es /api/customer-auth/me
+
+export async function meCustomer(token) {
+  const t = String(token || "").trim();
+  const headers = t ? { Authorization: `Bearer ${t}` } : undefined;
+
+  return apiFetch("/api/customer-auth/me", {
+    method: "GET",
+    headers,
+  });
+}
+
 // 1) Precalificar
 export async function precalificar(payload) {
   const resp = await apiFetch("/api/precalificar", {
@@ -308,24 +400,20 @@ export async function precalificar(payload) {
     body: JSON.stringify(payload || {}),
   });
 
-  // tu frontend suele esperar "resultado" plano
   if (!resp.ok) return resp;
   return { ok: true, ...resp.data };
 }
 
 // 2) Crear lead desde simulador
 export async function crearLeadDesdeSimulador(payload) {
-  // ✅ Siempre manda PLANO para que el backend no te devuelva 400
   const bodyPlano = flattenLeadPayload(payload || {});
 
-  // Por ahora tu backend usa POST /api/leads
   const attempt1 = await apiFetch("/api/leads", {
     method: "POST",
     body: JSON.stringify(bodyPlano),
   });
   if (attempt1.ok) return attempt1.data;
 
-  // Fallbacks por si tu backend usa otra ruta
   if (attempt1.status === 404) {
     const attempt2 = await apiFetch("/api/leads/crear", {
       method: "POST",
@@ -345,12 +433,12 @@ export async function crearLeadDesdeSimulador(payload) {
   return attempt1;
 }
 
-// 3) LISTAR LEADS (para src/pages/Leads.jsx)
+// 3) LISTAR LEADS
 export async function listarLeads(params = {}) {
   const qs = buildQuery(params);
 
   const r1 = await apiFetch(`/api/leads${qs}`, { method: "GET" });
-  if (r1.ok) return r1.data; // ✅ FIX: devolvemos payload real
+  if (r1.ok) return r1.data;
 
   if (r1.status === 404) {
     const r2 = await apiFetch(`/api/admin/leads${qs}`, { method: "GET" });
@@ -371,7 +459,7 @@ export async function adminLogin(email, password) {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
-  if (r1.ok) return r1; // aquí sí devolvemos wrapper para que AdminLogin lea r1.data
+  if (r1.ok) return r1;
 
   if (r1.status === 404) {
     const r2 = await apiFetch("/api/admin/auth/login", {

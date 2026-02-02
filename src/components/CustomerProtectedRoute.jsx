@@ -1,103 +1,103 @@
 // src/components/CustomerProtectedRoute.jsx
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
-import * as api from "../lib/api.js";
+import { meCustomer } from "../lib/api"; // ✅ usa api.js (token routing + auto-dispatch unauthorized)
 
+/**
+ * Protege rutas del Journey (Customer).
+ * - Si no hay token => /login
+ * - Si hay token => valida con /api/customer-auth/me (vía meCustomer)
+ * - Si 401/403 => NO hace dispatch aquí (apiFetch ya dispara "hl:customer-unauthorized")
+ *                y CustomerAuthListener se encarga de limpiar + redirigir.
+ */
 export default function CustomerProtectedRoute({ children }) {
   const location = useLocation();
-  const { loading, token, customer, setCustomer, logout } = useCustomerAuth();
+  const { token, isAuthed } = useCustomerAuth();
 
-  const [checking, setChecking] = useState(false);
-  const [checkedOnce, setCheckedOnce] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const [ok, setOk] = useState(false);
 
-  // Guarda el último token validado para evitar dobles llamadas
-  const lastValidatedTokenRef = useRef(null);
+  const returnTo = useMemo(() => {
+    return (
+      location.pathname +
+      (location.search || "") +
+      (location.hash || "")
+    );
+  }, [location]);
 
   useEffect(() => {
-    // Espera a que el contexto cargue localStorage
-    if (loading) return;
+    let alive = true;
 
-    // Sin token: ya "validamos" que no hay sesión
-    if (!token) {
+    async function run() {
+      // 1) si no hay token, no hay nada que validar
+      if (!token) {
+        if (!alive) return;
+        setOk(false);
+        setChecking(false);
+        return;
+      }
+
+      setChecking(true);
+
+      // 2) validar token contra backend
+      const r = await meCustomer(token);
+
+      if (!alive) return;
+
+      if (r?.ok) {
+        setOk(true);
+        setChecking(false);
+        return;
+      }
+
+      const status = r?.status;
+
+      /**
+       * ✅ 401/403:
+       * NO hagas dispatch ni limpies auth aquí.
+       * apiFetch() ya dispara el evento "hl:customer-unauthorized"
+       * y CustomerAuthListener limpia + redirige.
+       */
+      if (status === 401 || status === 403) {
+        setOk(false);
+        setChecking(false);
+        return;
+      }
+
+      // 3) otros errores: bloquea la ruta por seguridad
+      setOk(false);
       setChecking(false);
-      setCheckedOnce(true);
-      lastValidatedTokenRef.current = null;
-      return;
     }
 
-    // Si el token ya fue validado, no repitas
-    if (lastValidatedTokenRef.current === token && checkedOnce) return;
-
-    const run = async () => {
-      try {
-        setChecking(true);
-
-        const data = await api.meCustomer(token);
-        const user = data?.user || null;
-
-        if (user?.id) {
-          // refresca customer si estaba vacío o cambió
-          if (!customer || customer?.id !== user.id) {
-            setCustomer?.(user);
-          }
-          lastValidatedTokenRef.current = token;
-        } else {
-          // respuesta rara => logout
-          logout?.();
-        }
-      } catch (err) {
-        // token inválido/expirado
-        logout?.();
-      } finally {
-        setChecking(false);
-        setCheckedOnce(true);
-      }
-    };
-
     run();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, token]);
+    return () => {
+      alive = false;
+    };
+  }, [token]);
 
-  // 1) Mientras CustomerAuthContext carga localStorage
-  if (loading) {
+  // Loading UI mínimo
+  if (checking) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-50 flex items-center justify-center px-4">
-        <div className="w-full max-w-sm rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
-          <div className="text-sm text-slate-200 font-semibold">Cargando sesión…</div>
-          <div className="mt-2 text-xs text-slate-400">
-            Estamos preparando tu Journey.
-          </div>
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
+        <div className="rounded-2xl border border-slate-800/70 bg-slate-900/40 px-5 py-4">
+          <div className="text-sm font-semibold">Verificando sesión…</div>
+          <div className="mt-1 text-xs text-slate-400">Un momento</div>
         </div>
       </div>
     );
   }
 
-  // 2) Si no hay token => a /login
-  if (!token) {
+  // Si no hay token o no ok => login
+  if (!token || !ok || !isAuthed) {
     return (
       <Navigate
         to="/login"
         replace
-        state={{ returnTo: location.pathname + location.search }}
+        state={{ returnTo, reason: "protected" }}
       />
     );
   }
 
-  // 3) Si hay token pero aún estamos verificando /me
-  if (checking || !checkedOnce) {
-    return (
-      <div className="min-h-screen bg-slate-950 text-slate-50 flex items-center justify-center px-4">
-        <div className="w-full max-w-sm rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
-          <div className="text-sm text-slate-200 font-semibold">Validando sesión…</div>
-          <div className="mt-2 text-xs text-slate-400">
-            Un momento. Estamos confirmando tu cuenta.
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // 4) Ya está logueado y validado
   return children;
 }
