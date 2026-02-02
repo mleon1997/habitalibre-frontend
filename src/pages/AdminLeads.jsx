@@ -39,12 +39,14 @@ const formatDate = (d) => {
   }
 };
 
+// ✅ Helper: number or null
 const toNumOrNull = (v) => {
   if (v == null) return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 };
 
+// ✅ Helper: bool-ish → "Sí/No/-"
 const formatBoolSiNo = (v) => {
   if (v === true) return "Sí";
   if (v === false) return "No";
@@ -52,32 +54,6 @@ const formatBoolSiNo = (v) => {
   if (s === "true" || s === "1" || s === "si" || s === "sí") return "Sí";
   if (s === "false" || s === "0" || s === "no") return "No";
   return "-";
-};
-
-// ✅ JWT helpers (evita requests si el token ya expiró)
-const parseJwtPayload = (token) => {
-  try {
-    const part = token.split(".")[1];
-    if (!part) return null;
-    const base64 = part.replace(/-/g, "+").replace(/_/g, "/");
-    const json = decodeURIComponent(
-      atob(base64)
-        .split("")
-        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-        .join("")
-    );
-    return JSON.parse(json);
-  } catch {
-    return null;
-  }
-};
-
-const isJwtExpired = (token) => {
-  const payload = parseJwtPayload(token);
-  const exp = payload?.exp;
-  if (!exp) return false; // si no hay exp, no asumimos expirado
-  const nowSec = Math.floor(Date.now() / 1000);
-  return exp <= nowSec;
 };
 
 // ✅ Score HL: soporta TODOS los formatos (plano / decision / resultado)
@@ -88,6 +64,7 @@ const getScoreHL = (lead) => {
   const s2 = toNumOrNull(lead?.decision?.scoreHL);
   if (s2 != null) return s2;
 
+  // formatos típicos del scoring
   const s3 = toNumOrNull(lead?.resultado?.puntajeHabitaLibre?.score);
   if (s3 != null) return s3;
 
@@ -100,15 +77,15 @@ const getScoreHL = (lead) => {
   return null;
 };
 
-export default function AdminLeads() {
+const AdminLeads = () => {
   // -----------------------------
-  // Filtros
+  // Filtros (SIMPLIFICADOS)
   // -----------------------------
   const [email, setEmail] = useState("");
   const [telefono, setTelefono] = useState("");
   const [ciudad, setCiudad] = useState("");
 
-  // Datos
+  // Datos tabla
   const [leads, setLeads] = useState([]);
   const [totalLeads, setTotalLeads] = useState(0);
   const [pagina, setPagina] = useState(1);
@@ -120,16 +97,8 @@ export default function AdminLeads() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState(null);
 
-  // 🔐 Auth admin (auto-limpia si expiró)
-  const [token, setToken] = useState(() => {
-    const t = localStorage.getItem("hl_admin_token") || "";
-    if (t && isJwtExpired(t)) {
-      localStorage.removeItem("hl_admin_token");
-      localStorage.removeItem("hl_admin_email");
-      return "";
-    }
-    return t;
-  });
+  // 🔐 Auth admin
+  const [token, setToken] = useState(() => localStorage.getItem("hl_admin_token") || "");
   const [adminEmail, setAdminEmail] = useState(() => localStorage.getItem("hl_admin_email") || "");
 
   // KPIs
@@ -156,6 +125,7 @@ export default function AdminLeads() {
     else if (score >= 60) color = "bg-sky-50 text-sky-700";
     else if (score >= 40) color = "bg-amber-50 text-amber-700";
     else color = "bg-rose-50 text-rose-700";
+
     return (
       <span
         className={`inline-flex items-center justify-center min-w-[40px] px-2 py-1 rounded-full text-xs font-semibold ${color}`}
@@ -165,6 +135,7 @@ export default function AdminLeads() {
     );
   };
 
+  // ✅ Canal canónico (fallback a metadata.canal)
   const getCanal = (lead) => {
     const c = String(lead?.canal || "").trim().toLowerCase();
     if (c === "web" || c === "whatsapp" || c === "instagram") return c;
@@ -181,6 +152,7 @@ export default function AdminLeads() {
     return "web";
   };
 
+  // ✅ Fuente canónica (fallback: si origen Manychat)
   const getFuente = (lead) => {
     const f = String(lead?.fuente || "").trim().toLowerCase();
     if (f === "form" || f === "manychat") return f;
@@ -192,6 +164,7 @@ export default function AdminLeads() {
 
   const chipCanal = (lead) => {
     const canal = getCanal(lead);
+
     if (canal === "whatsapp") {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-medium">
@@ -200,6 +173,7 @@ export default function AdminLeads() {
         </span>
       );
     }
+
     if (canal === "instagram") {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-fuchsia-50 text-fuchsia-700 text-xs font-medium">
@@ -208,6 +182,7 @@ export default function AdminLeads() {
         </span>
       );
     }
+
     return (
       <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-medium">
         <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
@@ -232,9 +207,10 @@ export default function AdminLeads() {
     );
   };
 
+  // Código único “bonito” para el lead
   const obtenerCodigoLead = (lead) => {
     if (!lead) return "-";
-    if (lead.codigo) return lead.codigo;
+    if (lead.codigo) return lead.codigo; // ✅ tu campo real
     if (lead.codigoHL) return lead.codigoHL;
     if (lead.codigoUnico) return lead.codigoUnico;
     if (lead.codigoLead) return lead.codigoLead;
@@ -242,17 +218,23 @@ export default function AdminLeads() {
     return "-";
   };
 
-  const sanitizePhoneForWa = (phone) => String(phone || "").replace(/[^\d]/g, "") || "";
+  const sanitizePhoneForWa = (phone) => {
+    const p = String(phone || "").replace(/[^\d]/g, "");
+    return p || "";
+  };
 
   const getIgUsername = (lead) => {
     let u = String(lead?.igUsername || "").trim();
     if (u) return u.replace(/^@/, "");
+
     const m = lead?.metadata?.instagram || {};
     u = String(m.username || m.ig_username || m.instagram_username || "").trim();
     if (u) return u.replace(/^@/, "");
+
     const raw = lead?.metadata?.whatsapp || lead?.metadata?.instagram || {};
     u = String(raw.igUsername || raw.ig_username || raw.username || "").trim();
     if (u) return u.replace(/^@/, "");
+
     return "";
   };
 
@@ -270,8 +252,12 @@ export default function AdminLeads() {
     return `https://www.instagram.com/${u}/`;
   };
 
+  // -------------------------------------------------
+  // ✅ Decision UI (desde backend lead.decision)
+  // -------------------------------------------------
   const getDecision = (lead) => lead?.decision || null;
 
+  // ✅ Helpers: ingreso/deuda “plano” con fallback a perfil del scoring
   const getIngresoMensual = (lead) => {
     const r = lead?.resultado || null;
     const perfil = r?.perfil || null;
@@ -282,6 +268,8 @@ export default function AdminLeads() {
     const b = toNumOrNull(perfil?.ingresoTotal);
     if (b != null) return b;
 
+    // ✅ tu doc real también trae perfil.ingresoTotal (ya cubierto)
+    // y podría traer lead.ingresoTotal directo:
     const c = toNumOrNull(lead?.ingresoTotal);
     if (c != null) return c;
 
@@ -304,39 +292,55 @@ export default function AdminLeads() {
   const chipHeat = (heat) => {
     const h = Number(heat ?? -1);
     if (!Number.isFinite(h) || h < 0) return <span className="text-xs text-slate-400">-</span>;
+
     const label = h === 0 ? "Frío" : h === 1 ? "Tibio" : h === 2 ? "Caliente" : "🔥 Hot";
     const cls =
-      h <= 1 ? "bg-slate-100 text-slate-700" : h === 2 ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700";
-    return <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${cls}`}>{label}</span>;
+      h <= 1
+        ? "bg-slate-100 text-slate-700"
+        : h === 2
+        ? "bg-amber-50 text-amber-700"
+        : "bg-rose-50 text-rose-700";
+
+    return (
+      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${cls}`}>
+        {label}
+      </span>
+    );
   };
 
   const chipEstado = (estado) => {
     const e = String(estado || "").toLowerCase();
     if (!e) return <span className="text-xs text-slate-400">-</span>;
-    if (e === "bancable")
+
+    if (e === "bancable") {
       return (
         <span className="inline-flex items-center px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold">
           Bancable
         </span>
       );
-    if (e === "rescatable")
+    }
+    if (e === "rescatable") {
       return (
         <span className="inline-flex items-center px-2 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold">
           Rescatable
         </span>
       );
-    if (e === "descartable")
+    }
+    if (e === "descartable") {
       return (
         <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
           Descartable
         </span>
       );
-    if (e === "por_calificar")
+    }
+    if (e === "por_calificar") {
       return (
         <span className="inline-flex items-center px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold">
           Por calificar
         </span>
       );
+    }
+
     return (
       <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
         {estado}
@@ -363,159 +367,159 @@ export default function AdminLeads() {
     return <span className="text-xs text-slate-400">-</span>;
   };
 
-  // ✅ FIX: relogin SIN redirect (evita loops y limpia UI)
-  const forceAdminRelogin = useCallback((reason = "expired") => {
+  // ✅ PATCH: helper para forzar relogin admin con retorno a la ruta actual
+  const forceAdminRelogin = (reason = "expired") => {
     try {
       localStorage.removeItem("hl_admin_token");
       localStorage.removeItem("hl_admin_email");
     } catch {}
-
     setToken("");
     setAdminEmail("");
-    setDrawerOpen(false);
-    setSelectedLead(null);
-    setLeads([]);
-    setTotalLeads(0);
-    setTotalPaginas(1);
-    setPagina(1);
 
-    setError(
-      reason === "missing_token"
-        ? "Sesión no encontrada. Inicia sesión nuevamente."
-        : "Tu sesión expiró. Inicia sesión nuevamente."
-    );
-  }, []);
+    const returnTo =
+      window.location?.pathname + (window.location?.search || "") + (window.location?.hash || "");
 
-  // ✅ PDF (usa token del state)
-  const descargarFichaPDF = useCallback(
-    async (codigo) => {
-      try {
-        const currentToken = token;
-        if (!currentToken) {
-          forceAdminRelogin("missing_token");
-          return;
-        }
-        if (isJwtExpired(currentToken)) {
-          forceAdminRelogin("expired");
-          return;
-        }
-
-        const code = String(codigo || "").trim();
-        if (!code || code === "-") {
-          alert("Este lead no tiene código para generar PDF.");
-          return;
-        }
-
-        const url = `${API_BASE_URL}/api/reportes/ficha/${encodeURIComponent(code)}`;
-
-        const res = await fetch(url, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${currentToken}`,
-            Accept: "application/pdf",
-          },
-          cache: "no-store",
-        });
-
-        if (res.status === 401 || res.status === 403) {
-          forceAdminRelogin("expired");
-          return;
-        }
-
-        if (!res.ok) {
-          const txt = await res.text().catch(() => "");
-          console.error("PDF error body:", txt);
-          alert(`No se pudo generar el PDF (status ${res.status}).`);
-          return;
-        }
-
-        const blob = await res.blob();
-        const a = document.createElement("a");
-        const blobUrl = window.URL.createObjectURL(blob);
-        a.href = blobUrl;
-        a.download = `Ficha_Comercial_${code}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
-      } catch (err) {
-        console.error("descargarFichaPDF error:", err);
-        alert("Error generando el PDF.");
+    window.location.href = `#/admin?returnTo=${encodeURIComponent(returnTo)}&reason=${encodeURIComponent(
+      reason
+    )}`;
+  };
+// =====================================================
+// ✅ PDF bajo pedido (Ficha Comercial v1.2) - FIX descarga
+// =====================================================
+const descargarFichaPDF = useCallback(
+  async (codigo) => {
+    try {
+      const currentToken = localStorage.getItem("hl_admin_token");
+      if (!currentToken) {
+        forceAdminRelogin("missing_token");
+        return;
       }
-    },
-    [token, forceAdminRelogin]
-  );
+
+      const code = String(codigo || "").trim();
+      if (!code || code === "-") {
+        alert("Este lead no tiene código para generar PDF.");
+        return;
+      }
+
+      const url = `${API_BASE_URL}/api/reportes/ficha/${encodeURIComponent(code)}`;
+
+      console.log("🧾 PDF -> URL:", url);
+      console.log("🧾 PDF -> token len:", currentToken.length);
+
+      const res = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${currentToken}`,
+          Accept: "application/pdf",
+        },
+        cache: "no-store",
+      });
+
+      // DEBUG útil
+      console.log("🧾 PDF -> status:", res.status);
+      console.log("🧾 PDF -> content-type:", res.headers.get("content-type"));
+
+      if (res.status === 401 || res.status === 403) {
+        // OJO: aquí está tu “me bota al login”
+        forceAdminRelogin("expired_or_forbidden");
+        return;
+      }
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        console.error("🧾 PDF -> error body:", txt);
+        alert(`No se pudo generar el PDF (status ${res.status}).`);
+        return;
+      }
+
+      const blob = await res.blob();
+
+      // ✅ Descargar SIN abrir pestaña (más estable)
+      const a = document.createElement("a");
+      const blobUrl = window.URL.createObjectURL(blob);
+      a.href = blobUrl;
+      a.download = `Ficha_Comercial_${code}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+    } catch (err) {
+      console.error("🧾 descargarFichaPDF error:", err);
+      alert("Error generando el PDF.");
+    }
+  },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [API_BASE_URL]
+);
+
 
   // =====================================================
   // Fetch Leads
   // =====================================================
-  const fetchLeads = useCallback(
-    async (paginaNueva = 1) => {
-      try {
-        setLoading(true);
-        setError("");
+  const fetchLeads = async (paginaNueva = 1) => {
+    try {
+      setLoading(true);
+      setError("");
 
-        const currentToken = token;
-        if (!currentToken) {
-          forceAdminRelogin("missing_token");
-          return;
-        }
-        if (isJwtExpired(currentToken)) {
-          forceAdminRelogin("expired");
-          return;
-        }
-
-        const params = new URLSearchParams();
-        if (email.trim()) params.append("email", email.trim());
-        if (telefono.trim()) params.append("telefono", telefono.trim());
-        if (ciudad.trim()) params.append("ciudad", ciudad.trim());
-        params.append("pagina", paginaNueva);
-        params.append("limit", pageSize);
-
-        const url = `${API_BASE_URL}/api/leads?${params.toString()}`;
-
-        const res = await fetch(url, {
-          headers: { Authorization: `Bearer ${currentToken}` },
-        });
-
-        if (res.status === 401 || res.status === 403) {
-          forceAdminRelogin("expired");
-          return;
-        }
-
-        if (!res.ok) throw new Error(`No se pudo cargar los leads (status ${res.status})`);
-
-        const data = await res.json();
-        setLeads(data.leads || []);
-        setTotalLeads(data.total || 0);
-        setTotalPaginas(data.totalPaginas || 1);
-        setPagina(data.pagina || paginaNueva);
-      } catch (err) {
-        console.error("Error fetchLeads:", err);
-        setError(err.message || "Error al cargar leads");
+      const currentToken = localStorage.getItem("hl_admin_token");
+      if (!currentToken) {
+        setError("No autorizado: inicia sesión nuevamente.");
         setLeads([]);
         setTotalLeads(0);
         setTotalPaginas(1);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [token, email, telefono, ciudad, forceAdminRelogin]
-  );
-
-  // =====================================================
-  // Fetch Stats
-  // =====================================================
-  const fetchStats = useCallback(async () => {
-    try {
-      setLoadingStats(true);
-
-      const currentToken = token;
-      if (!currentToken) return;
-      if (isJwtExpired(currentToken)) {
-        forceAdminRelogin("expired");
+        setToken("");
         return;
       }
+
+      const params = new URLSearchParams();
+
+      if (email.trim()) params.append("email", email.trim());
+      if (telefono.trim()) params.append("telefono", telefono.trim());
+      if (ciudad.trim()) params.append("ciudad", ciudad.trim());
+
+      params.append("pagina", paginaNueva);
+      params.append("limit", pageSize);
+
+      const url = `${API_BASE_URL}/api/leads?${params.toString()}`;
+      console.log("🌐 Fetch leads a:", url);
+
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${currentToken}` },
+      });
+
+      if (res.status === 401 || res.status === 403) {
+        forceAdminRelogin("expired");
+        throw new Error("No autorizado: tu sesión ha expirado.");
+      }
+
+      if (!res.ok) throw new Error(`No se pudo cargar los leads (status ${res.status})`);
+
+      const data = await res.json();
+
+      setLeads(data.leads || []);
+      setTotalLeads(data.total || 0);
+      setTotalPaginas(data.totalPaginas || 1);
+      setPagina(data.pagina || paginaNueva);
+    } catch (err) {
+      console.error("❌ Error en fetchLeads:", err);
+      setError(err.message || "Error al cargar leads");
+      setLeads([]);
+      setTotalLeads(0);
+      setTotalPaginas(1);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // =====================================================
+  // Fetch Stats (KPIs)
+  // =====================================================
+  const fetchStats = async () => {
+    try {
+      setLoadingStats(true);
+      const currentToken = localStorage.getItem("hl_admin_token");
+      if (!currentToken) return;
 
       const res = await fetch(`${API_BASE_URL}/api/leads/stats`, {
         headers: { Authorization: `Bearer ${currentToken}` },
@@ -529,6 +533,7 @@ export default function AdminLeads() {
       if (!res.ok) return;
 
       const data = await res.json();
+
       setStats({
         total: data.total ?? totalLeads,
         hoy: data.hoy ?? 0,
@@ -536,11 +541,11 @@ export default function AdminLeads() {
         semanaAnterior: data.semanaAnterior ?? 0,
       });
     } catch (err) {
-      console.warn("Error stats:", err);
+      console.warn("Error cargando stats:", err);
     } finally {
       setLoadingStats(false);
     }
-  }, [token, totalLeads, forceAdminRelogin]);
+  };
 
   // =====================================================
   // Handlers UI
@@ -554,11 +559,8 @@ export default function AdminLeads() {
     setEmail("");
     setTelefono("");
     setCiudad("");
-    // usamos setTimeout 0 para que use los estados ya limpios
-    setTimeout(() => {
-      fetchLeads(1);
-      fetchStats();
-    }, 0);
+    fetchLeads(1);
+    fetchStats();
   };
 
   const handleAnterior = () => {
@@ -570,14 +572,10 @@ export default function AdminLeads() {
   };
 
   const handleLogout = () => {
-    try {
-      localStorage.removeItem("hl_admin_token");
-      localStorage.removeItem("hl_admin_email");
-    } catch {}
+    localStorage.removeItem("hl_admin_token");
+    localStorage.removeItem("hl_admin_email");
     setToken("");
     setAdminEmail("");
-    setDrawerOpen(false);
-    setSelectedLead(null);
   };
 
   const openDrawerFor = useCallback((lead) => {
@@ -598,35 +596,37 @@ export default function AdminLeads() {
     return () => window.removeEventListener("keydown", onKey);
   }, [drawerOpen, closeDrawer]);
 
-  // Efectos (al entrar con token)
+  // =====================================================
+  // Efectos
+  // =====================================================
   useEffect(() => {
     if (!token) return;
     fetchLeads(1);
     fetchStats();
-  }, [token, fetchLeads, fetchStats]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
-  // Gate
+  // =====================================================
+  // Gate: si no hay token → login admin
+  // =====================================================
   if (!token) {
     return (
       <AdminLogin
         onSuccess={(newToken, emailFromLogin) => {
-          // guarda
-          try {
-            localStorage.setItem("hl_admin_token", newToken);
-            localStorage.setItem("hl_admin_email", emailFromLogin || "");
-          } catch {}
-          // state
           setToken(newToken);
-          setAdminEmail(emailFromLogin || "");
+          setAdminEmail(emailFromLogin);
         }}
       />
     );
   }
 
+  // =====================================================
   // UI
+  // =====================================================
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-6 md:px-8">
       <div className="max-w-6xl mx-auto space-y-5">
+        {/* HEADER PRINCIPAL */}
         <header className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-slate-900">Dashboard de Leads</h1>
@@ -652,6 +652,7 @@ export default function AdminLeads() {
             </div>
           </div>
 
+          {/* SESIÓN + LOGOUT */}
           <div className="flex items-center gap-3 self-start">
             {adminEmail && (
               <div className="hidden sm:flex items-center gap-2 rounded-full bg-slate-100 border border-slate-200 px-3 py-1">
@@ -671,13 +672,19 @@ export default function AdminLeads() {
           </div>
         </header>
 
+        {/* KPIs RÁPIDOS */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <KpiCard label="Leads hoy" value={stats.hoy} subtitle={loadingStats ? "Calculando…" : "Ingresados desde 00:00"} />
+          <KpiCard
+            label="Leads hoy"
+            value={stats.hoy}
+            subtitle={loadingStats ? "Calculando…" : "Ingresados desde 00:00"}
+          />
           <KpiCard label="Esta semana" value={stats.semanaActual} subtitle="Total captados desde lunes" />
           <KpiCard label="Semana anterior" value={stats.semanaAnterior} subtitle="Para comparar rendimiento" />
           <KpiCard label="Total en base" value={stats.total || totalLeads} subtitle="Leads históricos registrados" />
         </section>
 
+        {/* FILTROS (SIMPLIFICADOS) */}
         <section className="bg-white rounded-2xl shadow-sm border border-slate-200 px-5 py-4 md:px-6 md:py-5">
           <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
             <div className="flex flex-col md:col-span-2">
@@ -738,6 +745,7 @@ export default function AdminLeads() {
           {error && <div className="mt-3 text-sm text-red-500">{error}</div>}
         </section>
 
+        {/* TABLA (SIMPLIFICADA) */}
         <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="overflow-x-auto max-h-[65vh]">
             <table className="min-w-full text-sm">
@@ -800,7 +808,9 @@ export default function AdminLeads() {
                         {lead.producto || lead.tipoProducto || decision?.producto || "-"}
                       </td>
 
-                      <td className="px-4 py-3 text-sm font-semibold text-slate-900">{chipScore(getScoreHL(lead))}</td>
+                      <td className="px-4 py-3 text-sm font-semibold text-slate-900">
+                        {chipScore(getScoreHL(lead))}
+                      </td>
 
                       <td className="px-4 py-3">
                         <button
@@ -831,6 +841,7 @@ export default function AdminLeads() {
             </table>
           </div>
 
+          {/* FOOTER TABLA */}
           <div className="flex flex-col md:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-100 text-xs text-slate-500">
             <div>
               Mostrando <span className="font-semibold text-slate-900">{mostrarDesde}</span> –{" "}
@@ -860,6 +871,7 @@ export default function AdminLeads() {
         </section>
       </div>
 
+      {/* DRAWER (se mantiene completo para operaciones) */}
       <LeadDrawer
         open={drawerOpen}
         lead={selectedLead}
@@ -882,10 +894,10 @@ export default function AdminLeads() {
       />
     </div>
   );
-}
+};
 
 // =====================================================
-// Drawer
+// Drawer (panel lateral, no navegación)
 // =====================================================
 function LeadDrawer({
   open,
@@ -925,12 +937,14 @@ function LeadDrawer({
   const porQue = Array.isArray(decision?.porQue) ? decision.porQue : [];
   const nextActions = Array.isArray(decision?.nextActions) ? decision.nextActions : [];
 
+  // ✅ perfil financiero (plano → fallback perfil scoring)
   const ingresoMensual = getIngresoMensual ? getIngresoMensual(lead) : null;
   const deudaMensual = getDeudaMensual ? getDeudaMensual(lead) : null;
-  const dtiBase = ingresoMensual && ingresoMensual > 0 && deudaMensual != null ? deudaMensual / ingresoMensual : null;
+  const dtiBase =
+    ingresoMensual && ingresoMensual > 0 && deudaMensual != null ? deudaMensual / ingresoMensual : null;
 
-  const aniosEstabilidad =
-    toNumOrNull(lead?.anios_estabilidad) ?? toNumOrNull(perfil?.aniosEstabilidad) ?? null;
+  const aniosEstabilidad = toNumOrNull(lead?.anios_estabilidad) ?? toNumOrNull(perfil?.aniosEstabilidad) ?? null;
+
   const afiliadoIess = lead?.afiliado_iess != null ? lead.afiliado_iess : perfil?.afiliadoIess ?? null;
 
   return (
@@ -1082,7 +1096,10 @@ function LeadDrawer({
           <Card title="Bancabilidad (scoring)">
             <div className="grid grid-cols-2 gap-3">
               <Stat label="Score HL" value={chipScore(getScoreHL(lead))} />
-              <Stat label="Etapa" value={<span className="text-sm font-semibold text-slate-900">{decision?.etapa || "-"}</span>} />
+              <Stat
+                label="Etapa"
+                value={<span className="text-sm font-semibold text-slate-900">{decision?.etapa || "-"}</span>}
+              />
               <Stat
                 label="Producto"
                 value={<span className="text-sm font-semibold text-slate-900">{lead?.producto || decision?.producto || "-"}</span>}
@@ -1094,7 +1111,10 @@ function LeadDrawer({
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <Stat label="DTI con hipoteca" value={<span className="text-sm font-semibold text-slate-900">{formatPct(resultado?.dtiConHipoteca)}</span>} />
+              <Stat
+                label="DTI con hipoteca"
+                value={<span className="text-sm font-semibold text-slate-900">{formatPct(resultado?.dtiConHipoteca)}</span>}
+              />
               <Stat label="LTV estimado" value={<span className="text-sm font-semibold text-slate-900">{formatPct(resultado?.ltv)}</span>} />
             </div>
 
@@ -1107,7 +1127,10 @@ function LeadDrawer({
                 label="Deudas mensuales"
                 value={<span className="text-sm font-semibold text-slate-900">{deudaMensual != null ? `$${formatMoney(deudaMensual)}` : "-"}</span>}
               />
-              <Stat label="DTI sin hipoteca" value={<span className="text-sm font-semibold text-slate-900">{dtiBase != null ? `${Math.round(dtiBase * 100)}%` : "-"}</span>} />
+              <Stat
+                label="DTI sin hipoteca"
+                value={<span className="text-sm font-semibold text-slate-900">{dtiBase != null ? `${Math.round(dtiBase * 100)}%` : "-"}</span>}
+              />
               <Stat
                 label="Estabilidad / IESS"
                 value={
@@ -1122,7 +1145,9 @@ function LeadDrawer({
               <p className="text-xs font-semibold text-slate-700">Ruta recomendada</p>
               <div className="mt-2 rounded-xl border border-slate-200 bg-white p-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-slate-900">{safe(ruta?.tipo, safe(resultado?.rutaRecomendada?.tipo, "-"))}</span>
+                  <span className="text-sm font-semibold text-slate-900">
+                    {safe(ruta?.tipo, safe(resultado?.rutaRecomendada?.tipo, "-"))}
+                  </span>
                   <span className="text-xs text-slate-500">
                     Cuota:{" "}
                     <span className="font-semibold text-slate-800">
@@ -1205,9 +1230,6 @@ function LeadDrawer({
   );
 }
 
-// =====================================================
-// UI atoms
-// =====================================================
 function Card({ title, subtitle, children }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -1249,3 +1271,5 @@ function KpiCard({ label, value, subtitle }) {
     </div>
   );
 }
+
+export default AdminLeads;
