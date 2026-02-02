@@ -39,14 +39,12 @@ const formatDate = (d) => {
   }
 };
 
-// ✅ Helper: number or null
 const toNumOrNull = (v) => {
   if (v == null) return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 };
 
-// ✅ Helper: bool-ish → "Sí/No/-"
 const formatBoolSiNo = (v) => {
   if (v === true) return "Sí";
   if (v === false) return "No";
@@ -64,7 +62,6 @@ const getScoreHL = (lead) => {
   const s2 = toNumOrNull(lead?.decision?.scoreHL);
   if (s2 != null) return s2;
 
-  // formatos típicos del scoring
   const s3 = toNumOrNull(lead?.resultado?.puntajeHabitaLibre?.score);
   if (s3 != null) return s3;
 
@@ -77,15 +74,15 @@ const getScoreHL = (lead) => {
   return null;
 };
 
-const AdminLeads = () => {
+export default function AdminLeads() {
   // -----------------------------
-  // Filtros (SIMPLIFICADOS)
+  // Filtros
   // -----------------------------
   const [email, setEmail] = useState("");
   const [telefono, setTelefono] = useState("");
   const [ciudad, setCiudad] = useState("");
 
-  // Datos tabla
+  // Datos
   const [leads, setLeads] = useState([]);
   const [totalLeads, setTotalLeads] = useState(0);
   const [pagina, setPagina] = useState(1);
@@ -97,7 +94,7 @@ const AdminLeads = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState(null);
 
-  // 🔐 Auth admin
+  // Auth admin
   const [token, setToken] = useState(() => localStorage.getItem("hl_admin_token") || "");
   const [adminEmail, setAdminEmail] = useState(() => localStorage.getItem("hl_admin_email") || "");
 
@@ -125,17 +122,13 @@ const AdminLeads = () => {
     else if (score >= 60) color = "bg-sky-50 text-sky-700";
     else if (score >= 40) color = "bg-amber-50 text-amber-700";
     else color = "bg-rose-50 text-rose-700";
-
     return (
-      <span
-        className={`inline-flex items-center justify-center min-w-[40px] px-2 py-1 rounded-full text-xs font-semibold ${color}`}
-      >
+      <span className={`inline-flex items-center justify-center min-w-[40px] px-2 py-1 rounded-full text-xs font-semibold ${color}`}>
         {score}
       </span>
     );
   };
 
-  // ✅ Canal canónico (fallback a metadata.canal)
   const getCanal = (lead) => {
     const c = String(lead?.canal || "").trim().toLowerCase();
     if (c === "web" || c === "whatsapp" || c === "instagram") return c;
@@ -152,7 +145,6 @@ const AdminLeads = () => {
     return "web";
   };
 
-  // ✅ Fuente canónica (fallback: si origen Manychat)
   const getFuente = (lead) => {
     const f = String(lead?.fuente || "").trim().toLowerCase();
     if (f === "form" || f === "manychat") return f;
@@ -164,7 +156,6 @@ const AdminLeads = () => {
 
   const chipCanal = (lead) => {
     const canal = getCanal(lead);
-
     if (canal === "whatsapp") {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-medium">
@@ -173,7 +164,6 @@ const AdminLeads = () => {
         </span>
       );
     }
-
     if (canal === "instagram") {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-fuchsia-50 text-fuchsia-700 text-xs font-medium">
@@ -182,7 +172,6 @@ const AdminLeads = () => {
         </span>
       );
     }
-
     return (
       <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-medium">
         <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
@@ -194,23 +183,14 @@ const AdminLeads = () => {
   const chipFuente = (lead) => {
     const fuente = getFuente(lead);
     if (fuente === "manychat") {
-      return (
-        <span className="inline-flex items-center px-2 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-medium">
-          Manychat
-        </span>
-      );
+      return <span className="inline-flex items-center px-2 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-medium">Manychat</span>;
     }
-    return (
-      <span className="inline-flex items-center px-2 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-medium">
-        Form
-      </span>
-    );
+    return <span className="inline-flex items-center px-2 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-medium">Form</span>;
   };
 
-  // Código único “bonito” para el lead
   const obtenerCodigoLead = (lead) => {
     if (!lead) return "-";
-    if (lead.codigo) return lead.codigo; // ✅ tu campo real
+    if (lead.codigo) return lead.codigo;
     if (lead.codigoHL) return lead.codigoHL;
     if (lead.codigoUnico) return lead.codigoUnico;
     if (lead.codigoLead) return lead.codigoLead;
@@ -218,23 +198,17 @@ const AdminLeads = () => {
     return "-";
   };
 
-  const sanitizePhoneForWa = (phone) => {
-    const p = String(phone || "").replace(/[^\d]/g, "");
-    return p || "";
-  };
+  const sanitizePhoneForWa = (phone) => String(phone || "").replace(/[^\d]/g, "") || "";
 
   const getIgUsername = (lead) => {
     let u = String(lead?.igUsername || "").trim();
     if (u) return u.replace(/^@/, "");
-
     const m = lead?.metadata?.instagram || {};
     u = String(m.username || m.ig_username || m.instagram_username || "").trim();
     if (u) return u.replace(/^@/, "");
-
     const raw = lead?.metadata?.whatsapp || lead?.metadata?.instagram || {};
     u = String(raw.igUsername || raw.ig_username || raw.username || "").trim();
     if (u) return u.replace(/^@/, "");
-
     return "";
   };
 
@@ -252,12 +226,8 @@ const AdminLeads = () => {
     return `https://www.instagram.com/${u}/`;
   };
 
-  // -------------------------------------------------
-  // ✅ Decision UI (desde backend lead.decision)
-  // -------------------------------------------------
   const getDecision = (lead) => lead?.decision || null;
 
-  // ✅ Helpers: ingreso/deuda “plano” con fallback a perfil del scoring
   const getIngresoMensual = (lead) => {
     const r = lead?.resultado || null;
     const perfil = r?.perfil || null;
@@ -268,8 +238,6 @@ const AdminLeads = () => {
     const b = toNumOrNull(perfil?.ingresoTotal);
     if (b != null) return b;
 
-    // ✅ tu doc real también trae perfil.ingresoTotal (ya cubierto)
-    // y podría traer lead.ingresoTotal directo:
     const c = toNumOrNull(lead?.ingresoTotal);
     if (c != null) return c;
 
@@ -292,60 +260,19 @@ const AdminLeads = () => {
   const chipHeat = (heat) => {
     const h = Number(heat ?? -1);
     if (!Number.isFinite(h) || h < 0) return <span className="text-xs text-slate-400">-</span>;
-
     const label = h === 0 ? "Frío" : h === 1 ? "Tibio" : h === 2 ? "Caliente" : "🔥 Hot";
-    const cls =
-      h <= 1
-        ? "bg-slate-100 text-slate-700"
-        : h === 2
-        ? "bg-amber-50 text-amber-700"
-        : "bg-rose-50 text-rose-700";
-
-    return (
-      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${cls}`}>
-        {label}
-      </span>
-    );
+    const cls = h <= 1 ? "bg-slate-100 text-slate-700" : h === 2 ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700";
+    return <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${cls}`}>{label}</span>;
   };
 
   const chipEstado = (estado) => {
     const e = String(estado || "").toLowerCase();
     if (!e) return <span className="text-xs text-slate-400">-</span>;
-
-    if (e === "bancable") {
-      return (
-        <span className="inline-flex items-center px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold">
-          Bancable
-        </span>
-      );
-    }
-    if (e === "rescatable") {
-      return (
-        <span className="inline-flex items-center px-2 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold">
-          Rescatable
-        </span>
-      );
-    }
-    if (e === "descartable") {
-      return (
-        <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
-          Descartable
-        </span>
-      );
-    }
-    if (e === "por_calificar") {
-      return (
-        <span className="inline-flex items-center px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold">
-          Por calificar
-        </span>
-      );
-    }
-
-    return (
-      <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
-        {estado}
-      </span>
-    );
+    if (e === "bancable") return <span className="inline-flex items-center px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold">Bancable</span>;
+    if (e === "rescatable") return <span className="inline-flex items-center px-2 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold">Rescatable</span>;
+    if (e === "descartable") return <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">Descartable</span>;
+    if (e === "por_calificar") return <span className="inline-flex items-center px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold">Por calificar</span>;
+    return <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">{estado}</span>;
   };
 
   const chipLlamarHoy = (llamarHoy) => {
@@ -357,102 +284,82 @@ const AdminLeads = () => {
         </span>
       );
     }
-    if (llamarHoy === false) {
-      return (
-        <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
-          No urgente
-        </span>
-      );
-    }
+    if (llamarHoy === false) return <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">No urgente</span>;
     return <span className="text-xs text-slate-400">-</span>;
   };
 
-  // ✅ PATCH: helper para forzar relogin admin con retorno a la ruta actual
-  const forceAdminRelogin = (reason = "expired") => {
+  // ✅ FIX: relogin sin redirect (evita loop 401)
+  const forceAdminRelogin = useCallback((reason = "expired") => {
     try {
       localStorage.removeItem("hl_admin_token");
       localStorage.removeItem("hl_admin_email");
     } catch {}
     setToken("");
     setAdminEmail("");
+    setDrawerOpen(false);
+    setSelectedLead(null);
+    setLeads([]);
+    setTotalLeads(0);
+    setTotalPaginas(1);
+    setPagina(1);
+    setError(reason === "missing_token" ? "Sesión no encontrada. Inicia sesión nuevamente." : "Tu sesión expiró. Inicia sesión nuevamente.");
+  }, []);
 
-    const returnTo =
-      window.location?.pathname + (window.location?.search || "") + (window.location?.hash || "");
+  // ✅ PDF
+  const descargarFichaPDF = useCallback(
+    async (codigo) => {
+      try {
+        const currentToken = localStorage.getItem("hl_admin_token");
+        if (!currentToken) {
+          forceAdminRelogin("missing_token");
+          return;
+        }
 
-    window.location.href = `#/admin?returnTo=${encodeURIComponent(returnTo)}&reason=${encodeURIComponent(
-      reason
-    )}`;
-  };
-// =====================================================
-// ✅ PDF bajo pedido (Ficha Comercial v1.2) - FIX descarga
-// =====================================================
-const descargarFichaPDF = useCallback(
-  async (codigo) => {
-    try {
-      const currentToken = localStorage.getItem("hl_admin_token");
-      if (!currentToken) {
-        forceAdminRelogin("missing_token");
-        return;
+        const code = String(codigo || "").trim();
+        if (!code || code === "-") {
+          alert("Este lead no tiene código para generar PDF.");
+          return;
+        }
+
+        const url = `${API_BASE_URL}/api/reportes/ficha/${encodeURIComponent(code)}`;
+
+        const res = await fetch(url, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${currentToken}`,
+            Accept: "application/pdf",
+          },
+          cache: "no-store",
+        });
+
+        if (res.status === 401 || res.status === 403) {
+          forceAdminRelogin("expired_or_forbidden");
+          return;
+        }
+
+        if (!res.ok) {
+          const txt = await res.text().catch(() => "");
+          console.error("PDF error body:", txt);
+          alert(`No se pudo generar el PDF (status ${res.status}).`);
+          return;
+        }
+
+        const blob = await res.blob();
+        const a = document.createElement("a");
+        const blobUrl = window.URL.createObjectURL(blob);
+        a.href = blobUrl;
+        a.download = `Ficha_Comercial_${code}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+      } catch (err) {
+        console.error("descargarFichaPDF error:", err);
+        alert("Error generando el PDF.");
       }
-
-      const code = String(codigo || "").trim();
-      if (!code || code === "-") {
-        alert("Este lead no tiene código para generar PDF.");
-        return;
-      }
-
-      const url = `${API_BASE_URL}/api/reportes/ficha/${encodeURIComponent(code)}`;
-
-      console.log("🧾 PDF -> URL:", url);
-      console.log("🧾 PDF -> token len:", currentToken.length);
-
-      const res = await fetch(url, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${currentToken}`,
-          Accept: "application/pdf",
-        },
-        cache: "no-store",
-      });
-
-      // DEBUG útil
-      console.log("🧾 PDF -> status:", res.status);
-      console.log("🧾 PDF -> content-type:", res.headers.get("content-type"));
-
-      if (res.status === 401 || res.status === 403) {
-        // OJO: aquí está tu “me bota al login”
-        forceAdminRelogin("expired_or_forbidden");
-        return;
-      }
-
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        console.error("🧾 PDF -> error body:", txt);
-        alert(`No se pudo generar el PDF (status ${res.status}).`);
-        return;
-      }
-
-      const blob = await res.blob();
-
-      // ✅ Descargar SIN abrir pestaña (más estable)
-      const a = document.createElement("a");
-      const blobUrl = window.URL.createObjectURL(blob);
-      a.href = blobUrl;
-      a.download = `Ficha_Comercial_${code}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
-    } catch (err) {
-      console.error("🧾 descargarFichaPDF error:", err);
-      alert("Error generando el PDF.");
-    }
-  },
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  [API_BASE_URL]
-);
-
+    },
+    [forceAdminRelogin]
+  );
 
   // =====================================================
   // Fetch Leads
@@ -464,45 +371,34 @@ const descargarFichaPDF = useCallback(
 
       const currentToken = localStorage.getItem("hl_admin_token");
       if (!currentToken) {
-        setError("No autorizado: inicia sesión nuevamente.");
-        setLeads([]);
-        setTotalLeads(0);
-        setTotalPaginas(1);
-        setToken("");
+        forceAdminRelogin("missing_token");
         return;
       }
 
       const params = new URLSearchParams();
-
       if (email.trim()) params.append("email", email.trim());
       if (telefono.trim()) params.append("telefono", telefono.trim());
       if (ciudad.trim()) params.append("ciudad", ciudad.trim());
-
       params.append("pagina", paginaNueva);
       params.append("limit", pageSize);
 
       const url = `${API_BASE_URL}/api/leads?${params.toString()}`;
-      console.log("🌐 Fetch leads a:", url);
-
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${currentToken}` },
-      });
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${currentToken}` } });
 
       if (res.status === 401 || res.status === 403) {
         forceAdminRelogin("expired");
-        throw new Error("No autorizado: tu sesión ha expirado.");
+        return;
       }
 
       if (!res.ok) throw new Error(`No se pudo cargar los leads (status ${res.status})`);
 
       const data = await res.json();
-
       setLeads(data.leads || []);
       setTotalLeads(data.total || 0);
       setTotalPaginas(data.totalPaginas || 1);
       setPagina(data.pagina || paginaNueva);
     } catch (err) {
-      console.error("❌ Error en fetchLeads:", err);
+      console.error("Error fetchLeads:", err);
       setError(err.message || "Error al cargar leads");
       setLeads([]);
       setTotalLeads(0);
@@ -513,7 +409,7 @@ const descargarFichaPDF = useCallback(
   };
 
   // =====================================================
-  // Fetch Stats (KPIs)
+  // Fetch Stats
   // =====================================================
   const fetchStats = async () => {
     try {
@@ -533,7 +429,6 @@ const descargarFichaPDF = useCallback(
       if (!res.ok) return;
 
       const data = await res.json();
-
       setStats({
         total: data.total ?? totalLeads,
         hoy: data.hoy ?? 0,
@@ -541,7 +436,7 @@ const descargarFichaPDF = useCallback(
         semanaAnterior: data.semanaAnterior ?? 0,
       });
     } catch (err) {
-      console.warn("Error cargando stats:", err);
+      console.warn("Error stats:", err);
     } finally {
       setLoadingStats(false);
     }
@@ -572,10 +467,14 @@ const descargarFichaPDF = useCallback(
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("hl_admin_token");
-    localStorage.removeItem("hl_admin_email");
+    try {
+      localStorage.removeItem("hl_admin_token");
+      localStorage.removeItem("hl_admin_email");
+    } catch {}
     setToken("");
     setAdminEmail("");
+    setDrawerOpen(false);
+    setSelectedLead(null);
   };
 
   const openDrawerFor = useCallback((lead) => {
@@ -596,9 +495,7 @@ const descargarFichaPDF = useCallback(
     return () => window.removeEventListener("keydown", onKey);
   }, [drawerOpen, closeDrawer]);
 
-  // =====================================================
   // Efectos
-  // =====================================================
   useEffect(() => {
     if (!token) return;
     fetchLeads(1);
@@ -606,9 +503,7 @@ const descargarFichaPDF = useCallback(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  // =====================================================
-  // Gate: si no hay token → login admin
-  // =====================================================
+  // Gate
   if (!token) {
     return (
       <AdminLogin
@@ -620,13 +515,10 @@ const descargarFichaPDF = useCallback(
     );
   }
 
-  // =====================================================
   // UI
-  // =====================================================
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-6 md:px-8">
       <div className="max-w-6xl mx-auto space-y-5">
-        {/* HEADER PRINCIPAL */}
         <header className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-slate-900">Dashboard de Leads</h1>
@@ -652,7 +544,6 @@ const descargarFichaPDF = useCallback(
             </div>
           </div>
 
-          {/* SESIÓN + LOGOUT */}
           <div className="flex items-center gap-3 self-start">
             {adminEmail && (
               <div className="hidden sm:flex items-center gap-2 rounded-full bg-slate-100 border border-slate-200 px-3 py-1">
@@ -672,19 +563,13 @@ const descargarFichaPDF = useCallback(
           </div>
         </header>
 
-        {/* KPIs RÁPIDOS */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <KpiCard
-            label="Leads hoy"
-            value={stats.hoy}
-            subtitle={loadingStats ? "Calculando…" : "Ingresados desde 00:00"}
-          />
+          <KpiCard label="Leads hoy" value={stats.hoy} subtitle={loadingStats ? "Calculando…" : "Ingresados desde 00:00"} />
           <KpiCard label="Esta semana" value={stats.semanaActual} subtitle="Total captados desde lunes" />
           <KpiCard label="Semana anterior" value={stats.semanaAnterior} subtitle="Para comparar rendimiento" />
           <KpiCard label="Total en base" value={stats.total || totalLeads} subtitle="Leads históricos registrados" />
         </section>
 
-        {/* FILTROS (SIMPLIFICADOS) */}
         <section className="bg-white rounded-2xl shadow-sm border border-slate-200 px-5 py-4 md:px-6 md:py-5">
           <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
             <div className="flex flex-col md:col-span-2">
@@ -745,7 +630,6 @@ const descargarFichaPDF = useCallback(
           {error && <div className="mt-3 text-sm text-red-500">{error}</div>}
         </section>
 
-        {/* TABLA (SIMPLIFICADA) */}
         <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="overflow-x-auto max-h-[65vh]">
             <table className="min-w-full text-sm">
@@ -808,9 +692,7 @@ const descargarFichaPDF = useCallback(
                         {lead.producto || lead.tipoProducto || decision?.producto || "-"}
                       </td>
 
-                      <td className="px-4 py-3 text-sm font-semibold text-slate-900">
-                        {chipScore(getScoreHL(lead))}
-                      </td>
+                      <td className="px-4 py-3 text-sm font-semibold text-slate-900">{chipScore(getScoreHL(lead))}</td>
 
                       <td className="px-4 py-3">
                         <button
@@ -841,7 +723,6 @@ const descargarFichaPDF = useCallback(
             </table>
           </div>
 
-          {/* FOOTER TABLA */}
           <div className="flex flex-col md:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-100 text-xs text-slate-500">
             <div>
               Mostrando <span className="font-semibold text-slate-900">{mostrarDesde}</span> –{" "}
@@ -871,7 +752,6 @@ const descargarFichaPDF = useCallback(
         </section>
       </div>
 
-      {/* DRAWER (se mantiene completo para operaciones) */}
       <LeadDrawer
         open={drawerOpen}
         lead={selectedLead}
@@ -894,10 +774,10 @@ const descargarFichaPDF = useCallback(
       />
     </div>
   );
-};
+}
 
 // =====================================================
-// Drawer (panel lateral, no navegación)
+// Drawer
 // =====================================================
 function LeadDrawer({
   open,
@@ -937,14 +817,11 @@ function LeadDrawer({
   const porQue = Array.isArray(decision?.porQue) ? decision.porQue : [];
   const nextActions = Array.isArray(decision?.nextActions) ? decision.nextActions : [];
 
-  // ✅ perfil financiero (plano → fallback perfil scoring)
   const ingresoMensual = getIngresoMensual ? getIngresoMensual(lead) : null;
   const deudaMensual = getDeudaMensual ? getDeudaMensual(lead) : null;
-  const dtiBase =
-    ingresoMensual && ingresoMensual > 0 && deudaMensual != null ? deudaMensual / ingresoMensual : null;
+  const dtiBase = ingresoMensual && ingresoMensual > 0 && deudaMensual != null ? deudaMensual / ingresoMensual : null;
 
   const aniosEstabilidad = toNumOrNull(lead?.anios_estabilidad) ?? toNumOrNull(perfil?.aniosEstabilidad) ?? null;
-
   const afiliadoIess = lead?.afiliado_iess != null ? lead.afiliado_iess : perfil?.afiliadoIess ?? null;
 
   return (
@@ -955,9 +832,7 @@ function LeadDrawer({
         <div className="px-5 py-4 border-b border-slate-200 flex items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <p className="text-sm font-semibold text-slate-900 truncate">
-                {lead?.nombre || lead?.nombreCompleto || "Lead"}
-              </p>
+              <p className="text-sm font-semibold text-slate-900 truncate">{lead?.nombre || lead?.nombreCompleto || "Lead"}</p>
               <span className="text-xs text-slate-400">•</span>
               <span className="text-xs font-semibold text-slate-700">{obtenerCodigoLead(lead)}</span>
             </div>
@@ -971,8 +846,7 @@ function LeadDrawer({
             </div>
 
             <div className="mt-2 text-xs text-slate-500">
-              Creado:{" "}
-              <span className="font-medium text-slate-700">{lead?.createdAt ? formatDate(lead.createdAt) : "-"}</span>
+              Creado: <span className="font-medium text-slate-700">{lead?.createdAt ? formatDate(lead.createdAt) : "-"}</span>
             </div>
           </div>
 
@@ -1013,30 +887,19 @@ function LeadDrawer({
               )}
 
               {lead?.telefono && (
-                <a
-                  href={`tel:${lead.telefono}`}
-                  className="h-9 px-4 rounded-xl bg-sky-600 text-white text-sm font-semibold hover:bg-sky-700"
-                >
+                <a href={`tel:${lead.telefono}`} className="h-9 px-4 rounded-xl bg-sky-600 text-white text-sm font-semibold hover:bg-sky-700">
                   Llamar
                 </a>
               )}
 
               {lead?.email && (
-                <a
-                  href={`mailto:${lead.email}`}
-                  className="h-9 px-4 rounded-xl bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700"
-                >
+                <a href={`mailto:${lead.email}`} className="h-9 px-4 rounded-xl bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700">
                   Email
                 </a>
               )}
 
               {canal === "instagram" && igUser && igLink && (
-                <a
-                  href={igLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-9 px-4 rounded-xl bg-fuchsia-600 text-white text-sm font-semibold hover:bg-fuchsia-700"
-                >
+                <a href={igLink} target="_blank" rel="noopener noreferrer" className="h-9 px-4 rounded-xl bg-fuchsia-600 text-white text-sm font-semibold hover:bg-fuchsia-700">
                   Instagram
                 </a>
               )}
@@ -1096,41 +959,20 @@ function LeadDrawer({
           <Card title="Bancabilidad (scoring)">
             <div className="grid grid-cols-2 gap-3">
               <Stat label="Score HL" value={chipScore(getScoreHL(lead))} />
-              <Stat
-                label="Etapa"
-                value={<span className="text-sm font-semibold text-slate-900">{decision?.etapa || "-"}</span>}
-              />
-              <Stat
-                label="Producto"
-                value={<span className="text-sm font-semibold text-slate-900">{lead?.producto || decision?.producto || "-"}</span>}
-              />
-              <Stat
-                label="Canal / Fuente"
-                value={<span className="text-sm font-semibold text-slate-900">{`${canal || "-"} / ${fuente || "-"}`}</span>}
-              />
+              <Stat label="Etapa" value={<span className="text-sm font-semibold text-slate-900">{decision?.etapa || "-"}</span>} />
+              <Stat label="Producto" value={<span className="text-sm font-semibold text-slate-900">{lead?.producto || decision?.producto || "-"}</span>} />
+              <Stat label="Canal / Fuente" value={<span className="text-sm font-semibold text-slate-900">{`${canal || "-"} / ${fuente || "-"}`}</span>} />
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <Stat
-                label="DTI con hipoteca"
-                value={<span className="text-sm font-semibold text-slate-900">{formatPct(resultado?.dtiConHipoteca)}</span>}
-              />
+              <Stat label="DTI con hipoteca" value={<span className="text-sm font-semibold text-slate-900">{formatPct(resultado?.dtiConHipoteca)}</span>} />
               <Stat label="LTV estimado" value={<span className="text-sm font-semibold text-slate-900">{formatPct(resultado?.ltv)}</span>} />
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <Stat
-                label="Ingreso mensual"
-                value={<span className="text-sm font-semibold text-slate-900">{ingresoMensual != null ? `$${formatMoney(ingresoMensual)}` : "-"}</span>}
-              />
-              <Stat
-                label="Deudas mensuales"
-                value={<span className="text-sm font-semibold text-slate-900">{deudaMensual != null ? `$${formatMoney(deudaMensual)}` : "-"}</span>}
-              />
-              <Stat
-                label="DTI sin hipoteca"
-                value={<span className="text-sm font-semibold text-slate-900">{dtiBase != null ? `${Math.round(dtiBase * 100)}%` : "-"}</span>}
-              />
+              <Stat label="Ingreso mensual" value={<span className="text-sm font-semibold text-slate-900">{ingresoMensual != null ? `$${formatMoney(ingresoMensual)}` : "-"}</span>} />
+              <Stat label="Deudas mensuales" value={<span className="text-sm font-semibold text-slate-900">{deudaMensual != null ? `$${formatMoney(deudaMensual)}` : "-"}</span>} />
+              <Stat label="DTI sin hipoteca" value={<span className="text-sm font-semibold text-slate-900">{dtiBase != null ? `${Math.round(dtiBase * 100)}%` : "-"}</span>} />
               <Stat
                 label="Estabilidad / IESS"
                 value={
@@ -1145,14 +987,9 @@ function LeadDrawer({
               <p className="text-xs font-semibold text-slate-700">Ruta recomendada</p>
               <div className="mt-2 rounded-xl border border-slate-200 bg-white p-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-slate-900">
-                    {safe(ruta?.tipo, safe(resultado?.rutaRecomendada?.tipo, "-"))}
-                  </span>
+                  <span className="text-sm font-semibold text-slate-900">{safe(ruta?.tipo, safe(resultado?.rutaRecomendada?.tipo, "-"))}</span>
                   <span className="text-xs text-slate-500">
-                    Cuota:{" "}
-                    <span className="font-semibold text-slate-800">
-                      ${formatMoney(ruta?.cuota ?? resultado?.cuotaEstimada)}
-                    </span>
+                    Cuota: <span className="font-semibold text-slate-800">${formatMoney(ruta?.cuota ?? resultado?.cuotaEstimada)}</span>
                   </span>
                 </div>
                 <div className="mt-1 text-xs text-slate-500">
@@ -1230,6 +1067,9 @@ function LeadDrawer({
   );
 }
 
+// =====================================================
+// UI atoms
+// =====================================================
 function Card({ title, subtitle, children }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -1271,5 +1111,3 @@ function KpiCard({ label, value, subtitle }) {
     </div>
   );
 }
-
-export default AdminLeads;
