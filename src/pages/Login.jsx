@@ -1,5 +1,5 @@
 // src/pages/Login.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { trackEvent, trackPageView } from "../lib/analytics";
 import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
@@ -23,7 +23,7 @@ function isValidEcMobile(v) {
 function getQS(location) {
   const sp = new URLSearchParams(location.search || "");
   return {
-    intent: (sp.get("intent") || "login").toLowerCase(),
+    intent: (sp.get("intent") || "login").toLowerCase(), // login | register
     returnTo: sp.get("returnTo") || "/progreso",
   };
 }
@@ -35,6 +35,9 @@ export default function Login() {
 
   const { token, setToken } = useCustomerAuth();
 
+  // ✅ ref del form (para requestSubmit)
+  const loginFormRef = useRef(null);
+
   // UI state
   const [mode, setMode] = useState(qs.intent === "register" ? "register" : "login");
   const [busy, setBusy] = useState(false);
@@ -42,7 +45,7 @@ export default function Login() {
 
   // Fields
   const [nombre, setNombre] = useState("");
-  const [apellido, setApellido] = useState("");
+  const [apellido, setApellido] = useState(""); // ✅ nuevo
   const [email, setEmail] = useState("");
   const [telefono, setTelefono] = useState("");
   const [password, setPassword] = useState("");
@@ -50,14 +53,7 @@ export default function Login() {
   // Legal checkbox (solo register)
   const [acepta, setAcepta] = useState(true);
 
-  // Diagnóstico
-  const [lastAction, setLastAction] = useState("");
-
-  const dbg = (...args) => {
-    // eslint-disable-next-line no-console
-    console.log("[LOGIN]", ...args);
-  };
-
+  // If already logged in
   useEffect(() => {
     trackPageView("customer_login");
     if (token) {
@@ -70,6 +66,7 @@ export default function Login() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Sync mode if intent changes in URL
   useEffect(() => {
     setMode(qs.intent === "register" ? "register" : "login");
   }, [qs.intent]);
@@ -111,18 +108,13 @@ export default function Login() {
     e.preventDefault();
     setError("");
 
-    dbg("✅ submit fired");
-    setLastAction("✅ submit fired");
-
-    // Autofill-safe: lee valores reales del form
+    // ✅ Autofill-safe: lee valores reales del form
     const form = e.currentTarget;
     const emailDom = form?.elements?.email?.value ?? "";
     const passDom = form?.elements?.password?.value ?? "";
 
     const finalEmail = String(email || emailDom).trim().toLowerCase();
     const finalPass = String(password || passDom);
-
-    dbg("payload", { finalEmail, passLen: String(finalPass || "").length });
 
     const ok = isEmail(finalEmail) && String(finalPass || "").length >= 6;
     if (!ok) {
@@ -134,29 +126,22 @@ export default function Login() {
     try {
       trackEvent("customer_login_submit", { returnTo: qs.returnTo });
 
-      dbg("➡️ calling customerApi.loginCustomer");
-      setLastAction("➡️ calling customerApi.loginCustomer");
-
       const resp = await customerApi.loginCustomer({
         email: finalEmail,
         password: String(finalPass),
       });
 
-      dbg("⬅️ response", resp);
-      setLastAction("⬅️ response received");
-
       if (!resp?.token) {
-        throw new Error(resp?.message || "No se pudo iniciar sesión (sin token).");
+        throw new Error(resp?.message || "No se pudo iniciar sesión.");
       }
 
       setToken(resp.token);
       trackEvent("customer_login_success", {});
       goReturn();
     } catch (err) {
-      dbg("❌ login error", err);
+      console.error(err);
       trackEvent("customer_login_error", { message: String(err?.message || err) });
       setError(err?.message || "Error iniciando sesión. Intenta de nuevo.");
-      setLastAction("❌ login error");
     } finally {
       setBusy(false);
     }
@@ -214,7 +199,7 @@ export default function Login() {
       trackEvent("customer_register_success", {});
       goReturn();
     } catch (err) {
-      dbg("❌ register error", err);
+      console.error(err);
       trackEvent("customer_register_error", { message: String(err?.message || err) });
       setError(
         err?.message ||
@@ -228,7 +213,7 @@ export default function Login() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50 flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-5xl grid gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center">
-        {/* LEFT */}
+        {/* LEFT: Value */}
         <section className="hidden md:block">
           <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-7 shadow-[0_30px_80px_rgba(15,23,42,0.95)]">
             <div className="text-[11px] tracking-[0.2em] uppercase text-slate-400 mb-3">
@@ -266,7 +251,7 @@ export default function Login() {
           </div>
         </section>
 
-        {/* RIGHT */}
+        {/* RIGHT: Form */}
         <section className="w-full">
           <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 md:p-7 shadow-[0_30px_80px_rgba(15,23,42,0.95)]">
             <div className="mb-5">
@@ -316,30 +301,14 @@ export default function Login() {
               </button>
             </div>
 
-            {/* Error */}
             {error && (
               <div className="mb-4 rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-[12px] text-rose-200">
                 {error}
               </div>
             )}
 
-            {/* Diagnóstico visible */}
-            {lastAction && (
-              <div className="mb-4 rounded-2xl border border-slate-700 bg-slate-950/40 px-4 py-3 text-[12px] text-slate-300">
-                <span className="text-slate-400">Debug:</span> {lastAction}
-              </div>
-            )}
-
             {mode === "login" ? (
-              <form
-                id="loginForm"
-                onSubmit={onSubmitLogin}
-                onSubmitCapture={() => {
-                  dbg("🟦 onSubmitCapture fired");
-                  setLastAction("🟦 onSubmitCapture fired");
-                }}
-                className="space-y-4"
-              >
+              <form ref={loginFormRef} onSubmit={onSubmitLogin} className="space-y-4">
                 <div>
                   <label className="block text-[12px] text-slate-300 mb-1">Email</label>
                   <input
@@ -355,9 +324,7 @@ export default function Login() {
                 </div>
 
                 <div>
-                  <label className="block text-[12px] text-slate-300 mb-1">
-                    Contraseña
-                  </label>
+                  <label className="block text-[12px] text-slate-300 mb-1">Contraseña</label>
                   <input
                     name="password"
                     value={password}
@@ -370,21 +337,21 @@ export default function Login() {
                   />
                 </div>
 
+                {/* ✅ Botón NO depende del submit nativo */}
                 <button
-                  type="submit"
+                  type="button"
                   disabled={busy}
                   onClick={() => {
-                    dbg("🟩 button click fired");
-                    setLastAction("🟩 button click fired");
-                    // Si el click se dispara, pero el submit no: hay algo raro con el form
-                    setTimeout(() => {
-                      // si no cambió a submit fired, te avisamos
-                      setLastAction((prev) =>
-                        prev.includes("submit fired")
-                          ? prev
-                          : "⚠️ Click llegó, pero submit no se disparó (revisar form/DOM)"
+                    setError("");
+                    // requestSubmit dispara onSubmit de forma consistente
+                    if (loginFormRef.current?.requestSubmit) {
+                      loginFormRef.current.requestSubmit();
+                    } else {
+                      // fallback viejo
+                      loginFormRef.current?.dispatchEvent(
+                        new Event("submit", { bubbles: true, cancelable: true })
                       );
-                    }, 150);
+                    }
                   }}
                   className={[
                     "w-full rounded-2xl py-3 text-sm font-semibold transition",
