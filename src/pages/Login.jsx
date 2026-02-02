@@ -77,6 +77,7 @@ export default function Login() {
     return "Accede a tu progreso y a tu checklist personalizado.";
   }, [qs.returnTo]);
 
+  // NOTE: mantenemos canLogin/canRegister para UI, pero NO bloqueamos submit por autofill
   const canLogin = useMemo(() => {
     if (!isEmail(email)) return false;
     if (String(password || "").length < 6) return false;
@@ -105,7 +106,18 @@ export default function Login() {
   const onSubmitLogin = async (e) => {
     e.preventDefault();
     setError("");
-    if (!canLogin) {
+
+    // ✅ Autofill-safe: lee valores reales del form (por si Chrome no dispara onChange)
+    const form = e.currentTarget;
+    const emailDom = form?.elements?.email?.value ?? "";
+    const passDom = form?.elements?.password?.value ?? "";
+
+    const finalEmail = String(email || emailDom).trim().toLowerCase();
+    const finalPass = String(password || passDom);
+
+    const ok = isEmail(finalEmail) && String(finalPass || "").length >= 6;
+
+    if (!ok) {
       setError("Revisa tu email y tu contraseña.");
       return;
     }
@@ -115,8 +127,8 @@ export default function Login() {
       trackEvent("customer_login_submit", { returnTo: qs.returnTo });
 
       const resp = await customerApi.loginCustomer({
-        email: String(email).trim().toLowerCase(),
-        password: String(password),
+        email: finalEmail,
+        password: String(finalPass),
       });
 
       if (!resp?.token) {
@@ -304,8 +316,10 @@ export default function Login() {
                 <div>
                   <label className="block text-[12px] text-slate-300 mb-1">Email</label>
                   <input
+                    name="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    onInput={(e) => setEmail(e.target.value)}
                     type="email"
                     autoComplete="email"
                     className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400"
@@ -314,10 +328,14 @@ export default function Login() {
                 </div>
 
                 <div>
-                  <label className="block text-[12px] text-slate-300 mb-1">Contraseña</label>
+                  <label className="block text-[12px] text-slate-300 mb-1">
+                    Contraseña
+                  </label>
                   <input
+                    name="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    onInput={(e) => setPassword(e.target.value)}
                     type="password"
                     autoComplete="current-password"
                     className="w-full rounded-2xl bg-slate-950/40 border border-slate-700 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-400"
@@ -326,16 +344,24 @@ export default function Login() {
                 </div>
 
                 <button
-                  disabled={busy || !canLogin}
+                  type="submit"
+                  disabled={busy} // ✅ evita “botón muerto” por autofill
                   className={[
                     "w-full rounded-2xl py-3 text-sm font-semibold transition",
-                    busy || !canLogin
+                    busy
                       ? "bg-slate-700 text-slate-300 cursor-not-allowed"
                       : "bg-emerald-400 text-slate-950 hover:bg-emerald-300 shadow-[0_16px_40px_rgba(16,185,129,0.45)]",
                   ].join(" ")}
                 >
                   {busy ? "Entrando..." : "Entrar y continuar"}
                 </button>
+
+                {/* Hint opcional: si quieres mostrar validación sin bloquear */}
+                {!busy && !canLogin && (
+                  <p className="text-[11px] text-slate-500">
+                    Tip: revisa tu email y contraseña (mínimo 6 caracteres).
+                  </p>
+                )}
 
                 <div className="flex items-center justify-between text-[12px] text-slate-400">
                   <button
@@ -373,7 +399,9 @@ export default function Login() {
                 </div>
 
                 <div>
-                  <label className="block text-[12px] text-slate-300 mb-1">Apellido</label>
+                  <label className="block text-[12px] text-slate-300 mb-1">
+                    Apellido
+                  </label>
                   <input
                     value={apellido}
                     onChange={(e) => setApellido(e.target.value)}
@@ -397,7 +425,9 @@ export default function Login() {
                 </div>
 
                 <div>
-                  <label className="block text-[12px] text-slate-300 mb-1">Teléfono</label>
+                  <label className="block text-[12px] text-slate-300 mb-1">
+                    Teléfono
+                  </label>
                   <input
                     value={telefono}
                     onChange={(e) => setTelefono(e.target.value)}
@@ -411,7 +441,9 @@ export default function Login() {
                 </div>
 
                 <div>
-                  <label className="block text-[12px] text-slate-300 mb-1">Contraseña</label>
+                  <label className="block text-[12px] text-slate-300 mb-1">
+                    Contraseña
+                  </label>
                   <input
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -433,6 +465,7 @@ export default function Login() {
                 </label>
 
                 <button
+                  type="submit"
                   disabled={busy || !canRegister}
                   className={[
                     "w-full rounded-2xl py-3 text-sm font-semibold transition",
@@ -465,7 +498,8 @@ export default function Login() {
             )}
 
             <p className="mt-5 text-center text-[11px] text-slate-500">
-              Datos cifrados · sin consultas al buró · puedes borrar tu cuenta cuando quieras
+              Datos cifrados · sin consultas al buró · puedes borrar tu cuenta cuando
+              quieras
             </p>
           </div>
         </section>
