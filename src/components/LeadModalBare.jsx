@@ -1,9 +1,12 @@
 // src/components/LeadModalBare.jsx
-import React from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLeadCapture } from "../context/LeadCaptureContext.jsx";
 import ModalLead from "./ModalLead.jsx";
 import { crearLeadDesdeSimulador } from "../lib/api.js";
+
+// ✅ NUEVO: para detectar si el usuario ya está logueado
+import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
 
 // -------------------------------
 // Helpers
@@ -38,6 +41,21 @@ export default function LeadModalBare() {
   const navigate = useNavigate();
   const { isOpen, result, closeLead, resetLeadCapture } = useLeadCapture();
 
+  // ✅ token = ya hay sesión
+  const { token } = useCustomerAuth();
+
+  // ✅ FIX: si ya hay sesión, NO debemos pedir datos otra vez.
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!token) return;
+
+    closeLead?.();
+    resetLeadCapture?.();
+
+    // ✅ comportamiento recomendado: llevar al progreso/journey
+    navigate("/progreso", { replace: true });
+  }, [isOpen, token, closeLead, resetLeadCapture, navigate]);
+
   const handleLeadSaved = () => {
     closeLead?.();
     resetLeadCapture?.();
@@ -47,7 +65,7 @@ export default function LeadModalBare() {
   const handleSubmitLead = async (payloadContacto) => {
     try {
       // ---------------------------------------------
-      // ✅ 1) Inputs originales del simulador (deben venir por openLead(data, precalifPayload))
+      // ✅ 1) Inputs originales del simulador
       // ---------------------------------------------
       const inputs =
         result?.perfilInput ||
@@ -59,10 +77,12 @@ export default function LeadModalBare() {
         null;
 
       // ---------------------------------------------
-      // ✅ 2) Normalizar inputs (incluyendo LOS QUE TE FALTAN)
+      // ✅ 2) Normalizar inputs
       // ---------------------------------------------
       const afiliadoIess = toBool(inputs?.afiliadoIess ?? inputs?.afiliado_iess);
-      const aniosEstabilidad = toNum(inputs?.aniosEstabilidad ?? inputs?.anios_estabilidad);
+      const aniosEstabilidad = toNum(
+        inputs?.aniosEstabilidad ?? inputs?.anios_estabilidad
+      );
 
       const ingresoIndividual = toNum(
         inputs?.ingresoNetoMensual ??
@@ -77,6 +97,7 @@ export default function LeadModalBare() {
           inputs?.ingresoParejaMensual
       );
 
+      // (No lo mandas hoy como campo canónico, pero lo dejamos calculado por si lo necesitas)
       const ingresoTotal =
         ingresoIndividual != null || ingresoPareja != null
           ? Number(ingresoIndividual || 0) + Number(ingresoPareja || 0)
@@ -105,25 +126,30 @@ export default function LeadModalBare() {
           : mapTipoCompraNumero(tipoCompra);
 
       // ✅ LOS QUE TE ESTÁN SALIENDO NULL EN BD
-      const valorVivienda = toNum(inputs?.valorVivienda ?? inputs?.valor_vivienda ?? inputs?.valor);
-      const entradaDisponible = toNum(inputs?.entradaDisponible ?? inputs?.entrada_disponible ?? inputs?.entrada);
+      const valorVivienda = toNum(
+        inputs?.valorVivienda ?? inputs?.valor_vivienda ?? inputs?.valor
+      );
+      const entradaDisponible = toNum(
+        inputs?.entradaDisponible ??
+          inputs?.entrada_disponible ??
+          inputs?.entrada
+      );
 
       const edad = toNum(inputs?.edad);
       const tipoIngreso =
-        String(inputs?.tipoIngreso ?? inputs?.tipo_ingreso ?? "").trim() || null;
+        String(inputs?.tipoIngreso ?? inputs?.tipo_ingreso ?? "").trim() ||
+        null;
 
       // ---------------------------------------------
-      // ✅ 3) Enviar usando el helper correcto (inputs + resultado)
+      // ✅ 3) Enviar a API (inputs + resultado)
       // ---------------------------------------------
       const resp = await crearLeadDesdeSimulador({
         contacto: {
           ...payloadContacto,
-          // si en tu UI lo capturas, puedes meter tipoCompra aquí también, pero preferimos leerlo de inputs
         },
         precalif: {
-          // aquí mandamos el payload del simulador (inputs)
           ...(inputs || {}),
-          // y aseguramos claves "canónicas"
+          // claves canónicas
           afiliadoIess,
           aniosEstabilidad,
           ingresoNetoMensual: ingresoIndividual,
@@ -136,8 +162,10 @@ export default function LeadModalBare() {
           entradaDisponible,
           edad,
           tipoIngreso,
+          // (opcional) si luego quieres mandar ingresoTotal también:
+          // ingresoTotal,
         },
-        resultado: result, // lo que vino de /api/precalificar
+        resultado: result,
       });
 
       return resp;
@@ -148,6 +176,9 @@ export default function LeadModalBare() {
       };
     }
   };
+
+  // ✅ Doble seguro: si ya hay token, nunca muestres el modal
+  if (token) return null;
 
   return (
     <ModalLead

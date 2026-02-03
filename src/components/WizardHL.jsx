@@ -274,12 +274,14 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
     const entradaPayload = buildEntrada();
 
     // =========================================================
-    // ✅ QUICK: abre modal YA y guarda input en perfilInput
+    // ✅ QUICK: SOLO abre modal si NO hay sesión
     // =========================================================
-    if (!isJourneyMode) {
+    const shouldShowLeadModal = !isJourneyMode && !isAuthed;
+
+    if (shouldShowLeadModal) {
       const initial = {
         __loading: true,
-        __entrada: entradaPayload, // compat (por si ModalLead lo usa)
+        __entrada: entradaPayload,   // compat
         perfilInput: entradaPayload, // estándar nuevo
       };
 
@@ -299,27 +301,55 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
       persistLastResult(result);
 
       // =========================================================
-      // ✅ QUICK: actualiza el resultado y conserva perfilInput
+      // ✅ QUICK
+      // - Si NO hay sesión: actualiza modal + guarda quick last result
+      // - Si HAY sesión: guarda journey y manda a /progreso (sin modal)
       // =========================================================
       if (!isJourneyMode) {
         persistQuickLastResult(result);
 
-        const merged = {
-          ...result,
-          __loading: false,
-          __entrada: entradaPayload,   // compat
-          perfilInput: entradaPayload, // estándar
-        };
+        if (!isAuthed) {
+          const merged = {
+            ...result,
+            __loading: false,
+            __entrada: entradaPayload,   // compat
+            perfilInput: entradaPayload, // estándar
+          };
 
-        if (typeof setLeadResult === "function") {
-          setLeadResult(merged, entradaPayload);
-        } else {
-          openLead(merged, entradaPayload);
+          if (typeof setLeadResult === "function") {
+            setLeadResult(merged, entradaPayload);
+          } else {
+            openLead(merged, entradaPayload);
+          }
+          return;
         }
+
+        // ✅ Authed en QUICK: lo tratamos como journey (mejor UX)
+        saveJourneyLocal({
+          entrada: entradaPayload,
+          input: entradaPayload,
+          resultado: result,
+          userEmail: user && user.email ? user.email : "",
+          ts: Date.now(),
+        });
+
+        customerApi
+          .saveJourney({
+            entrada: entradaPayload,
+            input: entradaPayload,
+            metadata: { input: entradaPayload },
+            resultado: result,
+            status: "precalificado",
+          })
+          .catch(() => {});
+
+        navigate("/progreso", { replace: true });
         return;
       }
 
-      // JOURNEY
+      // =========================================================
+      // ✅ JOURNEY (igual que ya lo tenías)
+      // =========================================================
       saveJourneyLocal({
         entrada: entradaPayload,
         input: entradaPayload,
