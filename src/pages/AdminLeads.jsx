@@ -1,4 +1,4 @@
-// src/pages/AdminLeads.jsx
+ // src/pages/AdminLeads.jsx
 import React, { useEffect, useState, useCallback } from "react";
 import AdminLogin from "../components/AdminLogin.jsx";
 import { XMarkIcon } from "@heroicons/react/24/outline";
@@ -98,8 +98,12 @@ const AdminLeads = () => {
   const [selectedLead, setSelectedLead] = useState(null);
 
   // 🔐 Auth admin
-  const [token, setToken] = useState(() => localStorage.getItem("hl_admin_token") || "");
-  const [adminEmail, setAdminEmail] = useState(() => localStorage.getItem("hl_admin_email") || "");
+  const [token, setToken] = useState(
+    () => localStorage.getItem("hl_admin_token") || ""
+  );
+  const [adminEmail, setAdminEmail] = useState(
+    () => localStorage.getItem("hl_admin_email") || ""
+  );
 
   // KPIs
   const [stats, setStats] = useState({
@@ -116,7 +120,8 @@ const AdminLeads = () => {
   // Helpers de UI
   // =====================================================
   const mostrarDesde = totalLeads === 0 ? 0 : (pagina - 1) * pageSize + 1;
-  const mostrarHasta = totalLeads === 0 ? 0 : Math.min(pagina * pageSize, totalLeads);
+  const mostrarHasta =
+    totalLeads === 0 ? 0 : Math.min(pagina * pageSize, totalLeads);
 
   const chipScore = (score) => {
     if (score == null) return <span className="text-xs text-slate-400">-</span>;
@@ -214,7 +219,7 @@ const AdminLeads = () => {
     if (lead.codigoHL) return lead.codigoHL;
     if (lead.codigoUnico) return lead.codigoUnico;
     if (lead.codigoLead) return lead.codigoLead;
-    if (lead._id) return `HL-${lead._id.slice(-6).toUpperCase()}`;
+    if (lead._id) return `HL-${lead._id.slice(-6).toUpperCase()}`; // 👈 solo visual
     return "-";
   };
 
@@ -268,8 +273,6 @@ const AdminLeads = () => {
     const b = toNumOrNull(perfil?.ingresoTotal);
     if (b != null) return b;
 
-    // ✅ tu doc real también trae perfil.ingresoTotal (ya cubierto)
-    // y podría traer lead.ingresoTotal directo:
     const c = toNumOrNull(lead?.ingresoTotal);
     if (c != null) return c;
 
@@ -291,9 +294,11 @@ const AdminLeads = () => {
 
   const chipHeat = (heat) => {
     const h = Number(heat ?? -1);
-    if (!Number.isFinite(h) || h < 0) return <span className="text-xs text-slate-400">-</span>;
+    if (!Number.isFinite(h) || h < 0)
+      return <span className="text-xs text-slate-400">-</span>;
 
-    const label = h === 0 ? "Frío" : h === 1 ? "Tibio" : h === 2 ? "Caliente" : "🔥 Hot";
+    const label =
+      h === 0 ? "Frío" : h === 1 ? "Tibio" : h === 2 ? "Caliente" : "🔥 Hot";
     const cls =
       h <= 1
         ? "bg-slate-100 text-slate-700"
@@ -302,7 +307,9 @@ const AdminLeads = () => {
         : "bg-rose-50 text-rose-700";
 
     return (
-      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${cls}`}>
+      <span
+        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${cls}`}
+      >
         {label}
       </span>
     );
@@ -377,82 +384,85 @@ const AdminLeads = () => {
     setAdminEmail("");
 
     const returnTo =
-      window.location?.pathname + (window.location?.search || "") + (window.location?.hash || "");
+      window.location?.pathname +
+      (window.location?.search || "") +
+      (window.location?.hash || "");
 
-    window.location.href = `#/admin?returnTo=${encodeURIComponent(returnTo)}&reason=${encodeURIComponent(
-      reason
-    )}`;
+    window.location.href = `#/admin?returnTo=${encodeURIComponent(
+      returnTo
+    )}&reason=${encodeURIComponent(reason)}`;
   };
-// =====================================================
-// ✅ PDF bajo pedido (Ficha Comercial v1.2) - FIX descarga
-// =====================================================
-const descargarFichaPDF = useCallback(
-  async (codigo) => {
-    try {
-      const currentToken = localStorage.getItem("hl_admin_token");
-      if (!currentToken) {
-        forceAdminRelogin("missing_token");
-        return;
+
+  // =====================================================
+  // ✅ PDF bajo pedido (Ficha Comercial) - FIX REAL (usa _id)
+  // Endpoint correcto: /api/leads/:id/ficha-comercial.pdf
+  // =====================================================
+  const descargarFichaPDF = useCallback(
+    async (lead) => {
+      try {
+        const currentToken = localStorage.getItem("hl_admin_token");
+        if (!currentToken) {
+          forceAdminRelogin("missing_token");
+          return;
+        }
+
+        const id = String(lead?._id || "").trim();
+        if (!id) {
+          alert("Este lead no tiene _id válido para generar PDF.");
+          return;
+        }
+
+        // ✅ endpoint correcto (ya soportado por tu controller)
+        const url = `${API_BASE_URL}/api/leads/${encodeURIComponent(
+          id
+        )}/ficha-comercial.pdf`;
+
+        console.log("🧾 PDF -> URL:", url);
+
+        const res = await fetch(url, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${currentToken}`,
+            Accept: "application/pdf",
+          },
+          cache: "no-store",
+        });
+
+        if (res.status === 401 || res.status === 403) {
+          forceAdminRelogin("expired_or_forbidden");
+          return;
+        }
+
+        if (!res.ok) {
+          const txt = await res.text().catch(() => "");
+          console.error("🧾 PDF -> error body:", txt);
+          alert(`No se pudo generar el PDF (status ${res.status}).`);
+          return;
+        }
+
+        const blob = await res.blob();
+
+        const a = document.createElement("a");
+        const blobUrl = window.URL.createObjectURL(blob);
+        a.href = blobUrl;
+
+        const codePretty =
+          lead?.codigo || lead?.codigoHL || `HL-${id.slice(-6).toUpperCase()}`;
+        a.download = `Ficha_Comercial_${codePretty}.pdf`;
+
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+      } catch (err) {
+        console.error("🧾 descargarFichaPDF error:", err);
+        alert("Error generando el PDF.");
       }
-
-      const code = String(codigo || "").trim();
-      if (!code || code === "-") {
-        alert("Este lead no tiene código para generar PDF.");
-        return;
-      }
-
-      const url = `${API_BASE_URL}/api/reportes/ficha/${encodeURIComponent(code)}`;
-
-      console.log("🧾 PDF -> URL:", url);
-      console.log("🧾 PDF -> token len:", currentToken.length);
-
-      const res = await fetch(url, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${currentToken}`,
-          Accept: "application/pdf",
-        },
-        cache: "no-store",
-      });
-
-      // DEBUG útil
-      console.log("🧾 PDF -> status:", res.status);
-      console.log("🧾 PDF -> content-type:", res.headers.get("content-type"));
-
-      if (res.status === 401 || res.status === 403) {
-        // OJO: aquí está tu “me bota al login”
-        forceAdminRelogin("expired_or_forbidden");
-        return;
-      }
-
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        console.error("🧾 PDF -> error body:", txt);
-        alert(`No se pudo generar el PDF (status ${res.status}).`);
-        return;
-      }
-
-      const blob = await res.blob();
-
-      // ✅ Descargar SIN abrir pestaña (más estable)
-      const a = document.createElement("a");
-      const blobUrl = window.URL.createObjectURL(blob);
-      a.href = blobUrl;
-      a.download = `Ficha_Comercial_${code}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
-    } catch (err) {
-      console.error("🧾 descargarFichaPDF error:", err);
-      alert("Error generando el PDF.");
-    }
-  },
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  [API_BASE_URL]
-);
-
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [API_BASE_URL]
+  );
 
   // =====================================================
   // Fetch Leads
@@ -493,7 +503,10 @@ const descargarFichaPDF = useCallback(
         throw new Error("No autorizado: tu sesión ha expirado.");
       }
 
-      if (!res.ok) throw new Error(`No se pudo cargar los leads (status ${res.status})`);
+      if (!res.ok)
+        throw new Error(
+          `No se pudo cargar los leads (status ${res.status})`
+        );
 
       const data = await res.json();
 
@@ -629,12 +642,19 @@ const descargarFichaPDF = useCallback(
         {/* HEADER PRINCIPAL */}
         <header className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900">Dashboard de Leads</h1>
-            <p className="text-sm text-slate-500">Vista interna. Leads (Web/WhatsApp/Instagram/Manychat).</p>
+            <h1 className="text-2xl font-semibold text-slate-900">
+              Dashboard de Leads
+            </h1>
+            <p className="text-sm text-slate-500">
+              Vista interna. Leads (Web/WhatsApp/Instagram/Manychat).
+            </p>
 
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
               <span>
-                Total leads: <span className="font-semibold text-slate-900">{totalLeads}</span>
+                Total leads:{" "}
+                <span className="font-semibold text-slate-900">
+                  {totalLeads}
+                </span>
               </span>
               <span className="text-slate-300">•</span>
               <span>
@@ -658,7 +678,10 @@ const descargarFichaPDF = useCallback(
               <div className="hidden sm:flex items-center gap-2 rounded-full bg-slate-100 border border-slate-200 px-3 py-1">
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
                 <span className="text-xs text-slate-600">
-                  Sesión iniciada como <span className="font-medium text-slate-900">{adminEmail}</span>
+                  Sesión iniciada como{" "}
+                  <span className="font-medium text-slate-900">
+                    {adminEmail}
+                  </span>
                 </span>
               </div>
             )}
@@ -679,16 +702,30 @@ const descargarFichaPDF = useCallback(
             value={stats.hoy}
             subtitle={loadingStats ? "Calculando…" : "Ingresados desde 00:00"}
           />
-          <KpiCard label="Esta semana" value={stats.semanaActual} subtitle="Total captados desde lunes" />
-          <KpiCard label="Semana anterior" value={stats.semanaAnterior} subtitle="Para comparar rendimiento" />
-          <KpiCard label="Total en base" value={stats.total || totalLeads} subtitle="Leads históricos registrados" />
+          <KpiCard
+            label="Esta semana"
+            value={stats.semanaActual}
+            subtitle="Total captados desde lunes"
+          />
+          <KpiCard
+            label="Semana anterior"
+            value={stats.semanaAnterior}
+            subtitle="Para comparar rendimiento"
+          />
+          <KpiCard
+            label="Total en base"
+            value={stats.total || totalLeads}
+            subtitle="Leads históricos registrados"
+          />
         </section>
 
         {/* FILTROS (SIMPLIFICADOS) */}
         <section className="bg-white rounded-2xl shadow-sm border border-slate-200 px-5 py-4 md:px-6 md:py-5">
           <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
             <div className="flex flex-col md:col-span-2">
-              <label className="text-xs font-medium text-slate-500 mb-1">Email</label>
+              <label className="text-xs font-medium text-slate-500 mb-1">
+                Email
+              </label>
               <input
                 type="text"
                 placeholder="Ej: gmail.com"
@@ -699,7 +736,9 @@ const descargarFichaPDF = useCallback(
             </div>
 
             <div className="flex flex-col">
-              <label className="text-xs font-medium text-slate-500 mb-1">Teléfono</label>
+              <label className="text-xs font-medium text-slate-500 mb-1">
+                Teléfono
+              </label>
               <input
                 type="text"
                 placeholder="Contiene…"
@@ -710,7 +749,9 @@ const descargarFichaPDF = useCallback(
             </div>
 
             <div className="flex flex-col md:col-span-2">
-              <label className="text-xs font-medium text-slate-500 mb-1">Ciudad</label>
+              <label className="text-xs font-medium text-slate-500 mb-1">
+                Ciudad
+              </label>
               <input
                 type="text"
                 placeholder="Quito, Guayaquil…"
@@ -751,22 +792,43 @@ const descargarFichaPDF = useCallback(
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Fecha</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Código HL</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Nombre</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Ciudad</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Ingreso</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Deudas</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Producto</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Score HL</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">PDF</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
+                    Fecha
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
+                    Código HL
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
+                    Nombre
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
+                    Ciudad
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
+                    Ingreso
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
+                    Deudas
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
+                    Producto
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
+                    Score HL
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">
+                    PDF
+                  </th>
                 </tr>
               </thead>
 
               <tbody>
                 {!loading && leads.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-4 py-6 text-center text-sm text-slate-400">
+                    <td
+                      colSpan={9}
+                      className="px-4 py-6 text-center text-sm text-slate-400"
+                    >
                       No hay leads para los filtros seleccionados.
                     </td>
                   </tr>
@@ -791,10 +853,18 @@ const descargarFichaPDF = useCallback(
                       className={`border-t border-slate-100 ${rowHover} cursor-pointer`}
                       title="Click para ver detalle"
                     >
-                      <td className="px-4 py-3 text-xs text-slate-500">{formatDate(lead.createdAt)}</td>
-                      <td className="px-4 py-3 text-xs font-semibold text-slate-700">{obtenerCodigoLead(lead)}</td>
-                      <td className="px-4 py-3 text-sm text-slate-900">{lead.nombre || lead.nombreCompleto || "-"}</td>
-                      <td className="px-4 py-3 text-sm text-slate-700">{lead.ciudad || "-"}</td>
+                      <td className="px-4 py-3 text-xs text-slate-500">
+                        {formatDate(lead.createdAt)}
+                      </td>
+                      <td className="px-4 py-3 text-xs font-semibold text-slate-700">
+                        {obtenerCodigoLead(lead)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-900">
+                        {lead.nombre || lead.nombreCompleto || "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-700">
+                        {lead.ciudad || "-"}
+                      </td>
 
                       <td className="px-4 py-3 text-sm font-semibold text-slate-900">
                         {ingreso != null ? `$${formatMoney(ingreso)}` : "-"}
@@ -805,7 +875,10 @@ const descargarFichaPDF = useCallback(
                       </td>
 
                       <td className="px-4 py-3 text-sm text-slate-700">
-                        {lead.producto || lead.tipoProducto || decision?.producto || "-"}
+                        {lead.producto ||
+                          lead.tipoProducto ||
+                          decision?.producto ||
+                          "-"}
                       </td>
 
                       <td className="px-4 py-3 text-sm font-semibold text-slate-900">
@@ -817,8 +890,7 @@ const descargarFichaPDF = useCallback(
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            const codigo = lead?.codigo ? lead.codigo : obtenerCodigoLead(lead);
-                            descargarFichaPDF(codigo);
+                            descargarFichaPDF(lead); // ✅ FIX: se pasa el lead completo
                           }}
                           className="h-8 px-3 rounded-full border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50"
                           title="Descargar Ficha Comercial (PDF)"
@@ -832,7 +904,10 @@ const descargarFichaPDF = useCallback(
 
                 {loading && (
                   <tr>
-                    <td colSpan={9} className="px-4 py-6 text-center text-sm text-slate-400">
+                    <td
+                      colSpan={9}
+                      className="px-4 py-6 text-center text-sm text-slate-400"
+                    >
                       Cargando leads…
                     </td>
                   </tr>
@@ -844,9 +919,17 @@ const descargarFichaPDF = useCallback(
           {/* FOOTER TABLA */}
           <div className="flex flex-col md:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-100 text-xs text-slate-500">
             <div>
-              Mostrando <span className="font-semibold text-slate-900">{mostrarDesde}</span> –{" "}
-              <span className="font-semibold text-slate-900">{mostrarHasta}</span> de{" "}
-              <span className="font-semibold text-slate-900">{totalLeads}</span> leads
+              Mostrando{" "}
+              <span className="font-semibold text-slate-900">
+                {mostrarDesde}
+              </span>{" "}
+              –{" "}
+              <span className="font-semibold text-slate-900">
+                {mostrarHasta}
+              </span>{" "}
+              de{" "}
+              <span className="font-semibold text-slate-900">{totalLeads}</span>{" "}
+              leads
             </div>
 
             <div className="flex items-center gap-2">
@@ -932,20 +1015,30 @@ function LeadDrawer({
   const perfil = resultado?.perfil || null;
   const ruta = decision?.ruta || null;
 
-  const bancosTop3 = Array.isArray(decision?.bancosTop3) ? decision.bancosTop3 : [];
+  const bancosTop3 = Array.isArray(decision?.bancosTop3)
+    ? decision.bancosTop3
+    : [];
   const faltantes = Array.isArray(decision?.faltantes) ? decision.faltantes : [];
   const porQue = Array.isArray(decision?.porQue) ? decision.porQue : [];
-  const nextActions = Array.isArray(decision?.nextActions) ? decision.nextActions : [];
+  const nextActions = Array.isArray(decision?.nextActions)
+    ? decision.nextActions
+    : [];
 
   // ✅ perfil financiero (plano → fallback perfil scoring)
   const ingresoMensual = getIngresoMensual ? getIngresoMensual(lead) : null;
   const deudaMensual = getDeudaMensual ? getDeudaMensual(lead) : null;
   const dtiBase =
-    ingresoMensual && ingresoMensual > 0 && deudaMensual != null ? deudaMensual / ingresoMensual : null;
+    ingresoMensual && ingresoMensual > 0 && deudaMensual != null
+      ? deudaMensual / ingresoMensual
+      : null;
 
-  const aniosEstabilidad = toNumOrNull(lead?.anios_estabilidad) ?? toNumOrNull(perfil?.aniosEstabilidad) ?? null;
+  const aniosEstabilidad =
+    toNumOrNull(lead?.anios_estabilidad) ??
+    toNumOrNull(perfil?.aniosEstabilidad) ??
+    null;
 
-  const afiliadoIess = lead?.afiliado_iess != null ? lead.afiliado_iess : perfil?.afiliadoIess ?? null;
+  const afiliadoIess =
+    lead?.afiliado_iess != null ? lead.afiliado_iess : perfil?.afiliadoIess ?? null;
 
   return (
     <div className="fixed inset-0 z-[60]">
@@ -959,7 +1052,9 @@ function LeadDrawer({
                 {lead?.nombre || lead?.nombreCompleto || "Lead"}
               </p>
               <span className="text-xs text-slate-400">•</span>
-              <span className="text-xs font-semibold text-slate-700">{obtenerCodigoLead(lead)}</span>
+              <span className="text-xs font-semibold text-slate-700">
+                {obtenerCodigoLead(lead)}
+              </span>
             </div>
 
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -972,7 +1067,9 @@ function LeadDrawer({
 
             <div className="mt-2 text-xs text-slate-500">
               Creado:{" "}
-              <span className="font-medium text-slate-700">{lead?.createdAt ? formatDate(lead.createdAt) : "-"}</span>
+              <span className="font-medium text-slate-700">
+                {lead?.createdAt ? formatDate(lead.createdAt) : "-"}
+              </span>
             </div>
           </div>
 
@@ -992,10 +1089,7 @@ function LeadDrawer({
             <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  const codigo = lead?.codigo || obtenerCodigoLead(lead);
-                  descargarFichaPDF?.(codigo);
-                }}
+                onClick={() => descargarFichaPDF?.(lead)} // ✅ FIX
                 className="h-9 px-4 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800"
               >
                 Ficha PDF
@@ -1044,12 +1138,16 @@ function LeadDrawer({
 
             {!decision && (
               <p className="mt-3 text-xs text-slate-500">
-                Este lead no trae <span className="font-semibold">decision</span> todavía.
+                Este lead no trae <span className="font-semibold">decision</span>{" "}
+                todavía.
               </p>
             )}
           </div>
 
-          <Card title="Qué le falta para avanzar" subtitle={faltantes.length ? `${faltantes.length} punto(s)` : "—"}>
+          <Card
+            title="Qué le falta para avanzar"
+            subtitle={faltantes.length ? `${faltantes.length} punto(s)` : "—"}
+          >
             {faltantes.length ? (
               <ul className="space-y-2">
                 {faltantes.map((f, idx) => (
@@ -1098,51 +1196,91 @@ function LeadDrawer({
               <Stat label="Score HL" value={chipScore(getScoreHL(lead))} />
               <Stat
                 label="Etapa"
-                value={<span className="text-sm font-semibold text-slate-900">{decision?.etapa || "-"}</span>}
+                value={
+                  <span className="text-sm font-semibold text-slate-900">
+                    {decision?.etapa || "-"}
+                  </span>
+                }
               />
               <Stat
                 label="Producto"
-                value={<span className="text-sm font-semibold text-slate-900">{lead?.producto || decision?.producto || "-"}</span>}
+                value={
+                  <span className="text-sm font-semibold text-slate-900">
+                    {lead?.producto || decision?.producto || "-"}
+                  </span>
+                }
               />
               <Stat
                 label="Canal / Fuente"
-                value={<span className="text-sm font-semibold text-slate-900">{`${canal || "-"} / ${fuente || "-"}`}</span>}
+                value={
+                  <span className="text-sm font-semibold text-slate-900">
+                    {`${canal || "-"} / ${fuente || "-"}`}
+                  </span>
+                }
               />
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-3">
               <Stat
                 label="DTI con hipoteca"
-                value={<span className="text-sm font-semibold text-slate-900">{formatPct(resultado?.dtiConHipoteca)}</span>}
+                value={
+                  <span className="text-sm font-semibold text-slate-900">
+                    {formatPct(resultado?.dtiConHipoteca)}
+                  </span>
+                }
               />
-              <Stat label="LTV estimado" value={<span className="text-sm font-semibold text-slate-900">{formatPct(resultado?.ltv)}</span>} />
+              <Stat
+                label="LTV estimado"
+                value={
+                  <span className="text-sm font-semibold text-slate-900">
+                    {formatPct(resultado?.ltv)}
+                  </span>
+                }
+              />
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-3">
               <Stat
                 label="Ingreso mensual"
-                value={<span className="text-sm font-semibold text-slate-900">{ingresoMensual != null ? `$${formatMoney(ingresoMensual)}` : "-"}</span>}
+                value={
+                  <span className="text-sm font-semibold text-slate-900">
+                    {ingresoMensual != null
+                      ? `$${formatMoney(ingresoMensual)}`
+                      : "-"}
+                  </span>
+                }
               />
               <Stat
                 label="Deudas mensuales"
-                value={<span className="text-sm font-semibold text-slate-900">{deudaMensual != null ? `$${formatMoney(deudaMensual)}` : "-"}</span>}
+                value={
+                  <span className="text-sm font-semibold text-slate-900">
+                    {deudaMensual != null ? `$${formatMoney(deudaMensual)}` : "-"}
+                  </span>
+                }
               />
               <Stat
                 label="DTI sin hipoteca"
-                value={<span className="text-sm font-semibold text-slate-900">{dtiBase != null ? `${Math.round(dtiBase * 100)}%` : "-"}</span>}
+                value={
+                  <span className="text-sm font-semibold text-slate-900">
+                    {dtiBase != null ? `${Math.round(dtiBase * 100)}%` : "-"}
+                  </span>
+                }
               />
               <Stat
                 label="Estabilidad / IESS"
                 value={
                   <span className="text-sm font-semibold text-slate-900">
-                    {aniosEstabilidad != null ? `${aniosEstabilidad} años` : "-"} • {formatBoolSiNo(afiliadoIess)}
+                    {aniosEstabilidad != null ? `${aniosEstabilidad} años` : "-"}{" "}
+                    • {formatBoolSiNo(afiliadoIess)}
                   </span>
                 }
               />
             </div>
 
             <div className="mt-4">
-              <p className="text-xs font-semibold text-slate-700">Ruta recomendada</p>
+              <p className="text-xs font-semibold text-slate-700">
+                Ruta recomendada
+              </p>
               <div className="mt-2 rounded-xl border border-slate-200 bg-white p-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-slate-900">
@@ -1158,11 +1296,15 @@ function LeadDrawer({
                 <div className="mt-1 text-xs text-slate-500">
                   Tasa anual:{" "}
                   <span className="font-semibold text-slate-700">
-                    {resultado?.tasaAnual ? `${(resultado.tasaAnual * 100).toFixed(2)}%` : "-"}
+                    {resultado?.tasaAnual
+                      ? `${(resultado.tasaAnual * 100).toFixed(2)}%`
+                      : "-"}
                   </span>{" "}
                   • Plazo:{" "}
                   <span className="font-semibold text-slate-700">
-                    {resultado?.plazoMeses ? `${Math.round(resultado.plazoMeses / 12)} años` : "-"}
+                    {resultado?.plazoMeses
+                      ? `${Math.round(resultado.plazoMeses / 12)} años`
+                      : "-"}
                   </span>
                 </div>
               </div>
@@ -1173,16 +1315,28 @@ function LeadDrawer({
                 <p className="text-xs font-semibold text-slate-700">Top 3 bancos</p>
                 <div className="mt-2 space-y-2">
                   {bancosTop3.map((b, idx) => (
-                    <div key={`${idx}-${b.banco || b.nombre || idx}`} className="rounded-xl border border-slate-200 bg-white p-3">
+                    <div
+                      key={`${idx}-${b.banco || b.nombre || idx}`}
+                      className="rounded-xl border border-slate-200 bg-white p-3"
+                    >
                       <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm font-semibold text-slate-900">{b.banco || b.nombre || "-"}</span>
+                        <span className="text-sm font-semibold text-slate-900">
+                          {b.banco || b.nombre || "-"}
+                        </span>
                         <span className="text-xs font-semibold text-slate-700">
-                          {b.probLabel || "-"} {b.probScore != null ? `(${b.probScore}/100)` : ""}
+                          {b.probLabel || "-"}{" "}
+                          {b.probScore != null ? `(${b.probScore}/100)` : ""}
                         </span>
                       </div>
                       <div className="mt-1 text-xs text-slate-500">
-                        Tipo: <span className="font-semibold text-slate-700">{b.tipoProducto || "-"}</span> • DTI banco:{" "}
-                        <span className="font-semibold text-slate-700">{b.dtiBanco != null ? `${Math.round(b.dtiBanco * 100)}%` : "-"}</span>
+                        Tipo:{" "}
+                        <span className="font-semibold text-slate-700">
+                          {b.tipoProducto || "-"}
+                        </span>{" "}
+                        • DTI banco:{" "}
+                        <span className="font-semibold text-slate-700">
+                          {b.dtiBanco != null ? `${Math.round(b.dtiBanco * 100)}%` : "-"}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -1196,16 +1350,34 @@ function LeadDrawer({
               <Row label="Teléfono" value={lead?.telefono || "-"} />
               <Row label="Email" value={lead?.email || "-"} />
               <Row label="Ciudad" value={lead?.ciudad || "-"} />
-              {canal === "instagram" && <Row label="IG" value={igUser ? `@${igUser}` : "-"} />}
+              {canal === "instagram" && (
+                <Row label="IG" value={igUser ? `@${igUser}` : "-"} />
+              )}
             </div>
 
             {perfil && (
               <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3">
-                <p className="text-xs font-semibold text-slate-700">Perfil (del scoring)</p>
+                <p className="text-xs font-semibold text-slate-700">
+                  Perfil (del scoring)
+                </p>
                 <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                   <Row label="Tipo ingreso" value={perfil?.tipoIngreso || "-"} />
-                  <Row label="Ingreso total" value={perfil?.ingresoTotal != null ? `$${formatMoney(perfil.ingresoTotal)}` : "-"} />
-                  <Row label="Años estabilidad" value={perfil?.aniosEstabilidad != null ? String(perfil.aniosEstabilidad) : "-"} />
+                  <Row
+                    label="Ingreso total"
+                    value={
+                      perfil?.ingresoTotal != null
+                        ? `$${formatMoney(perfil.ingresoTotal)}`
+                        : "-"
+                    }
+                  />
+                  <Row
+                    label="Años estabilidad"
+                    value={
+                      perfil?.aniosEstabilidad != null
+                        ? String(perfil.aniosEstabilidad)
+                        : "-"
+                    }
+                  />
                   <Row label="IESS" value={formatBoolSiNo(perfil?.afiliadoIess)} />
                 </div>
               </div>
@@ -1213,7 +1385,9 @@ function LeadDrawer({
           </Card>
 
           <details className="rounded-2xl border border-slate-200 bg-white p-4">
-            <summary className="cursor-pointer text-sm font-semibold text-slate-900">Ver datos completos (debug)</summary>
+            <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+              Ver datos completos (debug)
+            </summary>
             <pre className="mt-3 text-xs whitespace-pre-wrap text-slate-700 bg-slate-50 border border-slate-200 rounded-xl p-3 overflow-x-auto">
               {JSON.stringify(lead, null, 2)}
             </pre>
@@ -1247,7 +1421,9 @@ function Card({ title, subtitle, children }) {
 function Stat({ label, value }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3">
-      <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+        {label}
+      </p>
       <div className="mt-1">{value}</div>
     </div>
   );
@@ -1265,8 +1441,12 @@ function Row({ label, value }) {
 function KpiCard({ label, value, subtitle }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 text-xl font-semibold text-slate-900">{Number(value || 0).toLocaleString("es-EC")}</p>
+      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+        {label}
+      </p>
+      <p className="mt-1 text-xl font-semibold text-slate-900">
+        {Number(value || 0).toLocaleString("es-EC")}
+      </p>
       {subtitle && <p className="mt-1 text-[11px] text-slate-500">{subtitle}</p>}
     </div>
   );
