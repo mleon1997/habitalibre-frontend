@@ -13,7 +13,7 @@ function useQuery() {
 export default function SimuladorPage() {
   const nav = useNavigate();
   const { resetLeadCapture, isOpen } = useLeadCapture();
-  const { token, isAuthed } = useCustomerAuth();
+  const { isAuthed } = useCustomerAuth();
 
   const q = useQuery();
 
@@ -21,19 +21,15 @@ export default function SimuladorPage() {
   const mode = (q.get("mode") || "quick").toLowerCase(); // "quick" | "journey"
   const onboarding = q.get("onboarding") === "1";
 
-  // =========================================================
-  // ✅ REGLA CLAVE:
-  // - quick => siempre wizard
-  // - journey + sesión => NO re-pedir datos => manda a /progreso
-  // =========================================================
-  useEffect(() => {
-    if (mode !== "journey") return;
+  // ✅ NUEVO: si ya estás logueado y vienes a journey, NO muestres wizard
+  // (a menos que explícitamente quieras permitirlo con ?force=1)
+  const force = q.get("force") === "1";
 
-    // Si está logueado (token real), el Journey vive en /progreso
-    if (isAuthed && token) {
+  useEffect(() => {
+    if (mode === "journey" && isAuthed && !force) {
       nav("/progreso", { replace: true });
     }
-  }, [mode, isAuthed, token, nav]);
+  }, [mode, isAuthed, force, nav]);
 
   const didReset = useRef(false);
   useEffect(() => {
@@ -46,21 +42,6 @@ export default function SimuladorPage() {
     // ✅ resetea por modo para evitar mezcla de estados
     resetLeadCapture(`enter_simulador_${mode}`);
   }, [resetLeadCapture, isOpen, mode]);
-
-  // Mientras redirige, evita render del wizard (flicker)
-  if (mode === "journey" && isAuthed && token) {
-    return (
-      <div className="min-h-[100dvh] bg-slate-950 flex items-center justify-center px-4 py-10">
-        <div className="w-full max-w-xl rounded-3xl border border-slate-800/80 bg-slate-900/60 px-6 py-6 text-slate-100 shadow-[0_24px_80px_rgba(15,23,42,0.9)]">
-          <div className="text-sm text-slate-400">HabitaLibre</div>
-          <div className="mt-1 text-lg font-semibold">Cargando tu progreso…</div>
-          <div className="mt-2 text-[12px] text-slate-400">
-            Te estamos llevando a tu tablero.
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div

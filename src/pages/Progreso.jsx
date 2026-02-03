@@ -903,6 +903,21 @@ export default function Progreso() {
     localStorage.setItem(LS_TASKS, JSON.stringify(taskDone || {}));
   }, [taskDone]);
 
+  // ✅ NAV HELPERS (IMPORTANTE): asegura que "Afinar" NUNCA caiga al formulario/quick
+  const goAfinar = (path = SIM_JOURNEY) => {
+    try {
+      localStorage.setItem("hl_entry_mode", "journey");
+    } catch {}
+    nav(path);
+  };
+
+  const goQuick = () => {
+    try {
+      localStorage.setItem("hl_entry_mode", "quick");
+    } catch {}
+    nav("/simular?mode=quick");
+  };
+
   // ✅ Regla: Progreso es SOLO Journey (requiere login)
   useEffect(() => {
     if (!token) {
@@ -1027,10 +1042,6 @@ export default function Progreso() {
           ts: Date.now(),
         };
 
-        // ✅ opcional: guarda local como backup “correcto” del MISMO user
-        // (si tu saveJourneyLocal ya existe, lo ideal es llamarlo aquí)
-        // try { saveJourneyLocal(backendSnap, { userEmail: meEmailNorm }); } catch {}
-
         if (!alive) return;
         setSnap(backendSnap);
         setSource("backend");
@@ -1041,14 +1052,13 @@ export default function Progreso() {
 
         if (!alive) return;
 
-        const currentEmail = normalizeEmail(user?.email); // ✅ FIX CLAVE: SOLO email de sesión real
+        const currentEmail = normalizeEmail(user?.email); // ✅ solo sesión real
 
         if (currentEmail && shouldUseLocalFallback(localSnap, currentEmail)) {
           setSnap(localSnap);
           setSource("local");
           setError("No pudimos cargar tu progreso sincronizado. Mostrando tu guardado local (de tu cuenta) por ahora.");
         } else {
-          // evita “inventar” info: limpia journey local si no es confiable
           try {
             clearJourneyLocal?.();
           } catch {}
@@ -1119,13 +1129,6 @@ export default function Progreso() {
       localStorage.setItem("hl_entry_mode", "journey");
     } catch {}
     nav(SIM_JOURNEY);
-  };
-
-  const goQuick = () => {
-    try {
-      localStorage.setItem("hl_entry_mode", "quick");
-    } catch {}
-    nav("/simular?mode=quick");
   };
 
   if (loading) {
@@ -1253,7 +1256,7 @@ export default function Progreso() {
                 </div>
               </div>
 
-              {/* Mantengo goQuick si luego quieres usarlo en UI (por ahora no lo muestras) */}
+              {/* Mantengo goQuick si luego quieres usarlo en UI */}
               {/* <button onClick={goQuick}>Modo quick</button> */}
             </div>
           </div>
@@ -1314,19 +1317,15 @@ export default function Progreso() {
               Hablar con asesor →
             </a>
 
-            {/* Secundarios */}
-            <Link
-              to={SIM_JOURNEY}
-              onClick={() => {
-                try {
-                  localStorage.setItem("hl_entry_mode", "journey");
-                } catch {}
-              }}
+            {/* ✅ AFINAR: usa helper para forzar journey */}
+            <button
+              type="button"
+              onClick={() => goAfinar(SIM_JOURNEY)}
               className="inline-flex items-center justify-center px-4 py-2 rounded-full border border-slate-700 text-slate-100 font-semibold text-xs hover:border-slate-500 transition"
               title="Ajusta tu escenario para mejorar tu resultado"
             >
               Afinar
-            </Link>
+            </button>
 
             <button
               type="button"
@@ -1373,9 +1372,6 @@ export default function Progreso() {
           </div>
         ) : null}
 
-        {/* =========================
-            HERO / RESUMEN
-        ========================= */}
         <section className="rounded-3xl border border-slate-800/70 bg-slate-900/50 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.9)]">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -1410,7 +1406,6 @@ export default function Progreso() {
             </div>
           </div>
 
-          {/* ✅ Siguiente paso + urgencia */}
           <div className="mt-5 rounded-2xl border border-slate-800/70 bg-slate-950/20 p-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
@@ -1427,7 +1422,6 @@ export default function Progreso() {
             </div>
           </div>
 
-          {/* ✅ CTA STACK (desktop/tablet) */}
           <div className="mt-5 hidden sm:flex flex-col sm:flex-row gap-3">
             <a
               href={waHref}
@@ -1436,20 +1430,16 @@ export default function Progreso() {
               className="inline-flex items-center justify-center px-6 py-3 rounded-2xl bg-emerald-400 text-slate-950 font-semibold text-sm hover:bg-emerald-300 transition"
             >
               Hablar con un asesor →
-              <span className="sr-only">por WhatsApp</span>
             </a>
 
-            <Link
-              to={SIM_JOURNEY}
-              onClick={() => {
-                try {
-                  localStorage.setItem("hl_entry_mode", "journey");
-                } catch {}
-              }}
+            {/* ✅ AFINAR (CTA) */}
+            <button
+              type="button"
+              onClick={() => goAfinar(SIM_JOURNEY)}
               className="inline-flex items-center justify-center px-6 py-3 rounded-2xl border border-slate-700 text-slate-100 font-semibold text-sm hover:border-slate-500 transition"
             >
               Afinar mi resultado
-            </Link>
+            </button>
 
             <button
               type="button"
@@ -1466,20 +1456,12 @@ export default function Progreso() {
         <div className="mt-4">
           <HLScoreCard
             data={data}
-            onGoSimular={() => {
-              try {
-                localStorage.setItem("hl_entry_mode", "journey");
-              } catch {}
-              nav(SIM_JOURNEY);
-            }}
+            onGoSimular={() => goAfinar(SIM_JOURNEY)}
             onOpenAmortizacion={() => setAmortOpen(true)}
             onOpenAsesor={() => window.open(waHref, "_blank", "noreferrer")}
           />
         </div>
 
-        {/* =========================
-            PLAN / TASKS
-        ========================= */}
         <section id="mejoras" className="mt-5 rounded-3xl border border-slate-800/70 bg-slate-900/50 p-6">
           <div className="flex items-end justify-between gap-4">
             <div>
@@ -1571,7 +1553,14 @@ export default function Progreso() {
                     ) : (
                       <button
                         type="button"
-                        onClick={() => nav(t.ctaHref)}
+                        onClick={() => {
+                          // ✅ FIX CLAVE: si el CTA manda a journey, forzamos entry_mode=journey
+                          if (t.ctaHref === SIM_JOURNEY || String(t.ctaHref || "").startsWith("/simular?mode=journey")) {
+                            goAfinar(t.ctaHref);
+                            return;
+                          }
+                          nav(t.ctaHref);
+                        }}
                         className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-blue-500 hover:bg-blue-400 text-slate-950 font-semibold text-xs transition"
                       >
                         {t.ctaText}
@@ -1657,12 +1646,13 @@ export default function Progreso() {
                   Afinar tu simulación para elegir el mejor escenario (entrada/plazo/deudas) y preparar carpeta.
                 </p>
                 <div className="mt-3 flex gap-2">
-                  <Link
-                    to={SIM_JOURNEY}
+                  <button
+                    type="button"
+                    onClick={() => goAfinar(SIM_JOURNEY)}
                     className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-blue-500 hover:bg-blue-400 text-slate-950 font-semibold text-xs transition"
                   >
                     Afinar ahora →
-                  </Link>
+                  </button>
                   <a
                     href={waHref}
                     target="_blank"
@@ -1720,6 +1710,12 @@ export default function Progreso() {
             window.open(href, "_blank", "noreferrer");
             return;
           }
+          // ✅ si el panel manda a journey, fuerza entry_mode=journey
+          if (href === SIM_JOURNEY || String(href || "").startsWith("/simular?mode=journey")) {
+            goAfinar(href);
+            setAdvisorOpen(false);
+            return;
+          }
           nav(href);
           setAdvisorOpen(false);
         }}
@@ -1736,25 +1732,11 @@ export default function Progreso() {
         open={amortOpen}
         onClose={() => setAmortOpen(false)}
         data={snap}
-        onGoSimular={() => {
-          try {
-            localStorage.setItem("hl_entry_mode", "journey");
-          } catch {}
-          nav(SIM_JOURNEY_AMORT);
-        }}
+        onGoSimular={() => goAfinar(SIM_JOURNEY_AMORT)}
       />
 
       {/* ✅ Sticky CTA solo mobile */}
-      <MobileStickyCTA
-        waHref={waHref}
-        onAfinar={() => {
-          try {
-            localStorage.setItem("hl_entry_mode", "journey");
-          } catch {}
-          nav(SIM_JOURNEY);
-        }}
-        onPlan={() => setAdvisorOpen(true)}
-      />
+      <MobileStickyCTA waHref={waHref} onAfinar={() => goAfinar(SIM_JOURNEY)} onPlan={() => setAdvisorOpen(true)} />
     </PremiumBg>
   );
 }

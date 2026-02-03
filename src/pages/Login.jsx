@@ -5,7 +5,10 @@ import { trackEvent, trackPageView } from "../lib/analytics";
 import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
 import * as customerApi from "../lib/customerApi.js";
 
-const LOGIN_BUILD = "LOGIN_BUILD__2026-02-02__diag_v2";
+const LOGIN_BUILD = "LOGIN_BUILD__2026-02-03__pendingJourney_fix_v1";
+
+// ✅ Keys locales (de WizardHL)
+const LS_PENDING_JOURNEY = "hl_pending_journey";
 
 function isEmail(v) {
   const s = String(v || "").trim().toLowerCase();
@@ -42,6 +45,15 @@ function withTimeout(promise, ms = 12000) {
   });
 }
 
+// ✅ Si hay journey pendiente, SIEMPRE gana /progreso (y opcionalmente limpiamos)
+function getPendingJourney() {
+  try {
+    const pending = JSON.parse(localStorage.getItem(LS_PENDING_JOURNEY) || "null");
+    if (pending && pending.status === "precalificado") return pending;
+  } catch {}
+  return null;
+}
+
 export default function Login() {
   const nav = useNavigate();
   const location = useLocation();
@@ -64,11 +76,28 @@ export default function Login() {
 
   const [acepta, setAcepta] = useState(true);
 
-  // ✅ track + si ya hay token, manda a progreso
+  // ✅ navegación centralizada: pending journey > returnTo > /progreso
+  const goAfterAuth = (source = "unknown") => {
+    const pending = getPendingJourney();
+    if (pending) {
+      // opcional: si quieres que no se quede pegado a futuro, descomenta
+      // try { localStorage.removeItem(LS_PENDING_JOURNEY); } catch {}
+      trackEvent("customer_auth_redirect_pending_journey", { source });
+      nav("/progreso", { replace: true });
+      return;
+    }
+
+    const returnToFromState = location?.state?.returnTo;
+    const to = returnToFromState || qs.returnTo || "/progreso";
+    trackEvent("customer_auth_redirect", { source, to });
+    nav(to, { replace: true });
+  };
+
+  // ✅ track + si ya hay token, manda a destino correcto (con prioridad a pending journey)
   useEffect(() => {
     trackPageView("customer_login");
     if (token) {
-      nav(qs.returnTo || "/progreso", { replace: true });
+      goAfterAuth("already_token_on_mount");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -76,7 +105,7 @@ export default function Login() {
   // ✅ importantísimo: si el token cambia, redirige (evita “me devuelve al login” por timing)
   useEffect(() => {
     if (token) {
-      nav(qs.returnTo || "/progreso", { replace: true });
+      goAfterAuth("token_changed");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
@@ -130,10 +159,7 @@ export default function Login() {
       trackEvent("customer_login_submit", { returnTo: qs.returnTo });
 
       // ✅ timeout para evitar “se queda pegado”
-      const resp = await withTimeout(
-        customerApi.loginCustomer({ email: finalEmail, password: finalPass }),
-        12000
-      );
+      const resp = await withTimeout(customerApi.loginCustomer({ email: finalEmail, password: finalPass }), 12000);
 
       console.log("[LOGIN]", "loginCustomer resp:", resp);
 
@@ -146,11 +172,10 @@ export default function Login() {
       setToken(resp.token);
       trackEvent("customer_login_success", {});
 
-      console.log("[LOGIN]", "token seteado. Navegando…", { to: qs.returnTo || "/progreso" });
+      console.log("[LOGIN]", "token seteado. Navegando…");
 
-      // Nota: la navegación principal ocurre en el useEffect([token]) con replace:true
-      // pero igual dejamos esto por redundancia:
-      nav(qs.returnTo || "/progreso", { replace: true });
+      // ✅ navegación correcta (pending journey > returnTo)
+      goAfterAuth("login_success");
     } catch (err) {
       console.error("[LOGIN] error:", err);
       trackEvent("customer_login_error", { message: String(err?.message || err) });
@@ -190,7 +215,9 @@ export default function Login() {
 
       setToken(resp.token);
       trackEvent("customer_register_success", {});
-      nav(qs.returnTo || "/progreso", { replace: true });
+
+      // ✅ navegación correcta (pending journey > returnTo)
+      goAfterAuth("register_success");
     } catch (err) {
       console.error(err);
       trackEvent("customer_register_error", { message: String(err?.message || err) });
