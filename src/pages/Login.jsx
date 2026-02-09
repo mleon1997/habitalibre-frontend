@@ -5,10 +5,7 @@ import { trackEvent, trackPageView } from "../lib/analytics";
 import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
 import * as customerApi from "../lib/customerApi.js";
 
-const LOGIN_BUILD = "LOGIN_BUILD__2026-02-03__pendingJourney_fix_v1";
-
-// ✅ Keys locales (de WizardHL)
-const LS_PENDING_JOURNEY = "hl_pending_journey";
+const LOGIN_BUILD = "LOGIN_BUILD__2026-02-03__returnto_fix_v1";
 
 function isEmail(v) {
   const s = String(v || "").trim().toLowerCase();
@@ -22,12 +19,29 @@ function isValidEcMobile(v) {
   if (d.startsWith("593")) return d.length === 12 && d.slice(3, 4) === "9";
   return d.length === 10 && d.startsWith("09");
 }
+
 function getQS(location) {
   const sp = new URLSearchParams(location.search || "");
   return {
     intent: (sp.get("intent") || "login").toLowerCase(),
-    returnTo: sp.get("returnTo") || "/progreso",
+    returnTo: sp.get("returnTo") || "", // 👈 ya no forzamos "/progreso" aquí
   };
+}
+
+function sanitizeReturnTo(raw, fallback = "/progreso") {
+  const rt = String(raw || "").trim();
+
+  // vacío
+  if (!rt) return fallback;
+
+  // solo rutas internas
+  if (!rt.startsWith("/")) return fallback;
+
+  // 🚫 evita loops hacia el formulario /precalificar
+  // (si tu app usa HashRouter, a veces esto llega como "/precalificar" o incluye "precalificar")
+  if (rt.includes("precalificar")) return "/progreso";
+
+  return rt;
 }
 
 function withTimeout(promise, ms = 12000) {
@@ -43,15 +57,6 @@ function withTimeout(promise, ms = 12000) {
         reject(e);
       });
   });
-}
-
-// ✅ Si hay journey pendiente, SIEMPRE gana /progreso (y opcionalmente limpiamos)
-function getPendingJourney() {
-  try {
-    const pending = JSON.parse(localStorage.getItem(LS_PENDING_JOURNEY) || "null");
-    if (pending && pending.status === "precalificado") return pending;
-  } catch {}
-  return null;
 }
 
 export default function Login() {
@@ -76,55 +81,39 @@ export default function Login() {
 
   const [acepta, setAcepta] = useState(true);
 
-  // ✅ navegación centralizada: pending journey > returnTo > /progreso
-  const goAfterAuth = (source = "unknown") => {
-    const pending = getPendingJourney();
-    if (pending) {
-      // opcional: si quieres que no se quede pegado a futuro, descomenta
-      // try { localStorage.removeItem(LS_PENDING_JOURNEY); } catch {}
-      trackEvent("customer_auth_redirect_pending_journey", { source });
-      nav("/progreso", { replace: true });
-      return;
-    }
+  // ✅ FIX CLAVE: prioriza returnTo desde location.state (Progreso.jsx lo manda así)
+  const returnTo = useMemo(() => {
+    const stateRT = location?.state?.returnTo || "";
+    const qsRT = qs.returnTo || "";
+    return sanitizeReturnTo(stateRT || qsRT || "", "/progreso");
+  }, [location?.state?.returnTo, qs.returnTo]);
 
-    const returnToFromState = location?.state?.returnTo;
-    const to = returnToFromState || qs.returnTo || "/progreso";
-    trackEvent("customer_auth_redirect", { source, to });
-    nav(to, { replace: true });
-  };
-
-  // ✅ track + si ya hay token, manda a destino correcto (con prioridad a pending journey)
+  // ✅ track + si ya hay token, manda al returnTo seguro
   useEffect(() => {
     trackPageView("customer_login");
     if (token) {
-      goAfterAuth("already_token_on_mount");
+      nav(returnTo, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ✅ importantísimo: si el token cambia, redirige (evita “me devuelve al login” por timing)
+  // ✅ si el token cambia, redirige
   useEffect(() => {
     if (token) {
-      goAfterAuth("token_changed");
+      nav(returnTo, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token, returnTo]);
 
   useEffect(() => {
     setMode(qs.intent === "register" ? "register" : "login");
   }, [qs.intent]);
 
   const subtitle = useMemo(() => {
-    const rt = String(qs.returnTo || "");
+    const rt = String(returnTo || "");
     if (rt.includes("journey")) return "Guarda tu plan y retoma tu camino a la vivienda propia cuando quieras.";
     return "Accede a tu progreso y a tu checklist personalizado.";
-  }, [qs.returnTo]);
-
-  const canLogin = useMemo(() => {
-    if (!isEmail(email)) return false;
-    if (String(password || "").length < 6) return false;
-    return true;
-  }, [email, password]);
+  }, [returnTo]);
 
   const canRegister = useMemo(() => {
     if (String(nombre || "").trim().length < 2) return false;
@@ -154,14 +143,12 @@ export default function Login() {
 
     setBusy(true);
     try {
-      console.log("[LOGIN]", "doLogin() start", { build: LOGIN_BUILD, finalEmail, returnTo: qs.returnTo });
+      trackEvent("customer_login_submit", { returnTo });
 
-      trackEvent("customer_login_submit", { returnTo: qs.returnTo });
-
-      // ✅ timeout para evitar “se queda pegado”
-      const resp = await withTimeout(customerApi.loginCustomer({ email: finalEmail, password: finalPass }), 12000);
-
-      console.log("[LOGIN]", "loginCustomer resp:", resp);
+      const resp = await withTimeout(
+        customerApi.loginCustomer({ email: finalEmail, password: finalPass }),
+        12000
+      );
 
       if (!resp?.token) {
         const msg = resp?.message || "No se pudo iniciar sesión (sin token).";
@@ -171,13 +158,8 @@ export default function Login() {
 
       setToken(resp.token);
       trackEvent("customer_login_success", {});
-
-      console.log("[LOGIN]", "token seteado. Navegando…");
-
-      // ✅ navegación correcta (pending journey > returnTo)
-      goAfterAuth("login_success");
+      nav(returnTo, { replace: true });
     } catch (err) {
-      console.error("[LOGIN] error:", err);
       trackEvent("customer_login_error", { message: String(err?.message || err) });
       setError(err?.message || "Error iniciando sesión. Intenta de nuevo.");
     } finally {
@@ -198,7 +180,7 @@ export default function Login() {
 
     setBusy(true);
     try {
-      trackEvent("customer_register_submit", { returnTo: qs.returnTo });
+      trackEvent("customer_register_submit", { returnTo });
 
       const payload = {
         nombre: String(nombre).trim(),
@@ -215,11 +197,8 @@ export default function Login() {
 
       setToken(resp.token);
       trackEvent("customer_register_success", {});
-
-      // ✅ navegación correcta (pending journey > returnTo)
-      goAfterAuth("register_success");
+      nav(returnTo, { replace: true });
     } catch (err) {
-      console.error(err);
       trackEvent("customer_register_error", { message: String(err?.message || err) });
       setError(err?.message || "No se pudo crear tu cuenta. Si ya tienes cuenta, inicia sesión.");
     } finally {
