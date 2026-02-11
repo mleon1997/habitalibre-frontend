@@ -390,9 +390,16 @@ export async function meCustomer(token) {
   });
 }
 
-// 1) ✅ Precalificar (IMPORTANTÍSIMO: adjunta token customer si existe)
+// 1) Precalificar (✅ ahora manda token customer si existe)
 export async function precalificar(payload) {
-  const t = getCustomerToken(); // ✅ ahora sí le llega userId al backend
+  let t = "";
+  try {
+    t =
+      window.localStorage.getItem("hl_customer_token") ||
+      window.localStorage.getItem("customerToken") ||
+      window.localStorage.getItem("HL_CUSTOMER_TOKEN") ||
+      "";
+  } catch {}
 
   const resp = await apiFetch("/api/precalificar", {
     method: "POST",
@@ -403,6 +410,8 @@ export async function precalificar(payload) {
   if (!resp.ok) return resp;
   return { ok: true, ...resp.data };
 }
+
+
 
 // 2) Crear lead desde simulador
 export async function crearLeadDesdeSimulador(payload) {
