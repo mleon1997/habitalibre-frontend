@@ -117,8 +117,8 @@ function getCustomerToken() {
 /**
  * ✅ Selecciona token según endpoint (SIN CONTAMINAR)
  * - /api/admin/... => admin token
- * - /api/customer-auth/... o /api/customer/... => customer token (SOLO customer)
- * - resto => NO adjunta token por defecto (solo si caller pasa Authorization)
+ * - /api/customer-auth/... o /api/customer/... => customer token
+ * - resto => NO adjunta token por defecto
  */
 function getStoredTokenForPath(path = "") {
   const p = String(path || "");
@@ -265,7 +265,6 @@ function getScopeForPath(path = "") {
 
 function getReturnToHashRouter() {
   try {
-    // HashRouter: la ruta vive dentro del hash (#/progreso?x=1)
     const h = String(window.location.hash || "");
     if (h.startsWith("#")) return h.slice(1) || "/";
     return "/";
@@ -381,8 +380,6 @@ export async function apiFetch(path, opts = {}) {
 // =====================================================
 
 // 0) ✅ ME Customer (para CustomerProtectedRoute)
-// ✅ FIX: endpoint correcto es /api/customer-auth/me
-
 export async function meCustomer(token) {
   const t = String(token || "").trim();
   const headers = t ? { Authorization: `Bearer ${t}` } : undefined;
@@ -393,10 +390,13 @@ export async function meCustomer(token) {
   });
 }
 
-// 1) Precalificar
+// 1) ✅ Precalificar (IMPORTANTÍSIMO: adjunta token customer si existe)
 export async function precalificar(payload) {
+  const t = getCustomerToken(); // ✅ ahora sí le llega userId al backend
+
   const resp = await apiFetch("/api/precalificar", {
     method: "POST",
+    headers: t ? { Authorization: `Bearer ${t}` } : undefined,
     body: JSON.stringify(payload || {}),
   });
 
