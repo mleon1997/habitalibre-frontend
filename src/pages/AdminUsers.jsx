@@ -427,12 +427,13 @@ export default function AdminUsers() {
         {/* tabla tipo quick win */}
         <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-[1100px] w-full text-sm">
+            <table className="min-w-[1200px] w-full text-sm">
               <thead className="bg-white/5 text-slate-200">
                 <tr>
                   <th className="text-left p-3">Fecha</th>
-                  <th className="text-left p-3">Email</th>
-                  <th className="text-left p-3">Nombre</th>
+                 <th className="text-left p-3">Email</th>
+<th className="text-left p-3">Teléfono</th>
+<th className="text-left p-3">Nombre</th>
                   <th className="text-left p-3">Ciudad</th>
                   <th className="text-right p-3">Ingreso</th>
                   <th className="text-right p-3">Deudas</th>
@@ -454,8 +455,28 @@ export default function AdminUsers() {
                   viewItems.map((u) => (
                     <tr key={u.userId} className="border-t border-white/5">
                       <td className="p-3">{fmtDate(u._view_snapshotAt || u.snapshotAt || u.lastActivity)}</td>
-                      <td className="p-3">{u.email || "-"}</td>
-                      <td className="p-3">{`${u.nombre || ""} ${u.apellido || ""}`.trim() || "-"}</td>
+                     <td className="p-3">
+  {u.email ? (
+    <a className="underline underline-offset-2 hover:opacity-80" href={`mailto:${u.email}`}>
+      {u.email}
+    </a>
+  ) : (
+    "-"
+  )}
+</td>
+
+<td className="p-3">
+  {u.telefono ? (
+    <a className="underline underline-offset-2 hover:opacity-80" href={`tel:${u.telefono}`}>
+      {u.telefono}
+    </a>
+  ) : (
+    "-"
+  )}
+</td>
+
+<td className="p-3">{`${u.nombre || ""} ${u.apellido || ""}`.trim() || "-"}</td>
+
                       <td className="p-3">{u.ciudad || "-"}</td>
 
                       <td className="p-3 text-right">
@@ -480,7 +501,7 @@ export default function AdminUsers() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={10} className="p-6 text-center text-slate-300">
+                    <td colSpan={11} className="p-6 text-center text-slate-300">
                       No hay resultados con estos filtros
                     </td>
                   </tr>
