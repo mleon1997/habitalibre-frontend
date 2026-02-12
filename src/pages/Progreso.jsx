@@ -783,9 +783,7 @@ function AmortModal({ open, onClose, data, onGoSimular }) {
                 <div className="rounded-2xl border border-slate-800/70 bg-slate-950/30 p-4">
                   <p className="text-[11px] text-slate-400">Tasa estimada</p>
                   <p className="mt-1 text-lg font-semibold">{preview?.tasaUI?.labelMain || "—"}</p>
-                  {preview?.tasaUI?.labelSub ? (
-                    <p className="mt-1 text-[11px] text-slate-500">{preview.tasaUI.labelSub}</p>
-                  ) : null}
+                  {preview?.tasaUI?.labelSub ? <p className="mt-1 text-[11px] text-slate-500">{preview.tasaUI.labelSub}</p> : null}
                 </div>
 
                 <div className="rounded-2xl border border-slate-800/70 bg-slate-950/30 p-4">
