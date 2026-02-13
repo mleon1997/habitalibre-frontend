@@ -64,9 +64,10 @@ export default function App() {
           {/* =========================
               ✅ APP MÓVIL AISLADA
              ========================= */}
-          <Route element={<AppMobileLayout />}>
-            <Route path="/app/*" element={<AppJourney />} />
-          </Route>
+          <Route path="/app" element={<AppMobileLayout />}>
+  <Route index element={<AppJourney />} />
+</Route>
+
 
           {/* =========================
               WEB PÚBLICA

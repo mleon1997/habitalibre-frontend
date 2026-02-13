@@ -1,6 +1,6 @@
 // src/pages/AppJourney.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { API_BASE } from "../lib/api";
 import { trackPageView } from "../lib/analytics";
 import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
@@ -76,7 +76,6 @@ function hashPayload(obj) {
   try {
     return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
   } catch {
-    // fallback simple
     return String(JSON.stringify(obj || {})).slice(0, 500);
   }
 }
@@ -116,6 +115,7 @@ function StickyNav({ onBack, onNext, disableBack, disableNext, nextLabel = "Cont
 
 export default function AppJourney() {
   const nav = useNavigate();
+  const location = useLocation();
   const { token, user } = useCustomerAuth();
 
   const isMobileMode = new URLSearchParams(window.location.search).get("mode") === "mobile";
@@ -175,6 +175,54 @@ export default function AppJourney() {
     trackPageView("app_journey");
   }, []);
 
+  /* =========================================================
+     ✅ AFINAR: si viene ?afinando=1, resetea al step 1
+     - limpia resultado/cache
+     - opcional: resetea formulario completo
+     - limpia el query para que no se re-dispare
+  ========================================================= */
+  useEffect(() => {
+    const qs = new URLSearchParams(location.search);
+    const afinando = qs.get("afinando") === "1";
+    if (!afinando) return;
+
+    // ✅ opcional: reset total del formulario
+    const defaultForm = {
+      ingresoNetoMensual: "",
+      ingresoPareja: "",
+      valorVivienda: "",
+      entradaDisponible: "",
+      edad: "",
+      ciudadCompra: "Quito",
+      afiliadoIess: "si",
+      otrasDeudasMensuales: "",
+    };
+
+    setForm(defaultForm);
+    setCalcResult(null);
+    setCalcError("");
+    setLastCalcKey("");
+
+    setStep(1);
+
+    // ✅ persist inmediato (sin depender del state async)
+    saveJourney({
+      welcomed,
+      step: 1,
+      form: defaultForm,
+      calcResult: null,
+      lastCalcKey: "",
+      updatedAt: new Date().toISOString(),
+    });
+
+    // ✅ limpiar query
+    qs.delete("afinando");
+    const nextSearch = qs.toString();
+    nav(`${location.pathname}${nextSearch ? `?${nextSearch}` : ""}`, { replace: true });
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
+
   // ✅ Validaciones mínimas (igual tu versión)
   const errors = useMemo(() => {
     const e = {};
@@ -212,15 +260,13 @@ export default function AppJourney() {
     persist({ step: s });
   };
 
- // 👇 dentro de AppJourney.jsx
-const goLogin = () =>
-  nav("/login", {
-    state: {
-      returnTo: isMobileMode ? "/app?mode=mobile" : "/app",
-      from: "app",
-    },
-  });
-
+  const goLogin = () =>
+    nav("/login", {
+      state: {
+        returnTo: isMobileMode ? "/app?mode=mobile" : "/app",
+        from: "app",
+      },
+    });
 
   const payload = useMemo(
     () => ({
@@ -295,7 +341,6 @@ const goLogin = () =>
 
   const beginJourney = () => {
     setWelcomed(true);
-    // si tenías step guardado, respétalo; si no, empieza 1
     const s = clamp(step || 1, 1, stepsTotal);
     setStep(s);
     saveJourney({
@@ -312,9 +357,7 @@ const goLogin = () =>
   const pickIess = (val) => {
     set("afiliadoIess", val);
     if (isMobileMode) {
-      // pequeño delay para que se vea el “tap” y avance
       setTimeout(() => {
-        // si sigue en step 1, avanza
         setStep((cur) => {
           if (cur !== 1) return cur;
           const s = 2;
@@ -452,7 +495,11 @@ const goLogin = () =>
                 <>
                   <h2 className="text-lg font-semibold mb-4">Tus ingresos</h2>
 
-                  <Field label="Ingreso neto mensual" hint={moneySoft(form.ingresoNetoMensual)} error={errors.ingresoNetoMensual}>
+                  <Field
+                    label="Ingreso neto mensual"
+                    hint={moneySoft(form.ingresoNetoMensual)}
+                    error={errors.ingresoNetoMensual}
+                  >
                     <input
                       value={form.ingresoNetoMensual}
                       onChange={(e) => set("ingresoNetoMensual", onlyDigits(e.target.value))}

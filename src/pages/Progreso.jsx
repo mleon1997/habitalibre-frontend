@@ -112,8 +112,9 @@ function mergePreferValues(...objs) {
 ========================= */
 const LS_TASKS = "hl_progress_tasks_v1";
 
-const SIM_JOURNEY = "/simular?mode=journey";
-const SIM_JOURNEY_AMORT = "/simular?mode=journey&tab=amort";
+const SIM_JOURNEY = "/simulador?mode=journey";
+const SIM_JOURNEY_AMORT = "/simulador?mode=journey&tab=amort";
+
 
 const LS_JOURNEY_OWNER_EMAIL = "hl_journey_owner_email_v1";
 const LS_JOURNEY_TS = "hl_journey_ts_v1";
@@ -913,7 +914,7 @@ export default function Progreso() {
     try {
       localStorage.setItem("hl_entry_mode", "quick");
     } catch {}
-    nav("/simular?mode=quick");
+    nav("/simulador?mode=quick");
   };
 
   // ✅ Regla: Progreso es SOLO Journey (requiere login)
@@ -1109,7 +1110,7 @@ export default function Progreso() {
     return encodeURIComponent(parts.join("\n"));
   }, [user?.email, data?.precioMaxVivienda, data?.cuotaEstimada, data?.suggestedCredit, data?.probAprobacion]);
 
-  const WHATSAPP_NUMBER = "593000000000"; // 👈 cambia esto
+  const WHATSAPP_NUMBER = "593985476936"; // 👈 cambia esto
   const waHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${waMessage}`;
 
   const docChecklist = useMemo(() => (data.hasSnap ? buildDocumentChecklist(data) : []), [data]);

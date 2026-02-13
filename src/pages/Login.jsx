@@ -11,11 +11,9 @@ function isEmail(v) {
   const s = String(v || "").trim().toLowerCase();
   return s.includes("@") && s.includes(".");
 }
-
 function cleanPhone(v) {
   return String(v || "").replace(/[^\d]/g, "");
 }
-
 function isValidEcMobile(v) {
   const d = cleanPhone(v);
   if (d.startsWith("593")) return d.length === 12 && d.slice(3, 4) === "9";
@@ -26,29 +24,23 @@ function getQS(location) {
   const sp = new URLSearchParams(location.search || "");
   return {
     intent: (sp.get("intent") || "login").toLowerCase(),
-    returnTo: sp.get("returnTo") || "", // no forzar aquí
+    returnTo: sp.get("returnTo") || "", // no forzamos "/progreso"
   };
 }
 
-/**
- * returnTo seguro:
- * - solo rutas internas "/..."
- * - evita loops hacia precalificar
- */
 function sanitizeReturnTo(raw, fallback = "/progreso") {
   const rt = String(raw || "").trim();
 
+  // vacío
   if (!rt) return fallback;
 
-  // soporta casos raros tipo "#/app" (por si algún link lo manda así)
-  const normalized = rt.startsWith("#/") ? rt.slice(1) : rt;
+  // solo rutas internas
+  if (!rt.startsWith("/")) return fallback;
 
-  if (!normalized.startsWith("/")) return fallback;
+  // evita loops hacia el formulario /precalificar
+  if (rt.includes("precalificar")) return "/progreso";
 
-  // evita loops hacia quick win form
-  if (normalized.toLowerCase().includes("precalificar")) return "/progreso";
-
-  return normalized;
+  return rt;
 }
 
 function withTimeout(promise, ms = 12000) {
@@ -88,23 +80,21 @@ export default function Login() {
 
   const [acepta, setAcepta] = useState(true);
 
-  // ✅ PRIORIDAD:
-  // 1) location.state.returnTo (viene desde AppJourney / Progreso)
-  // 2) querystring returnTo (si llega por URL)
+  // ✅ prioriza returnTo desde location.state (por ej: AppJourney manda { returnTo: "/app" })
   const returnTo = useMemo(() => {
     const stateRT = location?.state?.returnTo || "";
     const qsRT = qs.returnTo || "";
     return sanitizeReturnTo(stateRT || qsRT || "", "/progreso");
   }, [location?.state?.returnTo, qs.returnTo]);
 
-  // Track + si ya hay token, manda al returnTo seguro
+  // track + si ya hay token, manda al returnTo seguro
   useEffect(() => {
     trackPageView("customer_login");
     if (token) nav(returnTo, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Si el token cambia, redirige
+  // si el token cambia, redirige
   useEffect(() => {
     if (token) nav(returnTo, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -112,14 +102,11 @@ export default function Login() {
 
   useEffect(() => {
     setMode(qs.intent === "register" ? "register" : "login");
-    // no resetear campos automáticamente (para no frustrar si cambian tabs)
   }, [qs.intent]);
 
   const subtitle = useMemo(() => {
     const rt = String(returnTo || "");
-    if (rt.includes("journey") || rt === "/app") {
-      return "Guarda tu plan y retoma tu camino a la vivienda propia cuando quieras.";
-    }
+    if (rt.includes("journey")) return "Guarda tu plan y retoma tu camino a la vivienda propia cuando quieras.";
     return "Accede a tu progreso y a tu checklist personalizado.";
   }, [returnTo]);
 
@@ -165,7 +152,7 @@ export default function Login() {
       }
 
       setToken(resp.token);
-      trackEvent("customer_login_success", { returnTo });
+      trackEvent("customer_login_success", {});
       nav(returnTo, { replace: true });
     } catch (err) {
       trackEvent("customer_login_error", { message: String(err?.message || err) });
@@ -204,7 +191,7 @@ export default function Login() {
       if (!resp?.token) throw new Error(resp?.message || "No se pudo crear la cuenta.");
 
       setToken(resp.token);
-      trackEvent("customer_register_success", { returnTo });
+      trackEvent("customer_register_success", {});
       nav(returnTo, { replace: true });
     } catch (err) {
       trackEvent("customer_register_error", { message: String(err?.message || err) });
@@ -220,12 +207,8 @@ export default function Login() {
         {/* LEFT */}
         <section className="hidden md:block">
           <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-7 shadow-[0_30px_80px_rgba(15,23,42,0.95)]">
-            <div className="text-[11px] tracking-[0.2em] uppercase text-slate-400 mb-3">
-              HabitaLibre · Cuenta
-            </div>
-            <h1 className="text-3xl font-semibold tracking-tight text-slate-50">
-              Guarda tu plan y avanza más rápido
-            </h1>
+            <div className="text-[11px] tracking-[0.2em] uppercase text-slate-400 mb-3">HabitaLibre · Cuenta</div>
+            <h1 className="text-3xl font-semibold tracking-tight text-slate-50">Guarda tu plan y avanza más rápido</h1>
             <p className="mt-3 text-sm text-slate-300 max-w-md">{subtitle}</p>
 
             <div className="mt-6 grid gap-3 text-sm">
@@ -241,9 +224,7 @@ export default function Login() {
               </div>
               <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
                 <p className="font-semibold text-slate-50">✓ Asesoría sin costo</p>
-                <p className="text-slate-400 text-[12px] mt-1">
-                  Si quieres, te acompañamos a ordenar tu caso para el banco.
-                </p>
+                <p className="text-slate-400 text-[12px] mt-1">Si quieres, te acompañamos a ordenar tu caso para el banco.</p>
               </div>
             </div>
 
