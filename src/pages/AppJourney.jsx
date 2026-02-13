@@ -1,11 +1,12 @@
 // src/pages/AppJourney.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE } from "../lib/api";
 import { trackPageView } from "../lib/analytics";
 import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
+import HIcon from "../assets/HICON.png";
 
-const LS_JOURNEY = "hl_app_journey_v4";
+const LS_JOURNEY = "hl_app_journey_v5"; // 👈 bump versión
 
 function loadJourney() {
   try {
@@ -53,14 +54,78 @@ function Field({ label, hint, error, children }) {
   );
 }
 
+/* =========================
+   Background premium wrapper (igual Progreso)
+========================= */
+function PremiumBg({ children }) {
+  return (
+    <main className="relative min-h-screen text-slate-50 bg-slate-950 overflow-x-hidden">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute inset-0 bg-slate-950" />
+        <div className="absolute inset-0 bg-[radial-gradient(900px_500px_at_50%_0%,rgba(56,189,248,0.14),transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(700px_420px_at_15%_15%,rgba(16,185,129,0.12),transparent_55%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(700px_420px_at_85%_35%,rgba(59,130,246,0.12),transparent_55%)]" />
+        <div className="absolute inset-x-0 top-0 h-[420px] bg-gradient-to-b from-black/35 to-transparent" />
+      </div>
+      <div className="relative">{children}</div>
+    </main>
+  );
+}
+
+function hashPayload(obj) {
+  try {
+    return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+  } catch {
+    // fallback simple
+    return String(JSON.stringify(obj || {})).slice(0, 500);
+  }
+}
+
+/* =========================
+   Sticky footer (mobile-first)
+========================= */
+function StickyNav({ onBack, onNext, disableBack, disableNext, nextLabel = "Continuar" }) {
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-[80]">
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent" />
+      <div className="pointer-events-auto mx-auto max-w-[520px] px-4 pb-[max(14px,env(safe-area-inset-bottom,0px))] pt-3">
+        <div className="rounded-2xl border border-slate-800/70 bg-slate-950/75 backdrop-blur shadow-[0_20px_60px_rgba(0,0,0,0.55)] p-2">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={onBack}
+              disabled={disableBack}
+              className="h-12 rounded-2xl border border-slate-700 bg-slate-900/30 hover:bg-slate-900/45 text-slate-100 font-semibold text-sm disabled:opacity-40"
+            >
+              Atrás
+            </button>
+            <button
+              type="button"
+              onClick={onNext}
+              disabled={disableNext}
+              className="h-12 rounded-2xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-semibold text-sm disabled:opacity-40"
+            >
+              {nextLabel}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AppJourney() {
   const nav = useNavigate();
-  const { token } = useCustomerAuth();
+  const { token, user } = useCustomerAuth();
 
   const isMobileMode = new URLSearchParams(window.location.search).get("mode") === "mobile";
 
   const saved = useMemo(() => loadJourney(), []);
+  const [welcomed, setWelcomed] = useState(!!saved?.welcomed);
+
+  // step: 1..4 (form), pero si token y !welcomed => mostramos bienvenida (step=0)
   const [step, setStep] = useState(saved?.step || 1);
+
   const [form, setForm] = useState(
     saved?.form || {
       ingresoNetoMensual: "",
@@ -78,29 +143,39 @@ export default function AppJourney() {
   const [calcBusy, setCalcBusy] = useState(false);
   const [calcError, setCalcError] = useState("");
 
-  const persist = (nextStepVal, nextForm, nextCalc = calcResult) => {
+  // Cache de cálculo
+  const [lastCalcKey, setLastCalcKey] = useState(saved?.lastCalcKey || "");
+  const lastCalcKeyRef = useRef(lastCalcKey);
+  useEffect(() => {
+    lastCalcKeyRef.current = lastCalcKey;
+  }, [lastCalcKey]);
+
+  const persist = (next = {}) => {
     saveJourney({
-      step: nextStepVal,
-      form: nextForm,
-      calcResult: nextCalc,
+      welcomed,
+      step,
+      form,
+      calcResult,
+      lastCalcKey,
       updatedAt: new Date().toISOString(),
+      ...next,
     });
   };
 
   const set = (k, v) => {
     const next = { ...form, [k]: v };
     setForm(next);
-    persist(step, next);
+    persist({ form: next });
   };
 
   const stepsTotal = 4;
-  const pct = Math.round((step / stepsTotal) * 100);
+  const pct = Math.round((clamp(step, 1, stepsTotal) / stepsTotal) * 100);
 
   useEffect(() => {
     trackPageView("app_journey");
   }, []);
 
-  // ✅ Validaciones mínimas para probar flujo
+  // ✅ Validaciones mínimas (igual tu versión)
   const errors = useMemo(() => {
     const e = {};
     if (step === 2) {
@@ -124,21 +199,28 @@ export default function AppJourney() {
   }, [step, errors]);
 
   const nextStep = () => {
+    if (step >= 4) return;
     if (!canNext && step !== 1) return;
     const s = clamp(step + 1, 1, stepsTotal);
     setStep(s);
-    persist(s, form);
+    persist({ step: s });
   };
 
   const prevStep = () => {
     const s = clamp(step - 1, 1, stepsTotal);
     setStep(s);
-    persist(s, form);
+    persist({ step: s });
   };
 
-  const goLogin = () => {
-    nav("/login", { state: { returnTo: "/app" } });
-  };
+ // 👇 dentro de AppJourney.jsx
+const goLogin = () =>
+  nav("/login", {
+    state: {
+      returnTo: isMobileMode ? "/app?mode=mobile" : "/app",
+      from: "app",
+    },
+  });
+
 
   const payload = useMemo(
     () => ({
@@ -154,10 +236,17 @@ export default function AppJourney() {
     [form]
   );
 
+  const calcKey = useMemo(() => hashPayload(payload), [payload]);
+
   const calcular = async () => {
     if (!token) return;
+
+    // ✅ Cache: si ya calculamos este payload y hay resultado guardado, no pegues al backend
+    if (lastCalcKeyRef.current === calcKey && calcResult) return;
+
     setCalcBusy(true);
     setCalcError("");
+
     try {
       const resp = await fetch(`${API_BASE}/api/precalificar`, {
         method: "POST",
@@ -181,11 +270,14 @@ export default function AppJourney() {
       }
 
       setCalcResult(data);
-      persist(4, form, data);
+      setLastCalcKey(calcKey);
+
+      persist({ calcResult: data, lastCalcKey: calcKey, step: 4 });
     } catch (e) {
       setCalcError(e?.message || "No pudimos calcular tu resultado.");
       setCalcResult(null);
-      persist(4, form, null);
+      setLastCalcKey(calcKey);
+      persist({ calcResult: null, lastCalcKey: calcKey, step: 4 });
     } finally {
       setCalcBusy(false);
     }
@@ -194,263 +286,350 @@ export default function AppJourney() {
   useEffect(() => {
     if (step === 4 && token) calcular();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, token]);
+  }, [step, token, calcKey]);
 
   const sinOferta = !!calcResult?.sinOferta;
 
+  // ✅ Si hay token y NO hemos mostrado bienvenida => pantalla 0
+  const showWelcome = !!token && !welcomed;
+
+  const beginJourney = () => {
+    setWelcomed(true);
+    // si tenías step guardado, respétalo; si no, empieza 1
+    const s = clamp(step || 1, 1, stepsTotal);
+    setStep(s);
+    saveJourney({
+      welcomed: true,
+      step: s,
+      form,
+      calcResult,
+      lastCalcKey,
+      updatedAt: new Date().toISOString(),
+    });
+  };
+
+  // Auto-advance cuando eligen IESS en step 1 (solo en modo app, para que se sienta guiado)
+  const pickIess = (val) => {
+    set("afiliadoIess", val);
+    if (isMobileMode) {
+      // pequeño delay para que se vea el “tap” y avance
+      setTimeout(() => {
+        // si sigue en step 1, avanza
+        setStep((cur) => {
+          if (cur !== 1) return cur;
+          const s = 2;
+          persist({ step: s });
+          return s;
+        });
+      }, 180);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-[#060B14] text-slate-50 px-4 py-6">
-      <div className="max-w-[520px] mx-auto">
-        {/* ✅ Debug marker para confirmar que NO es landing */}
+    <PremiumBg>
+      <div className="mx-auto max-w-[520px] px-4 pt-6 pb-28">
+        {/* Debug/marker */}
         <div className="fixed top-3 right-3 z-[99999] rounded-xl border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-[11px] text-emerald-200">
-          APP JOURNEY {isMobileMode ? "· MODO APP" : "· WEB"}
+          APP · {isMobileMode ? "MODO APP" : "WEB"}
         </div>
 
-        {/* Header */}
-        <div className="flex justify-between items-end mb-6">
-          <div>
-            <div className="text-[11px] tracking-widest text-slate-400">HABITALIBRE · JOURNEY</div>
-            <div className="text-xl font-semibold">Paso {step} de {stepsTotal}</div>
+        {/* Header (similar a Progreso) */}
+        <header className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div
+              className="h-11 w-11 rounded-2xl bg-slate-900/90 border border-emerald-400/60
+                         shadow-[0_0_25px_rgba(16,185,129,0.35)]
+                         flex items-center justify-center overflow-hidden"
+            >
+              <img src={HIcon} alt="HabitaLibre" className="h-7 w-7 object-contain" />
+            </div>
+            <div className="leading-tight">
+              <div className="font-bold text-lg text-white tracking-tight">HabitaLibre</div>
+              <div className="text-[11px] text-emerald-300/90">Journey (app)</div>
+            </div>
           </div>
-          <div className="text-sm text-slate-400">{pct}%</div>
-        </div>
 
-        {/* Progress Bar */}
-        <div className="w-full h-2 bg-slate-800 rounded-full mb-6">
-          <div className="h-2 bg-emerald-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
-        </div>
+          <div className="text-right">
+            <div className="text-[11px] text-slate-400 tracking-widest uppercase">Paso</div>
+            <div className="text-sm text-slate-300">
+              {showWelcome ? "—" : `${step} / ${stepsTotal}`}
+            </div>
+          </div>
+        </header>
 
-        {/* Card */}
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6 shadow-xl">
-          {step === 1 && (
-            <>
-              <h2 className="text-lg font-semibold mb-4">¿Dónde quieres comprar?</h2>
+        {/* Bienvenida post-login */}
+        {showWelcome && (
+          <section className="mt-6 rounded-3xl border border-slate-800/70 bg-slate-950/40 shadow-[0_20px_80px_-40px_rgba(0,0,0,0.8)] p-6">
+            <div className="text-[11px] tracking-[0.2em] uppercase text-slate-400">Bienvenido</div>
+            <h1 className="mt-2 text-2xl font-semibold text-slate-50">
+              Hola{user?.email ? `, ${String(user.email).split("@")[0]}` : ""} 👋
+            </h1>
+            <p className="mt-2 text-sm text-slate-300">
+              En menos de 2 minutos te damos un resultado estimado y un plan claro para avanzar.
+            </p>
 
-              <Field label="Ciudad">
-                <select
-                  value={form.ciudadCompra}
-                  onChange={(e) => set("ciudadCompra", e.target.value)}
-                  className="w-full rounded-xl bg-slate-800 border border-slate-700 px-4 py-3"
-                >
-                  <option>Quito</option>
-                  <option>Guayaquil</option>
-                  <option>Cuenca</option>
-                  <option>Manta</option>
-                  <option>Ambato</option>
-                </select>
-              </Field>
-
-              <div className="text-[12px] text-slate-300 mb-2">¿Afiliado al IESS?</div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => set("afiliadoIess", "si")}
-                  className={`flex-1 rounded-xl py-3 border ${
-                    form.afiliadoIess === "si" ? "bg-emerald-400 text-slate-900 border-emerald-300" : "border-slate-700"
-                  }`}
-                >
-                  Sí
-                </button>
-                <button
-                  onClick={() => set("afiliadoIess", "no")}
-                  className={`flex-1 rounded-xl py-3 border ${
-                    form.afiliadoIess === "no" ? "bg-emerald-400 text-slate-900 border-emerald-300" : "border-slate-700"
-                  }`}
-                >
-                  No
-                </button>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <div className="rounded-2xl border border-slate-800/70 bg-slate-900/30 px-4 py-3">
+                <div className="text-sm font-semibold text-slate-100">Sin buró</div>
+                <div className="text-[12px] text-slate-400 mt-0.5">Es educativo y rápido.</div>
               </div>
-
-              <div className="mt-4 text-[11px] text-slate-500">
-                * Esto es una precalificación educativa. No consultamos buró.
+              <div className="rounded-2xl border border-slate-800/70 bg-slate-900/30 px-4 py-3">
+                <div className="text-sm font-semibold text-slate-100">Guardado</div>
+                <div className="text-[12px] text-slate-400 mt-0.5">Tu progreso queda aquí.</div>
               </div>
-            </>
-          )}
+            </div>
 
-          {step === 2 && (
-            <>
-              <h2 className="text-lg font-semibold mb-4">Tus ingresos</h2>
+            <button
+              type="button"
+              onClick={beginJourney}
+              className="mt-6 w-full h-12 rounded-2xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-semibold"
+            >
+              Empezar mi Journey →
+            </button>
+          </section>
+        )}
 
-              <Field label="Ingreso neto mensual" hint={moneySoft(form.ingresoNetoMensual)} error={errors.ingresoNetoMensual}>
-                <input
-                  value={form.ingresoNetoMensual}
-                  onChange={(e) => set("ingresoNetoMensual", onlyDigits(e.target.value))}
-                  inputMode="numeric"
-                  placeholder="Ej: 850"
-                  className={`w-full rounded-xl bg-slate-800 border px-4 py-3 outline-none ${
-                    errors.ingresoNetoMensual ? "border-rose-400/60" : "border-slate-700"
-                  }`}
-                />
-              </Field>
+        {/* Contenido del formulario */}
+        {!showWelcome && (
+          <>
+            {/* Progress Bar */}
+            <div className="mt-6 w-full h-2 bg-slate-800 rounded-full">
+              <div className="h-2 bg-emerald-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
+            </div>
 
-              <Field label="Ingreso pareja (opcional)" hint={moneySoft(form.ingresoPareja)}>
-                <input
-                  value={form.ingresoPareja}
-                  onChange={(e) => set("ingresoPareja", onlyDigits(e.target.value))}
-                  inputMode="numeric"
-                  placeholder="Ej: 600"
-                  className="w-full rounded-xl bg-slate-800 border border-slate-700 px-4 py-3 outline-none"
-                />
-              </Field>
-
-              <Field label="Otras deudas mensuales (opcional)" hint={moneySoft(form.otrasDeudasMensuales)}>
-                <input
-                  value={form.otrasDeudasMensuales}
-                  onChange={(e) => set("otrasDeudasMensuales", onlyDigits(e.target.value))}
-                  inputMode="numeric"
-                  placeholder="Ej: 120"
-                  className="w-full rounded-xl bg-slate-800 border border-slate-700 px-4 py-3 outline-none"
-                />
-              </Field>
-            </>
-          )}
-
-          {step === 3 && (
-            <>
-              <h2 className="text-lg font-semibold mb-4">Tu vivienda</h2>
-
-              <Field label="Valor de la vivienda" hint={moneySoft(form.valorVivienda)} error={errors.valorVivienda}>
-                <input
-                  value={form.valorVivienda}
-                  onChange={(e) => set("valorVivienda", onlyDigits(e.target.value))}
-                  inputMode="numeric"
-                  placeholder="Ej: 71000"
-                  className={`w-full rounded-xl bg-slate-800 border px-4 py-3 outline-none ${
-                    errors.valorVivienda ? "border-rose-400/60" : "border-slate-700"
-                  }`}
-                />
-              </Field>
-
-              <Field label="Entrada disponible (opcional)" hint={moneySoft(form.entradaDisponible)}>
-                <input
-                  value={form.entradaDisponible}
-                  onChange={(e) => set("entradaDisponible", onlyDigits(e.target.value))}
-                  inputMode="numeric"
-                  placeholder="Ej: 5000"
-                  className="w-full rounded-xl bg-slate-800 border border-slate-700 px-4 py-3 outline-none"
-                />
-              </Field>
-
-              <Field label="Edad" error={errors.edad}>
-                <input
-                  value={form.edad}
-                  onChange={(e) => set("edad", onlyDigits(e.target.value))}
-                  inputMode="numeric"
-                  placeholder="Ej: 29"
-                  className={`w-full rounded-xl bg-slate-800 border px-4 py-3 outline-none ${
-                    errors.edad ? "border-rose-400/60" : "border-slate-700"
-                  }`}
-                />
-              </Field>
-            </>
-          )}
-
-          {step === 4 && !token && (
-            <>
-              <h2 className="text-lg font-semibold mb-2">Guarda tu progreso</h2>
-              <p className="text-sm text-slate-400 mb-4">
-                Para ver tu resultado dentro de la app y guardar tu plan, inicia sesión.
-              </p>
-
-              <button
-                onClick={goLogin}
-                className="w-full bg-emerald-400 text-slate-900 font-semibold rounded-xl py-3"
-              >
-                Iniciar sesión / Crear cuenta
-              </button>
-
-              {!isMobileMode && (
-                <button
-                  onClick={() => nav("/precalificar")}
-                  className="w-full mt-3 border border-slate-700 rounded-xl py-3"
-                >
-                  Usar simulador web
-                </button>
-              )}
-            </>
-          )}
-
-          {step === 4 && token && (
-            <>
-              <h2 className="text-lg font-semibold mb-3">Tu resultado (estimado)</h2>
-
-              {calcBusy && (
-                <div className="rounded-xl border border-slate-700 bg-slate-800/40 px-4 py-3 text-sm">
-                  Calculando...
-                </div>
-              )}
-
-              {calcError && (
-                <div className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
-                  {calcError}
-                  <button
-                    onClick={calcular}
-                    className="mt-3 w-full rounded-xl border border-slate-700 py-3 text-slate-100"
-                  >
-                    Reintentar
-                  </button>
-                </div>
-              )}
-
-              {!calcBusy && !calcError && calcResult && (
+            <div className="mt-6 rounded-3xl border border-slate-800 bg-slate-900/50 p-6 shadow-xl">
+              {step === 1 && (
                 <>
-                  <div className="rounded-2xl border border-slate-700 bg-slate-800/30 p-4">
-                    <div className="text-base font-semibold">
-                      {sinOferta ? "Necesitamos mejorar tu perfil" : "Sí hay ruta posible 🎉"}
-                    </div>
-                    <div className="text-[12px] text-slate-400 mt-2">
-                      {sinOferta
-                        ? "No es un “no”. Es un “ajustemos precio, entrada o plazo”."
-                        : "Te ayudamos a convertir esto en un plan real con checklist."}
-                    </div>
+                  <h2 className="text-lg font-semibold mb-4">¿Dónde quieres comprar?</h2>
+
+                  <Field label="Ciudad">
+                    <select
+                      value={form.ciudadCompra}
+                      onChange={(e) => set("ciudadCompra", e.target.value)}
+                      className="w-full rounded-xl bg-slate-800 border border-slate-700 px-4 py-3"
+                    >
+                      <option>Quito</option>
+                      <option>Guayaquil</option>
+                      <option>Cuenca</option>
+                      <option>Manta</option>
+                      <option>Ambato</option>
+                    </select>
+                  </Field>
+
+                  <div className="text-[12px] text-slate-300 mb-2">¿Afiliado al IESS?</div>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => pickIess("si")}
+                      className={`flex-1 rounded-xl py-3 border ${
+                        form.afiliadoIess === "si"
+                          ? "bg-emerald-400 text-slate-900 border-emerald-300"
+                          : "border-slate-700 bg-slate-950/10"
+                      }`}
+                    >
+                      Sí
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => pickIess("no")}
+                      className={`flex-1 rounded-xl py-3 border ${
+                        form.afiliadoIess === "no"
+                          ? "bg-emerald-400 text-slate-900 border-emerald-300"
+                          : "border-slate-700 bg-slate-950/10"
+                      }`}
+                    >
+                      No
+                    </button>
                   </div>
 
-                  <button
-                    className="w-full mt-4 bg-emerald-400 text-slate-900 font-semibold rounded-xl py-3"
-                    onClick={() => {
-                      window.location.href =
-                        "https://wa.me/593000000000?text=Hola%20HabitaLibre%2C%20quiero%20mi%20plan%20y%20checklist%20para%20mi%20cr%C3%A9dito.";
-                    }}
-                  >
-                    {sinOferta ? "Quiero mejorar mi perfil" : "Iniciar mi proceso"}
-                  </button>
-
-                  <button
-                    className="w-full mt-3 border border-slate-700 rounded-xl py-3"
-                    onClick={calcular}
-                  >
-                    Recalcular
-                  </button>
+                  <div className="mt-4 text-[11px] text-slate-500">
+                    * Esto es una precalificación educativa. No consultamos buró.
+                  </div>
                 </>
               )}
-            </>
-          )}
-        </div>
 
-        {/* Nav */}
-        <div className="flex gap-3 mt-6">
-          <button
-            onClick={prevStep}
-            disabled={step === 1}
-            className="flex-1 border border-slate-700 rounded-xl py-3 disabled:opacity-50"
-          >
-            Atrás
-          </button>
+              {step === 2 && (
+                <>
+                  <h2 className="text-lg font-semibold mb-4">Tus ingresos</h2>
 
-          <button
-            onClick={nextStep}
-            disabled={step === 4 || !canNext}
-            className="flex-1 bg-emerald-400 text-slate-900 rounded-xl py-3 font-semibold disabled:opacity-50"
-          >
-            Continuar
-          </button>
-        </div>
+                  <Field label="Ingreso neto mensual" hint={moneySoft(form.ingresoNetoMensual)} error={errors.ingresoNetoMensual}>
+                    <input
+                      value={form.ingresoNetoMensual}
+                      onChange={(e) => set("ingresoNetoMensual", onlyDigits(e.target.value))}
+                      inputMode="numeric"
+                      placeholder="Ej: 850"
+                      className={`w-full rounded-xl bg-slate-800 border px-4 py-3 outline-none ${
+                        errors.ingresoNetoMensual ? "border-rose-400/60" : "border-slate-700"
+                      }`}
+                    />
+                  </Field>
 
-        {step !== 4 && !canNext && (
-          <div className="mt-3 text-[12px] text-slate-400">
-            Completa los campos marcados para continuar.
-          </div>
+                  <Field label="Ingreso pareja (opcional)" hint={moneySoft(form.ingresoPareja)}>
+                    <input
+                      value={form.ingresoPareja}
+                      onChange={(e) => set("ingresoPareja", onlyDigits(e.target.value))}
+                      inputMode="numeric"
+                      placeholder="Ej: 600"
+                      className="w-full rounded-xl bg-slate-800 border border-slate-700 px-4 py-3 outline-none"
+                    />
+                  </Field>
+
+                  <Field label="Otras deudas mensuales (opcional)" hint={moneySoft(form.otrasDeudasMensuales)}>
+                    <input
+                      value={form.otrasDeudasMensuales}
+                      onChange={(e) => set("otrasDeudasMensuales", onlyDigits(e.target.value))}
+                      inputMode="numeric"
+                      placeholder="Ej: 120"
+                      className="w-full rounded-xl bg-slate-800 border border-slate-700 px-4 py-3 outline-none"
+                    />
+                  </Field>
+                </>
+              )}
+
+              {step === 3 && (
+                <>
+                  <h2 className="text-lg font-semibold mb-4">Tu vivienda</h2>
+
+                  <Field label="Valor de la vivienda" hint={moneySoft(form.valorVivienda)} error={errors.valorVivienda}>
+                    <input
+                      value={form.valorVivienda}
+                      onChange={(e) => set("valorVivienda", onlyDigits(e.target.value))}
+                      inputMode="numeric"
+                      placeholder="Ej: 71000"
+                      className={`w-full rounded-xl bg-slate-800 border px-4 py-3 outline-none ${
+                        errors.valorVivienda ? "border-rose-400/60" : "border-slate-700"
+                      }`}
+                    />
+                  </Field>
+
+                  <Field label="Entrada disponible (opcional)" hint={moneySoft(form.entradaDisponible)}>
+                    <input
+                      value={form.entradaDisponible}
+                      onChange={(e) => set("entradaDisponible", onlyDigits(e.target.value))}
+                      inputMode="numeric"
+                      placeholder="Ej: 5000"
+                      className="w-full rounded-xl bg-slate-800 border border-slate-700 px-4 py-3 outline-none"
+                    />
+                  </Field>
+
+                  <Field label="Edad" error={errors.edad}>
+                    <input
+                      value={form.edad}
+                      onChange={(e) => set("edad", onlyDigits(e.target.value))}
+                      inputMode="numeric"
+                      placeholder="Ej: 29"
+                      className={`w-full rounded-xl bg-slate-800 border px-4 py-3 outline-none ${
+                        errors.edad ? "border-rose-400/60" : "border-slate-700"
+                      }`}
+                    />
+                  </Field>
+                </>
+              )}
+
+              {step === 4 && !token && (
+                <>
+                  <h2 className="text-lg font-semibold mb-2">Guarda tu progreso</h2>
+                  <p className="text-sm text-slate-400 mb-4">
+                    Para ver tu resultado dentro de la app y guardar tu plan, inicia sesión.
+                  </p>
+
+                  <button
+                    onClick={goLogin}
+                    className="w-full bg-emerald-400 text-slate-900 font-semibold rounded-xl py-3"
+                  >
+                    Iniciar sesión / Crear cuenta
+                  </button>
+
+                  {!isMobileMode && (
+                    <button
+                      onClick={() => nav("/precalificar")}
+                      className="w-full mt-3 border border-slate-700 rounded-xl py-3"
+                    >
+                      Usar simulador web
+                    </button>
+                  )}
+                </>
+              )}
+
+              {step === 4 && token && (
+                <>
+                  <h2 className="text-lg font-semibold mb-3">Tu resultado (estimado)</h2>
+
+                  {calcBusy && (
+                    <div className="rounded-xl border border-slate-700 bg-slate-800/40 px-4 py-3 text-sm">
+                      Calculando...
+                    </div>
+                  )}
+
+                  {calcError && (
+                    <div className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+                      {calcError}
+                      <button
+                        onClick={calcular}
+                        className="mt-3 w-full rounded-xl border border-slate-700 py-3 text-slate-100"
+                      >
+                        Reintentar
+                      </button>
+                    </div>
+                  )}
+
+                  {!calcBusy && !calcError && calcResult && (
+                    <>
+                      <div className="rounded-2xl border border-slate-700 bg-slate-800/30 p-4">
+                        <div className="text-base font-semibold">
+                          {sinOferta ? "Necesitamos mejorar tu perfil" : "Sí hay ruta posible 🎉"}
+                        </div>
+                        <div className="text-[12px] text-slate-400 mt-2">
+                          {sinOferta
+                            ? "No es un “no”. Es un “ajustemos precio, entrada o plazo”."
+                            : "Te ayudamos a convertir esto en un plan real con checklist."}
+                        </div>
+                      </div>
+
+                      <button
+                        className="w-full mt-4 bg-emerald-400 text-slate-900 font-semibold rounded-xl py-3"
+                        onClick={() => {
+                          window.location.href =
+                            "https://wa.me/593000000000?text=Hola%20HabitaLibre%2C%20quiero%20mi%20plan%20y%20checklist%20para%20mi%20cr%C3%A9dito.";
+                        }}
+                      >
+                        {sinOferta ? "Quiero mejorar mi perfil" : "Iniciar mi proceso"}
+                      </button>
+
+                      <button
+                        className="w-full mt-3 border border-slate-700 rounded-xl py-3"
+                        onClick={() => {
+                          // Forzar recalculo: invalida cache
+                          setLastCalcKey("");
+                          calcular();
+                        }}
+                      >
+                        Recalcular
+                      </button>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Mensaje validación */}
+            {step !== 4 && !canNext && (
+              <div className="mt-3 text-[12px] text-slate-400">
+                Completa los campos marcados para continuar.
+              </div>
+            )}
+
+            {/* Sticky Nav */}
+            <StickyNav
+              onBack={prevStep}
+              onNext={nextStep}
+              disableBack={step === 1}
+              disableNext={step === 4 || !canNext}
+              nextLabel={step === 3 ? "Ver resultado" : "Continuar"}
+            />
+          </>
         )}
       </div>
-    </div>
+    </PremiumBg>
   );
 }
