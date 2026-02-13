@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { trackEvent, trackPageView } from "../lib/analytics";
-import * as api from "../lib/api";
-import { useCustomerAuth } from "../context/CustomerAuthContext";
+import * as customerApi from "../lib/customerApi.js";
+import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -45,14 +45,14 @@ export default function Signup() {
     try {
       setLoading(true);
 
-      const data = await api.registerCustomer({
+      const data = await customerApi.registerCustomer({
         email: email.trim().toLowerCase(),
         password,
       });
 
       // ✅ auto login
-      setToken(data.token);
-      setCustomer(data.user);
+      if (data?.token) setToken(data.token);
+      if (data?.user) setCustomer(data.user);
 
       trackEvent("customer_signup_success", {
         from: location.state?.from || "unknown",

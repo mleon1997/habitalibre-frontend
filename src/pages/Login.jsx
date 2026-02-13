@@ -347,7 +347,7 @@ export default function Login() {
                     type="button"
                     onClick={() => {
                       trackEvent("customer_forgot_password_click", {});
-                      nav("/forgot-password");
+                      nav("/reset-password");
                     }}
                     className="hover:text-slate-200 underline underline-offset-4"
                   >
