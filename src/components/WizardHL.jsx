@@ -21,6 +21,84 @@ const HORIZONTE_OPCIONES = [
 const LS_QUICK_LAST_RESULT = "hl_quick_last_result_v1";
 const LS_PENDING_JOURNEY = "hl_pending_journey";
 
+// ✅ Extra keys (best-effort) por si tu journeyLocal guarda en otros nombres
+const EXTRA_JOURNEY_KEYS = [
+  "hl_journey_local",
+  "hl_journey_local_v1",
+  "hl_customer_journey",
+  "hl_customer_journey_v1",
+  "hl_last_result",
+  "hl_last_result_v1",
+  "hl_app_journey_v5",
+];
+
+function safeParseJSON(raw) {
+  try {
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function pickEntradaFromObject(obj) {
+  if (!obj || typeof obj !== "object") return null;
+
+  // variantes comunes
+  const candidates = [
+    obj.entrada,
+    obj.input,
+    obj.perfilInput,
+    obj.__entrada,
+    obj?.resultado?.perfilInput,
+    obj?.resultado?.__entrada,
+    obj?.resultado?.entrada,
+    obj?.resultado?.input,
+    obj?.data?.entrada,
+    obj?.data?.input,
+  ];
+
+  for (const c of candidates) {
+    if (c && typeof c === "object") return c;
+  }
+  return null;
+}
+
+function loadLatestEntradaFromStorage() {
+  const keys = [
+    LS_PENDING_JOURNEY,
+    LS_PENDING_PRECALIF_SNAPSHOT,
+    LS_QUICK_LAST_RESULT,
+    ...EXTRA_JOURNEY_KEYS,
+  ];
+
+  for (const k of keys) {
+    const raw = (() => {
+      try {
+        return localStorage.getItem(k);
+      } catch {
+        return null;
+      }
+    })();
+
+    const parsed = safeParseJSON(raw);
+    if (!parsed) continue;
+
+    // LS_QUICK_LAST_RESULT guarda {resultado, updatedAt}
+    if (k === LS_QUICK_LAST_RESULT) {
+      const entradaFromQuick = pickEntradaFromObject(parsed);
+      const entradaFromResultado = pickEntradaFromObject(parsed?.resultado);
+      const entrada = entradaFromQuick || entradaFromResultado;
+      if (entrada) return { entrada, sourceKey: k };
+      continue;
+    }
+
+    const entrada = pickEntradaFromObject(parsed) || pickEntradaFromObject(parsed?.resultado);
+    if (entrada) return { entrada, sourceKey: k };
+  }
+
+  return { entrada: null, sourceKey: null };
+}
+
 /* ===========================================================
    SLIDER UNIFICADO (mobile-friendly)
 =========================================================== */
@@ -97,7 +175,7 @@ function SliderField({
   );
 }
 
-export default function WizardHL({ mode = "quick", onboarding = false }) {
+export default function WizardHL({ mode = "quick", onboarding = false, afinando = false }) {
   const navigate = useNavigate();
   const { openLead, openLeadNow, setLeadResult } = useLeadCapture();
   const { isAuthed, user } = useCustomerAuth();
@@ -163,6 +241,48 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
     if (!v) return 0;
     return Math.round((e / v) * 100);
   }, [valor, entrada]);
+
+  // ✅ Hidratar automático cuando vienes desde "Afinar"
+  const didHydrateRef = useRef(false);
+  useEffect(() => {
+    if (didHydrateRef.current) return;
+    didHydrateRef.current = true;
+
+    if (!isJourneyMode || !afinando) return;
+
+    const { entrada: savedEntrada } = loadLatestEntradaFromStorage();
+    if (!savedEntrada) return;
+
+    // map entrada -> estado del wizard
+    if (savedEntrada.nacionalidad) setNacionalidad(String(savedEntrada.nacionalidad));
+    if (savedEntrada.estadoCivil) setEstadoCivil(String(savedEntrada.estadoCivil));
+    if (savedEntrada.edad != null) setEdad(String(savedEntrada.edad));
+
+    if (savedEntrada.tipoIngreso) setTipoIngreso(String(savedEntrada.tipoIngreso));
+    if (savedEntrada.aniosEstabilidad != null) setAniosEstabilidad(String(savedEntrada.aniosEstabilidad));
+    if (savedEntrada.sustentoIndependiente) setSustentoIndependiente(String(savedEntrada.sustentoIndependiente));
+
+    if (savedEntrada.tieneVivienda != null) setTieneVivienda(savedEntrada.tieneVivienda ? "sí" : "no");
+    if (savedEntrada.primeraVivienda != null) setPrimeraVivienda(savedEntrada.primeraVivienda ? "sí" : "no");
+    if (savedEntrada.tipoVivienda) setTipoVivienda(String(savedEntrada.tipoVivienda));
+
+    if (savedEntrada.ingresoNetoMensual != null) setIngreso(String(savedEntrada.ingresoNetoMensual));
+    if (savedEntrada.ingresoPareja != null) setIngresoPareja(String(savedEntrada.ingresoPareja));
+    if (savedEntrada.otrasDeudasMensuales != null) setDeudas(String(savedEntrada.otrasDeudasMensuales));
+
+    if (savedEntrada.valorVivienda != null) setValor(String(savedEntrada.valorVivienda));
+    if (savedEntrada.entradaDisponible != null) setEntrada(String(savedEntrada.entradaDisponible));
+
+    if (savedEntrada.afiliadoIess != null) setAfiliadoIESS(savedEntrada.afiliadoIess ? "sí" : "no");
+    if (savedEntrada.iessAportesTotales != null) setAportesTotales(String(savedEntrada.iessAportesTotales));
+    if (savedEntrada.iessAportesConsecutivos != null) setAportesConsecutivos(String(savedEntrada.iessAportesConsecutivos));
+
+    if (savedEntrada.tiempoCompra) setHorizonteCompra(String(savedEntrada.tiempoCompra));
+
+    // ✅ UX: Afinar casi siempre es “vivienda/entrada” → manda al paso 3
+    setStep(3);
+    setErr("");
+  }, [isJourneyMode, afinando]);
 
   function validate(s) {
     if (
@@ -245,17 +365,12 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
     const perfil = {
       ...perfilPrev,
 
-      // lo que tu backend usa como fallback:
       afiliadoIess: entradaPayload?.afiliadoIess ?? afiliadoBool,
       aniosEstabilidad: entradaPayload?.aniosEstabilidad ?? toNum(aniosEstabilidad),
 
-      // ingresoTotal: suma usada en el wizard (incluye pareja solo si formal)
       ingresoTotal: ingresoUsado,
-
-      // deudas (para deuda_mensual_aprox)
       otrasDeudasMensuales: entradaPayload?.otrasDeudasMensuales ?? toNum(deudas),
 
-      // opcional: ciudadCompra (si luego lo agregas en el wizard)
       ciudadCompra: perfilPrev?.ciudadCompra ?? null,
     };
 
@@ -271,38 +386,29 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
     setLoading(true);
     setErr("");
 
-    // ✅ armamos entrada una vez
     const entradaPayload = buildEntrada();
 
-    // =========================================================
     // ✅ QUICK: SOLO abre modal si NO hay sesión
-    // =========================================================
     const shouldShowLeadModal = !isJourneyMode && !isAuthed;
 
     if (shouldShowLeadModal) {
       const initial = {
         __loading: true,
-        __entrada: entradaPayload,   // compat
-        perfilInput: entradaPayload, // estándar nuevo
+        __entrada: entradaPayload,
+        perfilInput: entradaPayload,
       };
 
-      if (typeof openLeadNow === "function") {
-        openLeadNow(initial, entradaPayload);
-      } else {
-        openLead(initial, entradaPayload);
-      }
+      if (typeof openLeadNow === "function") openLeadNow(initial, entradaPayload);
+      else openLead(initial, entradaPayload);
     }
 
     try {
       const resultRaw = await precalificar(entradaPayload);
-
-      // ✅ MUY IMPORTANTE: resultado con perfil
       const result = attachPerfilToResult(resultRaw, entradaPayload);
 
       persistLastResult(result);
 
-            // ✅ SI NO ESTÁ LOGUEADO: guardar esta precalificación para “replay” post-login
-      // Esto permite que el dashboard /admin/users tenga finanzas desde la PRIMERA simulación obligatoria.
+      // ✅ Si no está logueado: snapshot para replay post-login
       if (!isAuthed) {
         try {
           localStorage.setItem(
@@ -317,12 +423,7 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
         } catch {}
       }
 
-
-      // =========================================================
       // ✅ QUICK
-      // - Si NO hay sesión: actualiza modal + guarda quick last result
-      // - Si HAY sesión: guarda journey y manda a /progreso (sin modal)
-      // =========================================================
       if (!isJourneyMode) {
         persistQuickLastResult(result);
 
@@ -330,19 +431,17 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
           const merged = {
             ...result,
             __loading: false,
-            __entrada: entradaPayload,   // compat
-            perfilInput: entradaPayload, // estándar
+            __entrada: entradaPayload,
+            perfilInput: entradaPayload,
           };
 
-          if (typeof setLeadResult === "function") {
-            setLeadResult(merged, entradaPayload);
-          } else {
-            openLead(merged, entradaPayload);
-          }
+          if (typeof setLeadResult === "function") setLeadResult(merged, entradaPayload);
+          else openLead(merged, entradaPayload);
+
           return;
         }
 
-        // ✅ Authed en QUICK: lo tratamos como journey (mejor UX)
+        // ✅ Authed en QUICK: lo tratamos como journey
         saveJourneyLocal({
           entrada: entradaPayload,
           input: entradaPayload,
@@ -365,9 +464,7 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
         return;
       }
 
-      // =========================================================
-      // ✅ JOURNEY (igual que ya lo tenías)
-      // =========================================================
+      // ✅ JOURNEY
       saveJourneyLocal({
         entrada: entradaPayload,
         input: entradaPayload,
@@ -468,6 +565,13 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
           <p className="text-[11px] text-slate-400">
             Completa los pasos y te mostramos un resultado claro en menos de 2 minutos.
           </p>
+
+          {afinando && isJourneyMode ? (
+            <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-100">
+              <span className="h-2 w-2 rounded-full bg-emerald-400" />
+              Afinando escenario (Wizard)
+            </div>
+          ) : null}
 
           {onboarding && isJourneyMode ? (
             <div className="mt-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-100">

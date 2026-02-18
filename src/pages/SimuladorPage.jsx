@@ -21,15 +21,23 @@ export default function SimuladorPage() {
   const mode = (q.get("mode") || "quick").toLowerCase(); // "quick" | "journey"
   const onboarding = q.get("onboarding") === "1";
 
-  // ✅ NUEVO: si ya estás logueado y vienes a journey, NO muestres wizard
-  // (a menos que explícitamente quieras permitirlo con ?force=1)
+  // ✅ permite saltarte reglas
   const force = q.get("force") === "1";
 
+  // ✅ CLAVE: si vienes desde /progreso con "Afinar", esto debe ABRIR el wizard
+  const afinando = q.get("afinando") === "1";
+
+  /**
+   * ✅ Regla:
+   * - journey + authed => normalmente mandamos a /progreso
+   * - PERO si afinando=1 => NO redirigir (queremos abrir wizard completo para editar escenario)
+   * - force=1 siempre permite ver wizard
+   */
   useEffect(() => {
-    if (mode === "journey" && isAuthed && !force) {
+    if (mode === "journey" && isAuthed && !force && !afinando) {
       nav("/progreso", { replace: true });
     }
-  }, [mode, isAuthed, force, nav]);
+  }, [mode, isAuthed, force, afinando, nav]);
 
   const didReset = useRef(false);
   useEffect(() => {
@@ -39,9 +47,16 @@ export default function SimuladorPage() {
     // ✅ si el modal está abierto, NO resetees (no lo mates)
     if (isOpen) return;
 
-    // ✅ resetea por modo para evitar mezcla de estados
+    /**
+     * ✅ IMPORTANTE:
+     * - En afinando NO reseteamos lead capture, porque el wizard (journey) debe
+     *   auto-hidratar con la info existente (backend/snap) y NO volver al intake.
+     * - En el resto de casos, sí reseteamos por modo para evitar mezclar estados.
+     */
+    if (afinando) return;
+
     resetLeadCapture(`enter_simulador_${mode}`);
-  }, [resetLeadCapture, isOpen, mode]);
+  }, [resetLeadCapture, isOpen, mode, afinando]);
 
   return (
     <div
@@ -63,7 +78,8 @@ export default function SimuladorPage() {
           "overflow-hidden",
         ].join(" ")}
       >
-        <WizardHL mode={mode} onboarding={onboarding} />
+        {/* ✅ Pasamos afinando para que WizardHL pueda saltar intake / abrir tab correcto si quieres */}
+        <WizardHL mode={mode} onboarding={onboarding} afinando={afinando} />
       </div>
     </div>
   );
