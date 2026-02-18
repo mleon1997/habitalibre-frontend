@@ -8,6 +8,7 @@ import * as customerApi from "../lib/customerApi.js";
 import { saveJourneyLocal, persistLastResult } from "../lib/journeyLocal";
 
 const TOTAL_STEPS = 4;
+const LS_PENDING_PRECALIF_SNAPSHOT = "hl_pending_precalif_snapshot_v1";
 
 const HORIZONTE_OPCIONES = [
   { value: "0-3", label: "En los próximos 0–3 meses" },
@@ -299,6 +300,23 @@ export default function WizardHL({ mode = "quick", onboarding = false }) {
       const result = attachPerfilToResult(resultRaw, entradaPayload);
 
       persistLastResult(result);
+
+            // ✅ SI NO ESTÁ LOGUEADO: guardar esta precalificación para “replay” post-login
+      // Esto permite que el dashboard /admin/users tenga finanzas desde la PRIMERA simulación obligatoria.
+      if (!isAuthed) {
+        try {
+          localStorage.setItem(
+            LS_PENDING_PRECALIF_SNAPSHOT,
+            JSON.stringify({
+              entrada: entradaPayload,
+              resultado: result,
+              ts: Date.now(),
+              mode: isJourneyMode ? "journey" : "quick",
+            })
+          );
+        } catch {}
+      }
+
 
       // =========================================================
       // ✅ QUICK

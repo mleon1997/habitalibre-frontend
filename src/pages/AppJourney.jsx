@@ -113,12 +113,212 @@ function StickyNav({ onBack, onNext, disableBack, disableNext, nextLabel = "Cont
   );
 }
 
+/* =========================
+   Amortización (preview 12 meses) — modal mini
+========================= */
+function pmt(principal, annualRate, years) {
+  const n = Math.max(1, Math.round(years * 12));
+  const r = annualRate / 100 / 12;
+  if (!Number.isFinite(principal) || principal <= 0) return 0;
+  if (!Number.isFinite(r) || r <= 0) return principal / n;
+
+  const pow = Math.pow(1 + r, n);
+  return (principal * (r * pow)) / (pow - 1);
+}
+
+function buildAmortSchedulePreview({ principal, annualRate, years }) {
+  const n = Math.max(1, Math.round(years * 12));
+  const r = annualRate / 100 / 12;
+  const payment = pmt(principal, annualRate, years);
+
+  let balance = principal;
+  let totalInt = 0;
+  let totalPrin = 0;
+
+  const rows = [];
+  for (let m = 1; m <= Math.min(12, n); m++) {
+    const interest = r > 0 ? balance * r : 0;
+    const principalPay = Math.max(0, payment - interest);
+    balance = Math.max(0, balance - principalPay);
+
+    totalInt += interest;
+    totalPrin += principalPay;
+
+    rows.push({ mes: m, pago: payment, interes: interest, capital: principalPay, saldo: balance });
+  }
+
+  return {
+    payment,
+    rows,
+    totals: {
+      pagoTotal: payment * rows.length,
+      interesTotal: totalInt,
+      capitalTotal: totalPrin,
+      saldoFinal: balance,
+    },
+  };
+}
+
+function fmtMoney(n) {
+  return `$${Number(n || 0).toLocaleString("es-EC", { maximumFractionDigits: 0 })}`;
+}
+
+function AmortModalMini({ open, onClose, form, calcResult }) {
+  const preview = useMemo(() => {
+    if (!open) return null;
+
+    const valor = toNum(form?.valorVivienda) ?? 0;
+    const entrada = toNum(form?.entradaDisponible) ?? 0;
+    const principal = Math.max(0, valor - entrada);
+
+    // plazo por defecto (puedes conectarlo luego a tu motor si lo devuelves)
+    const years = 25;
+
+    // ✅ si el backend trae tasa (en % o decimal), úsala. Si no, fallback.
+    const tasaRaw =
+      calcResult?.tasaAnual ??
+      calcResult?.tasa ??
+      calcResult?.tasaFija ??
+      calcResult?.tasaInteres ??
+      calcResult?.resultado?.tasaAnual ??
+      calcResult?.resultado?.tasa ??
+      null;
+
+    const annualRate = (() => {
+      const x = Number(tasaRaw);
+      if (!Number.isFinite(x) || x <= 0) return 9.7;
+      return x > 1.5 ? x : x * 100;
+    })();
+
+    if (principal <= 0) return { error: "Necesito valor de vivienda y (opcional) entrada para armar la amortización." };
+
+    const sched = buildAmortSchedulePreview({ principal, annualRate, years });
+
+    return { principal, years, annualRate, ...sched };
+  }, [open, form, calcResult]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose?.();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center">
+      <button type="button" aria-label="Cerrar" onClick={onClose} className="absolute inset-0 bg-black/55 backdrop-blur-sm" />
+
+      <div className="relative w-full sm:max-w-[920px] m-0 sm:m-6 rounded-t-3xl sm:rounded-3xl border border-slate-800/80 bg-slate-950/90 shadow-[0_30px_120px_rgba(0,0,0,0.65)]">
+        <div className="p-5 sm:p-6 border-b border-slate-800/70 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] tracking-[0.2em] uppercase text-slate-400">Amortización (preview)</p>
+            <h3 className="mt-2 text-xl sm:text-2xl font-semibold text-slate-50">Primer año: cuota vs. interés vs. capital</h3>
+            <p className="mt-2 text-[12px] text-slate-400">Orientativo. La tasa final y condiciones las confirma el banco.</p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 rounded-full border border-slate-700 px-3 py-2 text-xs text-slate-200 hover:border-slate-500"
+          >
+            Cerrar
+          </button>
+        </div>
+
+        <div className="p-5 sm:p-6">
+          {preview?.error ? (
+            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">
+              {preview.error}
+            </div>
+          ) : (
+            <>
+              <div className="grid gap-3 sm:grid-cols-4">
+                <div className="rounded-2xl border border-slate-800/70 bg-slate-950/30 p-4">
+                  <p className="text-[11px] text-slate-400">Monto a financiar</p>
+                  <p className="mt-1 text-lg font-semibold">{fmtMoney(preview.principal)}</p>
+                </div>
+                <div className="rounded-2xl border border-slate-800/70 bg-slate-950/30 p-4">
+                  <p className="text-[11px] text-slate-400">Tasa (preview)</p>
+                  <p className="mt-1 text-lg font-semibold">{preview.annualRate.toFixed(2)}%</p>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    {Number.isFinite(Number(calcResult?.tasaAnual ?? calcResult?.tasa)) ? "Tomada del backend (si existe)" : "Fallback heurístico"}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-slate-800/70 bg-slate-950/30 p-4">
+                  <p className="text-[11px] text-slate-400">Plazo</p>
+                  <p className="mt-1 text-lg font-semibold">{preview.years} años</p>
+                </div>
+                <div className="rounded-2xl border border-slate-800/70 bg-slate-950/30 p-4">
+                  <p className="text-[11px] text-slate-400">Cuota estimada</p>
+                  <p className="mt-1 text-lg font-semibold">{fmtMoney(preview.payment)}/mes</p>
+                </div>
+              </div>
+
+              <div className="mt-4 overflow-hidden rounded-2xl border border-slate-800/70">
+                <div className="max-h-[360px] overflow-auto bg-slate-950/20">
+                  <table className="min-w-full text-left text-[12px]">
+                    <thead className="sticky top-0 bg-slate-950/90 backdrop-blur border-b border-slate-800/70">
+                      <tr className="text-slate-300">
+                        <th className="px-4 py-3 font-semibold">Mes</th>
+                        <th className="px-4 py-3 font-semibold">Pago</th>
+                        <th className="px-4 py-3 font-semibold">Interés</th>
+                        <th className="px-4 py-3 font-semibold">Capital</th>
+                        <th className="px-4 py-3 font-semibold">Saldo</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-slate-200">
+                      {preview.rows.map((r) => (
+                        <tr key={r.mes} className="border-b border-slate-900/60">
+                          <td className="px-4 py-3 text-slate-300">{r.mes}</td>
+                          <td className="px-4 py-3">{fmtMoney(r.pago)}</td>
+                          <td className="px-4 py-3">{fmtMoney(r.interes)}</td>
+                          <td className="px-4 py-3">{fmtMoney(r.capital)}</td>
+                          <td className="px-4 py-3">{fmtMoney(r.saldo)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="p-4 bg-slate-950/40 border-t border-slate-800/70 grid gap-3 sm:grid-cols-4">
+                  <div>
+                    <p className="text-[11px] text-slate-400">Pago total (12m)</p>
+                    <p className="mt-1 font-semibold">{fmtMoney(preview.totals.pagoTotal)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-slate-400">Interés (12m)</p>
+                    <p className="mt-1 font-semibold">{fmtMoney(preview.totals.interesTotal)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-slate-400">Capital (12m)</p>
+                    <p className="mt-1 font-semibold">{fmtMoney(preview.totals.capitalTotal)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-slate-400">Saldo fin año 1</p>
+                    <p className="mt-1 font-semibold">{fmtMoney(preview.totals.saldoFinal)}</p>
+                  </div>
+                </div>
+              </div>
+
+              <p className="mt-3 text-[11px] text-slate-500">Nota: preview simple (no incluye seguros/costos del banco).</p>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AppJourney() {
   const nav = useNavigate();
   const location = useLocation();
   const { token, user } = useCustomerAuth();
 
-  const isMobileMode = new URLSearchParams(window.location.search).get("mode") === "mobile";
+  const isMobileMode = new URLSearchParams(location.search).get("mode") === "mobile";
 
   const saved = useMemo(() => loadJourney(), []);
   const [welcomed, setWelcomed] = useState(!!saved?.welcomed);
@@ -142,6 +342,9 @@ export default function AppJourney() {
   const [calcResult, setCalcResult] = useState(saved?.calcResult || null);
   const [calcBusy, setCalcBusy] = useState(false);
   const [calcError, setCalcError] = useState("");
+
+  // ✅ Modal amort (tab=amort)
+  const [amortOpen, setAmortOpen] = useState(false);
 
   // Cache de cálculo
   const [lastCalcKey, setLastCalcKey] = useState(saved?.lastCalcKey || "");
@@ -177,16 +380,12 @@ export default function AppJourney() {
 
   /* =========================================================
      ✅ AFINAR: si viene ?afinando=1, resetea al step 1
-     - limpia resultado/cache
-     - opcional: resetea formulario completo
-     - limpia el query para que no se re-dispare
   ========================================================= */
   useEffect(() => {
     const qs = new URLSearchParams(location.search);
     const afinando = qs.get("afinando") === "1";
     if (!afinando) return;
 
-    // ✅ opcional: reset total del formulario
     const defaultForm = {
       ingresoNetoMensual: "",
       ingresoPareja: "",
@@ -202,10 +401,9 @@ export default function AppJourney() {
     setCalcResult(null);
     setCalcError("");
     setLastCalcKey("");
-
     setStep(1);
 
-    // ✅ persist inmediato (sin depender del state async)
+    // persist inmediato
     saveJourney({
       welcomed,
       step: 1,
@@ -215,7 +413,7 @@ export default function AppJourney() {
       updatedAt: new Date().toISOString(),
     });
 
-    // ✅ limpiar query
+    // limpiar query
     qs.delete("afinando");
     const nextSearch = qs.toString();
     nav(`${location.pathname}${nextSearch ? `?${nextSearch}` : ""}`, { replace: true });
@@ -223,7 +421,18 @@ export default function AppJourney() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
 
-  // ✅ Validaciones mínimas (igual tu versión)
+  /* =========================================================
+     ✅ tab=amort => abre modal
+  ========================================================= */
+  useEffect(() => {
+    const qs = new URLSearchParams(location.search);
+    const tab = qs.get("tab");
+    if (tab === "amort") {
+      setAmortOpen(true);
+    }
+  }, [location.search]);
+
+  // ✅ Validaciones mínimas
   const errors = useMemo(() => {
     const e = {};
     if (step === 2) {
@@ -287,7 +496,7 @@ export default function AppJourney() {
   const calcular = async () => {
     if (!token) return;
 
-    // ✅ Cache: si ya calculamos este payload y hay resultado guardado, no pegues al backend
+    // Cache
     if (lastCalcKeyRef.current === calcKey && calcResult) return;
 
     setCalcBusy(true);
@@ -336,7 +545,7 @@ export default function AppJourney() {
 
   const sinOferta = !!calcResult?.sinOferta;
 
-  // ✅ Si hay token y NO hemos mostrado bienvenida => pantalla 0
+  // token y no bienvenida => pantalla 0
   const showWelcome = !!token && !welcomed;
 
   const beginJourney = () => {
@@ -353,7 +562,7 @@ export default function AppJourney() {
     });
   };
 
-  // Auto-advance cuando eligen IESS en step 1 (solo en modo app, para que se sienta guiado)
+  // Auto-advance cuando eligen IESS en step 1
   const pickIess = (val) => {
     set("afiliadoIess", val);
     if (isMobileMode) {
@@ -376,7 +585,7 @@ export default function AppJourney() {
           APP · {isMobileMode ? "MODO APP" : "WEB"}
         </div>
 
-        {/* Header (similar a Progreso) */}
+        {/* Header */}
         <header className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div
@@ -394,9 +603,7 @@ export default function AppJourney() {
 
           <div className="text-right">
             <div className="text-[11px] text-slate-400 tracking-widest uppercase">Paso</div>
-            <div className="text-sm text-slate-300">
-              {showWelcome ? "—" : `${step} / ${stepsTotal}`}
-            </div>
+            <div className="text-sm text-slate-300">{showWelcome ? "—" : `${step} / ${stepsTotal}`}</div>
           </div>
         </header>
 
@@ -495,11 +702,7 @@ export default function AppJourney() {
                 <>
                   <h2 className="text-lg font-semibold mb-4">Tus ingresos</h2>
 
-                  <Field
-                    label="Ingreso neto mensual"
-                    hint={moneySoft(form.ingresoNetoMensual)}
-                    error={errors.ingresoNetoMensual}
-                  >
+                  <Field label="Ingreso neto mensual" hint={moneySoft(form.ingresoNetoMensual)} error={errors.ingresoNetoMensual}>
                     <input
                       value={form.ingresoNetoMensual}
                       onChange={(e) => set("ingresoNetoMensual", onlyDigits(e.target.value))}
@@ -580,18 +783,12 @@ export default function AppJourney() {
                     Para ver tu resultado dentro de la app y guardar tu plan, inicia sesión.
                   </p>
 
-                  <button
-                    onClick={goLogin}
-                    className="w-full bg-emerald-400 text-slate-900 font-semibold rounded-xl py-3"
-                  >
+                  <button onClick={goLogin} className="w-full bg-emerald-400 text-slate-900 font-semibold rounded-xl py-3">
                     Iniciar sesión / Crear cuenta
                   </button>
 
                   {!isMobileMode && (
-                    <button
-                      onClick={() => nav("/precalificar")}
-                      className="w-full mt-3 border border-slate-700 rounded-xl py-3"
-                    >
+                    <button onClick={() => nav("/precalificar")} className="w-full mt-3 border border-slate-700 rounded-xl py-3">
                       Usar simulador web
                     </button>
                   )}
@@ -603,18 +800,13 @@ export default function AppJourney() {
                   <h2 className="text-lg font-semibold mb-3">Tu resultado (estimado)</h2>
 
                   {calcBusy && (
-                    <div className="rounded-xl border border-slate-700 bg-slate-800/40 px-4 py-3 text-sm">
-                      Calculando...
-                    </div>
+                    <div className="rounded-xl border border-slate-700 bg-slate-800/40 px-4 py-3 text-sm">Calculando...</div>
                   )}
 
                   {calcError && (
                     <div className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
                       {calcError}
-                      <button
-                        onClick={calcular}
-                        className="mt-3 w-full rounded-xl border border-slate-700 py-3 text-slate-100"
-                      >
+                      <button onClick={calcular} className="mt-3 w-full rounded-xl border border-slate-700 py-3 text-slate-100">
                         Reintentar
                       </button>
                     </div>
@@ -633,20 +825,28 @@ export default function AppJourney() {
                         </div>
                       </div>
 
-                      <button
-                        className="w-full mt-4 bg-emerald-400 text-slate-900 font-semibold rounded-xl py-3"
-                        onClick={() => {
-                          window.location.href =
-                            "https://wa.me/593000000000?text=Hola%20HabitaLibre%2C%20quiero%20mi%20plan%20y%20checklist%20para%20mi%20cr%C3%A9dito.";
-                        }}
-                      >
-                        {sinOferta ? "Quiero mejorar mi perfil" : "Iniciar mi proceso"}
-                      </button>
+                      <div className="mt-4 grid grid-cols-2 gap-2">
+                        <button
+                          className="h-12 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-900 font-semibold"
+                          onClick={() => {
+                            window.location.href =
+                              "https://wa.me/593000000000?text=Hola%20HabitaLibre%2C%20quiero%20mi%20plan%20y%20checklist%20para%20mi%20cr%C3%A9dito.";
+                          }}
+                        >
+                          {sinOferta ? "Mejorar" : "Iniciar"}
+                        </button>
+
+                        <button
+                          className="h-12 rounded-xl border border-slate-700 hover:border-slate-500 text-slate-100 font-semibold"
+                          onClick={() => setAmortOpen(true)}
+                        >
+                          Ver amort →
+                        </button>
+                      </div>
 
                       <button
                         className="w-full mt-3 border border-slate-700 rounded-xl py-3"
                         onClick={() => {
-                          // Forzar recalculo: invalida cache
                           setLastCalcKey("");
                           calcular();
                         }}
@@ -661,9 +861,7 @@ export default function AppJourney() {
 
             {/* Mensaje validación */}
             {step !== 4 && !canNext && (
-              <div className="mt-3 text-[12px] text-slate-400">
-                Completa los campos marcados para continuar.
-              </div>
+              <div className="mt-3 text-[12px] text-slate-400">Completa los campos marcados para continuar.</div>
             )}
 
             {/* Sticky Nav */}
@@ -677,6 +875,14 @@ export default function AppJourney() {
           </>
         )}
       </div>
+
+      {/* ✅ Modal amort (abre con tab=amort o botón) */}
+      <AmortModalMini
+        open={amortOpen}
+        onClose={() => setAmortOpen(false)}
+        form={form}
+        calcResult={calcResult}
+      />
     </PremiumBg>
   );
 }

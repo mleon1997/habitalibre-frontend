@@ -118,6 +118,7 @@ function getCustomerToken() {
  * ✅ Selecciona token según endpoint (SIN CONTAMINAR)
  * - /api/admin/... => admin token
  * - /api/customer-auth/... o /api/customer/... => customer token
+ * - /api/precalificar => customer token (si existe) para poder guardar snapshot post-login
  * - resto => NO adjunta token por defecto
  */
 function getStoredTokenForPath(path = "") {
@@ -133,6 +134,11 @@ function getStoredTokenForPath(path = "") {
     p.includes("/api/customer/");
 
   if (isCustomerEndpoint) return getCustomerToken();
+
+  // ✅ CLAVE: precalificar debe usar customer token si existe (para guardar snapshot)
+  if (p.startsWith("/api/precalificar") || p.includes("/api/precalificar")) {
+    return getCustomerToken();
+  }
 
   // ✅ por defecto: NO metas tokens donde no corresponde
   return null;
@@ -260,6 +266,8 @@ function getScopeForPath(path = "") {
     p.includes("/api/customer/")
   )
     return "customer";
+
+  // precalificar corre con customer token si existe (pero no forzamos scope)
   return "";
 }
 
@@ -390,28 +398,18 @@ export async function meCustomer(token) {
   });
 }
 
-// 1) Precalificar (✅ ahora manda token customer si existe)
+// 1) Precalificar
+// ✅ IMPORTANTE: ya NO forzamos header aquí.
+// apiFetch() se encarga de adjuntar customer token SI existe (por getStoredTokenForPath)
 export async function precalificar(payload) {
-  let t = "";
-  try {
-    t =
-      window.localStorage.getItem("hl_customer_token") ||
-      window.localStorage.getItem("customerToken") ||
-      window.localStorage.getItem("HL_CUSTOMER_TOKEN") ||
-      "";
-  } catch {}
-
   const resp = await apiFetch("/api/precalificar", {
     method: "POST",
-    headers: t ? { Authorization: `Bearer ${t}` } : undefined,
     body: JSON.stringify(payload || {}),
   });
 
   if (!resp.ok) return resp;
   return { ok: true, ...resp.data };
 }
-
-
 
 // 2) Crear lead desde simulador
 export async function crearLeadDesdeSimulador(payload) {

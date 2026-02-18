@@ -1,6 +1,6 @@
 // src/pages/Progreso.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { readJourneyLocal, clearJourneyLocal } from "../lib/journeyLocal";
 import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
 import { API_BASE } from "../lib/api"; // ✅ FIX: IMPORT REAL (evita pegarle a habitalibre.com/api)
@@ -112,8 +112,9 @@ function mergePreferValues(...objs) {
 ========================= */
 const LS_TASKS = "hl_progress_tasks_v1";
 
-const SIM_JOURNEY = "/simulador?mode=journey";
-const SIM_JOURNEY_AMORT = "/simulador?mode=journey&tab=amort";
+const SIM_JOURNEY = "/app?mode=mobile";
+const SIM_JOURNEY_AMORT = "/app?mode=mobile"; // por ahora igual; luego puedes soportar tab dentro de AppJourney
+
 
 
 const LS_JOURNEY_OWNER_EMAIL = "hl_journey_owner_email_v1";
@@ -879,6 +880,22 @@ function AmortModal({ open, onClose, data, onGoSimular }) {
 ========================= */
 export default function Progreso() {
   const nav = useNavigate();
+  const location = useLocation();
+
+function withAfinando(path) {
+  try {
+    const [pathname, search = ""] = String(path || "").split("?");
+    const params = new URLSearchParams(search);
+    params.set("afinando", "1");
+    const qs = params.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  } catch {
+    // fallback simple
+    if (String(path || "").includes("?")) return `${path}&afinando=1`;
+    return `${path}?afinando=1`;
+  }
+}
+
   const { token, logout, user } = useCustomerAuth();
 
   const [loading, setLoading] = useState(true);
@@ -903,12 +920,16 @@ export default function Progreso() {
   }, [taskDone]);
 
   // ✅ NAV HELPERS (IMPORTANTE): asegura que "Afinar" NUNCA caiga al formulario/quick
-  const goAfinar = (path = SIM_JOURNEY) => {
-    try {
-      localStorage.setItem("hl_entry_mode", "journey");
-    } catch {}
-    nav(path);
-  };
+const goAfinar = (path = SIM_JOURNEY) => {
+  try {
+    localStorage.setItem("hl_entry_mode", "journey");
+  } catch {}
+
+  // ✅ fuerza “reset” en el wizard/journey
+  const target = withAfinando(path);
+
+  nav(target);
+};
 
   const goQuick = () => {
     try {
