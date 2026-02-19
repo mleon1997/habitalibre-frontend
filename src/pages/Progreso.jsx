@@ -112,16 +112,6 @@ function mergePreferValues(...objs) {
 ========================= */
 const LS_TASKS = "hl_progress_tasks_v1";
 
-const isInApp = location?.pathname?.startsWith("/app");
-
-const SIM_JOURNEY = isInApp
-  ? "/app?mode=journey"
-  : "/precalificar?mode=journey";
-
-const SIM_JOURNEY_AMORT = "/precalificar?mode=journey&force=1";
-
-
-
 const LS_JOURNEY_OWNER_EMAIL = "hl_journey_owner_email_v1";
 const LS_JOURNEY_TS = "hl_journey_ts_v1";
 
@@ -381,7 +371,9 @@ function buildDataFromSnap(snap) {
       ? aniosEstabilidad >= 1
         ? { type: "ok", label: "OK" }
         : { type: "warn", label: "Mejorable" }
-      : sustentoIndependiente === "ambos" || sustentoIndependiente === "declaracion" || sustentoIndependiente === "movimientos"
+      : sustentoIndependiente === "ambos" ||
+        sustentoIndependiente === "declaracion" ||
+        sustentoIndependiente === "movimientos"
       ? { type: "ok", label: "OK" }
       : { type: "warn", label: "Mejorable" };
 
@@ -444,7 +436,7 @@ function buildDataFromSnap(snap) {
 /* =========================
    Checklist / Tasks
 ========================= */
-function buildSuggestedTasks(d) {
+function buildSuggestedTasks(d, SIM_JOURNEY) {
   const tasks = [];
 
   if (d.entradaPct < 10) {
@@ -887,20 +879,25 @@ export default function Progreso() {
   const nav = useNavigate();
   const location = useLocation();
 
-function withAfinando(path) {
-  try {
-    const [pathname, search = ""] = String(path || "").split("?");
-    const params = new URLSearchParams(search);
-    params.set("afinando", "1");
-    params.set("force", "1"); // ✅ evita redirect a /progreso
-    const qs = params.toString();
-    return qs ? `${pathname}?${qs}` : pathname;
-  } catch {
-    if (String(path || "").includes("?")) return `${path}&afinando=1&force=1`;
-    return `${path}?afinando=1&force=1`;
-  }
-}
+  // ✅ FIX CLAVE: NO usar window.location fuera del componente
+  const isInApp = location.pathname.startsWith("/app");
+  const baseJourneyPath = isInApp ? "/app" : "/precalificar";
+  const SIM_JOURNEY = `${baseJourneyPath}?mode=journey`;
+  const SIM_JOURNEY_AMORT = `${baseJourneyPath}?mode=journey&force=1`;
 
+  function withAfinando(path) {
+    try {
+      const [pathname, search = ""] = String(path || "").split("?");
+      const params = new URLSearchParams(search);
+      params.set("afinando", "1");
+      params.set("force", "1"); // ✅ evita redirect a /progreso
+      const qs = params.toString();
+      return qs ? `${pathname}?${qs}` : pathname;
+    } catch {
+      if (String(path || "").includes("?")) return `${path}&afinando=1&force=1`;
+      return `${path}?afinando=1&force=1`;
+    }
+  }
 
   const { token, logout, user } = useCustomerAuth();
 
@@ -926,23 +923,22 @@ function withAfinando(path) {
   }, [taskDone]);
 
   // ✅ NAV HELPERS (IMPORTANTE): asegura que "Afinar" NUNCA caiga al formulario/quick
-const goAfinar = (path = SIM_JOURNEY) => {
-  try {
-    localStorage.setItem("hl_entry_mode", "journey");
-  } catch {}
+  const goAfinar = (path = SIM_JOURNEY) => {
+    try {
+      localStorage.setItem("hl_entry_mode", "journey");
+    } catch {}
 
-  // ✅ fuerza “reset” en el wizard/journey
-  const target = withAfinando(path);
+    // ✅ fuerza “reset” en el wizard/journey
+    const target = withAfinando(path);
 
-  nav(target);
-};
+    nav(target);
+  };
 
   const goQuick = () => {
     try {
       localStorage.setItem("hl_entry_mode", "quick");
     } catch {}
     nav("/precalificar?mode=quick");
-
   };
 
   // ✅ Regla: Progreso es SOLO Journey (requiere login)
@@ -1109,7 +1105,7 @@ const goAfinar = (path = SIM_JOURNEY) => {
   const data = useMemo(() => buildDataFromSnap(snap), [snap]);
   const sourceLabel = source === "backend" ? "Sincronizado" : source === "local" ? "Guardado local" : "—";
 
-  const suggestedTasks = useMemo(() => (data.hasSnap ? buildSuggestedTasks(data) : []), [data]);
+  const suggestedTasks = useMemo(() => (data.hasSnap ? buildSuggestedTasks(data, SIM_JOURNEY) : []), [data, SIM_JOURNEY]);
   const completedCount = suggestedTasks.reduce((acc, t) => acc + (taskDone?.[t.id] ? 1 : 0), 0);
 
   const displayName = useMemo(() => {
@@ -1582,7 +1578,7 @@ const goAfinar = (path = SIM_JOURNEY) => {
                         type="button"
                         onClick={() => {
                           // ✅ FIX CLAVE: si el CTA manda a journey, forzamos entry_mode=journey
-                          if (t.ctaHref === SIM_JOURNEY || String(t.ctaHref || "").startsWith("/precalificar?mode=journey")) {
+                          if (t.ctaHref === SIM_JOURNEY || String(t.ctaHref || "").startsWith(`${baseJourneyPath}?mode=journey`)) {
                             goAfinar(t.ctaHref);
                             return;
                           }
@@ -1738,7 +1734,7 @@ const goAfinar = (path = SIM_JOURNEY) => {
             return;
           }
           // ✅ si el panel manda a journey, fuerza entry_mode=journey
-          if (href === SIM_JOURNEY || String(href || "").startsWith("/precalificar?mode=journey")) {
+          if (href === SIM_JOURNEY || String(href || "").startsWith(`${baseJourneyPath}?mode=journey`)) {
             goAfinar(href);
             setAdvisorOpen(false);
             return;
