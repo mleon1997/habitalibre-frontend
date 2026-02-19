@@ -112,8 +112,8 @@ function mergePreferValues(...objs) {
 ========================= */
 const LS_TASKS = "hl_progress_tasks_v1";
 
-const SIM_JOURNEY = "/precalificar?mode=journey&force=1";
-const SIM_JOURNEY_AMORT = "/precalificar?mode=journey&force=1";
+const SIM_JOURNEY = "/simulador?mode=journey&force=1";
+const SIM_JOURNEY_AMORT = "/simulador?mode=journey&force=1";
 
 
 
