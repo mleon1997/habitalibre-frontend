@@ -112,7 +112,12 @@ function mergePreferValues(...objs) {
 ========================= */
 const LS_TASKS = "hl_progress_tasks_v1";
 
-const SIM_JOURNEY = "/precalificar?mode=journey&force=1";
+const isInApp = location?.pathname?.startsWith("/app");
+
+const SIM_JOURNEY = isInApp
+  ? "/app?mode=journey"
+  : "/precalificar?mode=journey";
+
 const SIM_JOURNEY_AMORT = "/precalificar?mode=journey&force=1";
 
 
@@ -936,7 +941,8 @@ const goAfinar = (path = SIM_JOURNEY) => {
     try {
       localStorage.setItem("hl_entry_mode", "quick");
     } catch {}
-    nav("/simulador?mode=quick");
+    nav("/precalificar?mode=quick");
+
   };
 
   // ✅ Regla: Progreso es SOLO Journey (requiere login)
