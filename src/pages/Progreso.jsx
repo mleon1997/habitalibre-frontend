@@ -112,8 +112,8 @@ function mergePreferValues(...objs) {
 ========================= */
 const LS_TASKS = "hl_progress_tasks_v1";
 
-const SIM_JOURNEY = "/app?mode=mobile";
-const SIM_JOURNEY_AMORT = "/app?mode=mobile"; // por ahora igual; luego puedes soportar tab dentro de AppJourney
+const SIM_JOURNEY = "/precalificar?mode=journey&force=1";
+const SIM_JOURNEY_AMORT = "/precalificar?mode=journey&force=1";
 
 
 
@@ -887,14 +887,15 @@ function withAfinando(path) {
     const [pathname, search = ""] = String(path || "").split("?");
     const params = new URLSearchParams(search);
     params.set("afinando", "1");
+    params.set("force", "1"); // ✅ evita redirect a /progreso
     const qs = params.toString();
     return qs ? `${pathname}?${qs}` : pathname;
   } catch {
-    // fallback simple
-    if (String(path || "").includes("?")) return `${path}&afinando=1`;
-    return `${path}?afinando=1`;
+    if (String(path || "").includes("?")) return `${path}&afinando=1&force=1`;
+    return `${path}?afinando=1&force=1`;
   }
 }
+
 
   const { token, logout, user } = useCustomerAuth();
 
