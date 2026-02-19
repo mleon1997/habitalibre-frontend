@@ -112,8 +112,8 @@ function mergePreferValues(...objs) {
 ========================= */
 const LS_TASKS = "hl_progress_tasks_v1";
 
-const SIM_JOURNEY = "/simulador?mode=journey&force=1";
-const SIM_JOURNEY_AMORT = "/simulador?mode=journey&force=1";
+const SIM_JOURNEY = "/precalificar?mode=journey&force=1";
+const SIM_JOURNEY_AMORT = "/precalificar?mode=journey&force=1";
 
 
 
@@ -1576,7 +1576,7 @@ const goAfinar = (path = SIM_JOURNEY) => {
                         type="button"
                         onClick={() => {
                           // ✅ FIX CLAVE: si el CTA manda a journey, forzamos entry_mode=journey
-                          if (t.ctaHref === SIM_JOURNEY || String(t.ctaHref || "").startsWith("/simular?mode=journey")) {
+                          if (t.ctaHref === SIM_JOURNEY || String(t.ctaHref || "").startsWith("/precalificar?mode=journey")) {
                             goAfinar(t.ctaHref);
                             return;
                           }
@@ -1732,7 +1732,7 @@ const goAfinar = (path = SIM_JOURNEY) => {
             return;
           }
           // ✅ si el panel manda a journey, fuerza entry_mode=journey
-          if (href === SIM_JOURNEY || String(href || "").startsWith("/simular?mode=journey")) {
+          if (href === SIM_JOURNEY || String(href || "").startsWith("/precalificar?mode=journey")) {
             goAfinar(href);
             setAdvisorOpen(false);
             return;
