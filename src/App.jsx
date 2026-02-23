@@ -41,8 +41,27 @@ import PoliticaCookies from "./pages/PoliticaCookies.jsx";
  * ✅ Layout mínimo para APP móvil (/app)
  */
 function AppMobileLayout() {
+  console.log("🔥 AppMobileLayout mounted");
+
   return (
     <div className="min-h-screen bg-[#060B14] text-slate-50">
+      
+      {/* DEBUG VISUAL */}
+      <div
+        style={{
+          position: "fixed",
+          top: 10,
+          left: 10,
+          zIndex: 9999,
+          fontSize: 12,
+          background: "rgba(0,0,0,0.6)",
+          padding: "4px 8px",
+          borderRadius: 6
+        }}
+      >
+        APP LAYOUT OK
+      </div>
+
       <Outlet />
     </div>
   );
@@ -55,7 +74,6 @@ export default function App() {
         <CustomerAuthListener />
         <AdminAuthListener />
 
-        {/* ✅ modal global (lead capture) */}
         <LeadModalBare />
 
         <Routes>
@@ -65,8 +83,6 @@ export default function App() {
           <Route path="/app" element={<AppMobileLayout />}>
             <Route index element={<AppJourney />} />
             <Route path="precalificar" element={<AppJourney />} />
-
-            {/* ✅ IMPORTANTE: Progreso dentro del app */}
             <Route
               path="progreso"
               element={
@@ -132,9 +148,7 @@ export default function App() {
             }
           />
 
-          {/* =========================
-              DEFAULT
-             ========================= */}
+          {/* DEFAULT */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </LeadCaptureProvider>
