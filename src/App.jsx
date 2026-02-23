@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useLeadCapture } from "../context/LeadCaptureContext.jsx";
 import ModalLead from "./ModalLead.jsx";
 import { crearLeadDesdeSimulador } from "../lib/api.js";
+import { LeadCaptureProvider } from "./context/LeadCaptureContext.jsx";
 
 // ✅ NUEVO: para detectar si el usuario ya está logueado
 import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
