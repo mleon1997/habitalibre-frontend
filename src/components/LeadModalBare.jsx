@@ -1,5 +1,5 @@
 // src/components/LeadModalBare.jsx
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLeadCapture } from "../context/LeadCaptureContext.jsx";
 import ModalLead from "./ModalLead.jsx";
@@ -37,6 +37,16 @@ const mapTipoCompraNumero = (raw) => {
   return null;
 };
 
+// ✅ Gate extra: si estás en /app, nunca abras modal ni navegues
+function isInsideAppShell() {
+  try {
+    const { hash, pathname } = window.location || {};
+    return String(hash || "").includes("#/app") || String(pathname || "").startsWith("/app");
+  } catch {
+    return false;
+  }
+}
+
 export default function LeadModalBare() {
   const navigate = useNavigate();
   const { isOpen, result, closeLead, resetLeadCapture } = useLeadCapture();
@@ -44,22 +54,30 @@ export default function LeadModalBare() {
   // ✅ token = ya hay sesión
   const { token } = useCustomerAuth();
 
+  const inApp = useMemo(() => isInsideAppShell(), []);
+
   // ✅ FIX: si ya hay sesión, NO debemos pedir datos otra vez.
+  // ✅ y si estás en /app, tampoco navegues (evita interferencias)
   useEffect(() => {
     if (!isOpen) return;
     if (!token) return;
+    if (inApp) {
+      closeLead?.();
+      resetLeadCapture?.();
+      return;
+    }
 
     closeLead?.();
     resetLeadCapture?.();
 
     // ✅ comportamiento recomendado: llevar al progreso/journey
     navigate("/progreso", { replace: true });
-  }, [isOpen, token, closeLead, resetLeadCapture, navigate]);
+  }, [isOpen, token, inApp, closeLead, resetLeadCapture, navigate]);
 
   const handleLeadSaved = () => {
     closeLead?.();
     resetLeadCapture?.();
-    navigate("/gracias");
+    if (!inApp) navigate("/gracias");
   };
 
   const handleSubmitLead = async (payloadContacto) => {
@@ -80,9 +98,7 @@ export default function LeadModalBare() {
       // ✅ 2) Normalizar inputs
       // ---------------------------------------------
       const afiliadoIess = toBool(inputs?.afiliadoIess ?? inputs?.afiliado_iess);
-      const aniosEstabilidad = toNum(
-        inputs?.aniosEstabilidad ?? inputs?.anios_estabilidad
-      );
+      const aniosEstabilidad = toNum(inputs?.aniosEstabilidad ?? inputs?.anios_estabilidad);
 
       const ingresoIndividual = toNum(
         inputs?.ingresoNetoMensual ??
@@ -121,24 +137,14 @@ export default function LeadModalBare() {
 
       const tipoCompra = lowerOrNull(inputs?.tipoCompra ?? inputs?.tipo_compra);
       const tipoCompraNumero =
-        inputs?.tipo_compra_numero != null
-          ? toNum(inputs?.tipo_compra_numero)
-          : mapTipoCompraNumero(tipoCompra);
+        inputs?.tipo_compra_numero != null ? toNum(inputs?.tipo_compra_numero) : mapTipoCompraNumero(tipoCompra);
 
       // ✅ LOS QUE TE ESTÁN SALIENDO NULL EN BD
-      const valorVivienda = toNum(
-        inputs?.valorVivienda ?? inputs?.valor_vivienda ?? inputs?.valor
-      );
-      const entradaDisponible = toNum(
-        inputs?.entradaDisponible ??
-          inputs?.entrada_disponible ??
-          inputs?.entrada
-      );
+      const valorVivienda = toNum(inputs?.valorVivienda ?? inputs?.valor_vivienda ?? inputs?.valor);
+      const entradaDisponible = toNum(inputs?.entradaDisponible ?? inputs?.entrada_disponible ?? inputs?.entrada);
 
       const edad = toNum(inputs?.edad);
-      const tipoIngreso =
-        String(inputs?.tipoIngreso ?? inputs?.tipo_ingreso ?? "").trim() ||
-        null;
+      const tipoIngreso = String(inputs?.tipoIngreso ?? inputs?.tipo_ingreso ?? "").trim() || null;
 
       // ---------------------------------------------
       // ✅ 3) Enviar a API (inputs + resultado)
@@ -179,6 +185,9 @@ export default function LeadModalBare() {
 
   // ✅ Doble seguro: si ya hay token, nunca muestres el modal
   if (token) return null;
+
+  // ✅ y si estás dentro de /app, tampoco
+  if (inApp) return null;
 
   return (
     <ModalLead
