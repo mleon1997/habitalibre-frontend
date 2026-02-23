@@ -880,8 +880,19 @@ export default function Progreso() {
   const location = useLocation();
 
   // ✅ FIX CLAVE: NO usar window.location fuera del componente
-  const isInApp = location.pathname.startsWith("/app");
-  const baseJourneyPath = isInApp ? "/app" : "/precalificar";
+  // ✅ Detecta Capacitor / App wrapper aunque estés en /progreso
+const isCapacitorApp = (() => {
+  try {
+    return !!window?.Capacitor; // suficiente para tu caso
+  } catch {
+    return false;
+  }
+})();
+
+const isInApp = location.pathname.startsWith("/app");
+
+// ✅ En móvil (Capacitor) SIEMPRE navega al Journey dentro de /app
+const baseJourneyPath = isCapacitorApp ? "/app" : (isInApp ? "/app" : "/precalificar");
   const SIM_JOURNEY = `${baseJourneyPath}?mode=journey`;
   const SIM_JOURNEY_AMORT = `${baseJourneyPath}?mode=journey&force=1`;
 
