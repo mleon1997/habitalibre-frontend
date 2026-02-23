@@ -43,63 +43,6 @@ const yesNoToBool = (v) => {
   return null;
 };
 
-/* =========================================================
-   ✅ HashRouter-safe query helpers
-   - Lee desde location.search (si existe)
-   - o desde el hash real (window.location.hash) si el query quedó ahí:
-     "#/app?mode=journey&afinando=1&force=1"
-========================================================= */
-function getHashQueryString() {
-  try {
-    const h = String(window.location.hash || "");
-    const q = h.indexOf("?");
-    if (q === -1) return "";
-    return h.slice(q + 1); // sin '?'
-  } catch {
-    return "";
-  }
-}
-
-function getQueryParams(location) {
-  // 1) si React Router ya parseó search, úsalo
-  try {
-    if (location?.search && String(location.search).startsWith("?") && location.search.length > 1) {
-      return new URLSearchParams(location.search);
-    }
-  } catch {}
-
-  // 2) fallback: parse directo del hash real del navegador
-  const hqs = getHashQueryString();
-  try {
-    return new URLSearchParams(hqs || "");
-  } catch {
-    return new URLSearchParams("");
-  }
-}
-
-function getQueryParam(location, key) {
-  const qs = getQueryParams(location);
-  return qs.get(key);
-}
-
-function setOrDeleteParam(qs, key, value) {
-  if (value == null || value === "") qs.delete(key);
-  else qs.set(key, String(value));
-}
-
-function replaceCleanParams({ nav, location, removeKeys = [] }) {
-  const qs = getQueryParams(location);
-  removeKeys.forEach((k) => qs.delete(k));
-
-  const nextQs = qs.toString();
-
-  // Preferimos navegar al path actual + query,
-  // porque en HashRouter: nav("/app?x=1") => "#/app?x=1"
-  // y en BrowserRouter: nav("/app?x=1") => "/app?x=1"
-  const basePath = location?.pathname || "/app";
-  nav(`${basePath}${nextQs ? `?${nextQs}` : ""}`, { replace: true });
-}
-
 function Field({ label, hint, error, children }) {
   return (
     <div className="mb-4">
@@ -370,13 +313,111 @@ function AmortModalMini({ open, onClose, form, calcResult }) {
   );
 }
 
+/* =========================
+   ✅ Query helpers (HashRouter + normal search)
+========================= */
+function readHashQueryString(hashLike) {
+  const h = String(hashLike || "");
+  // ejemplos:
+  // "#/app?mode=journey&afinando=1"
+  // "#/app" (sin query)
+  if (!h) return "";
+  const qIdx = h.indexOf("?");
+  if (qIdx === -1) return "";
+  let qs = h.slice(qIdx + 1);
+  // por si viene algo raro con otro '#'
+  const hash2 = qs.indexOf("#");
+  if (hash2 !== -1) qs = qs.slice(0, hash2);
+  return qs;
+}
+
+function readHashPath(hashLike) {
+  const h = String(hashLike || "");
+  if (!h) return "";
+  const noHash = h.startsWith("#") ? h.slice(1) : h;
+  const qIdx = noHash.indexOf("?");
+  return qIdx === -1 ? noHash : noHash.slice(0, qIdx);
+}
+
 export default function AppJourney() {
   const nav = useNavigate();
   const location = useLocation();
   const { token, user } = useCustomerAuth();
 
-  // ✅ Detectar mode=mobile en HashRouter o BrowserRouter
-  const isMobileMode = getQueryParam(location, "mode") === "mobile";
+  // ✅ parse params from BOTH places
+  const getQueryParam = (key) => {
+    try {
+      const qsSearch = new URLSearchParams(location.search || "");
+      const v1 = qsSearch.get(key);
+      if (v1 != null) return v1;
+
+      // react-router HashRouter a veces no pone nada en location.search
+      const hash = typeof window !== "undefined" ? window.location.hash : location.hash;
+      const hashQS = readHashQueryString(hash || location.hash);
+      const qsHash = new URLSearchParams(hashQS || "");
+      const v2 = qsHash.get(key);
+      return v2;
+    } catch {
+      return null;
+    }
+  };
+
+  // ✅ remove param(s) from URL WITHOUT reload (prefer replaceState)
+  const replaceRemoveParams = (keys = []) => {
+    const keySet = new Set((keys || []).map(String));
+
+    try {
+      const inBrowser = typeof window !== "undefined" && window.history && window.location;
+
+      // 1) HashRouter-style: mutate hash query
+      const hash = inBrowser ? window.location.hash : location.hash;
+      const hashPath = readHashPath(hash || location.hash); // "/app"
+      const hashQS = readHashQueryString(hash || location.hash);
+      const qsHash = new URLSearchParams(hashQS || "");
+
+      let removedSomething = false;
+      keySet.forEach((k) => {
+        if (qsHash.has(k)) {
+          qsHash.delete(k);
+          removedSomething = true;
+        }
+      });
+
+      if (removedSomething) {
+        const nextQS = qsHash.toString();
+        const base = inBrowser ? window.location.href.split("#")[0] : "";
+        const nextHash = `#${hashPath || location.pathname}${nextQS ? `?${nextQS}` : ""}`;
+        if (inBrowser) {
+          window.history.replaceState(null, "", `${base}${nextHash}`);
+        } else {
+          // fallback
+          nav(`${location.pathname}${location.search}`, { replace: true });
+        }
+        return;
+      }
+
+      // 2) Normal search: mutate location.search
+      const qsSearch = new URLSearchParams(location.search || "");
+      let removed2 = false;
+      keySet.forEach((k) => {
+        if (qsSearch.has(k)) {
+          qsSearch.delete(k);
+          removed2 = true;
+        }
+      });
+      if (removed2) {
+        const nextSearch = qsSearch.toString();
+        nav(`${location.pathname}${nextSearch ? `?${nextSearch}` : ""}`, { replace: true });
+      }
+    } catch {
+      // last resort: try nav replace (won't help hash-only but avoids crash)
+      try {
+        nav(location.pathname, { replace: true });
+      } catch {}
+    }
+  };
+
+  const isMobileMode = getQueryParam("mode") === "mobile";
 
   const saved = useMemo(() => loadJourney(), []);
   const [welcomed, setWelcomed] = useState(!!saved?.welcomed);
@@ -384,8 +425,8 @@ export default function AppJourney() {
   // step: 1..4 (form), pero si token y !welcomed => mostramos bienvenida (step=0)
   const [step, setStep] = useState(saved?.step || 1);
 
-  const [form, setForm] = useState(
-    saved?.form || {
+  const defaultForm = useMemo(
+    () => ({
       ingresoNetoMensual: "",
       ingresoPareja: "",
       valorVivienda: "",
@@ -394,8 +435,11 @@ export default function AppJourney() {
       ciudadCompra: "Quito",
       afiliadoIess: "si",
       otrasDeudasMensuales: "",
-    }
+    }),
+    []
   );
+
+  const [form, setForm] = useState(saved?.form || defaultForm);
 
   const [calcResult, setCalcResult] = useState(saved?.calcResult || null);
   const [calcBusy, setCalcBusy] = useState(false);
@@ -437,25 +481,13 @@ export default function AppJourney() {
   }, []);
 
   /* =========================================================
-     ✅ AFINAR: si viene afinando=1 (en search o en hash), resetea al step 1
-     - Debe resetear: form default, calcResult null, lastCalcKey vacío, step=1
-     - Luego limpiar el param de la URL (replace)
+     ✅ AFINAR: si viene afinando=1 (en search o hash)
+     - resetea journey
+     - limpia param con replace
   ========================================================= */
   useEffect(() => {
-    const qs = getQueryParams(location);
-    const afinando = qs.get("afinando") === "1";
+    const afinando = getQueryParam("afinando") === "1";
     if (!afinando) return;
-
-    const defaultForm = {
-      ingresoNetoMensual: "",
-      ingresoPareja: "",
-      valorVivienda: "",
-      entradaDisponible: "",
-      edad: "",
-      ciudadCompra: "Quito",
-      afiliadoIess: "si",
-      otrasDeudasMensuales: "",
-    };
 
     setForm(defaultForm);
     setCalcResult(null);
@@ -463,7 +495,6 @@ export default function AppJourney() {
     setLastCalcKey("");
     setStep(1);
 
-    // persist inmediato
     saveJourney({
       welcomed,
       step: 1,
@@ -473,22 +504,20 @@ export default function AppJourney() {
       updatedAt: new Date().toISOString(),
     });
 
-    // ✅ limpiar param afinando (replace) — robusto para HashRouter
-    replaceCleanParams({ nav, location, removeKeys: ["afinando"] });
+    // ✅ limpia el param (sin recargar)
+    replaceRemoveParams(["afinando"]);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, location.search, location.hash]);
+  }, [location.key, defaultForm, welcomed]);
 
   /* =========================================================
-     ✅ tab=amort => abre modal (funciona con HashRouter)
+     ✅ tab=amort => abre modal (en search o hash)
   ========================================================= */
   useEffect(() => {
-    const qs = getQueryParams(location);
-    const tab = qs.get("tab");
-    if (tab === "amort") {
-      setAmortOpen(true);
-    }
-  }, [location.pathname, location.search, location.hash]);
+    const tab = getQueryParam("tab");
+    if (tab === "amort") setAmortOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key]);
 
   // ✅ Validaciones mínimas
   const errors = useMemo(() => {
@@ -640,7 +669,9 @@ export default function AppJourney() {
       <div className="mx-auto max-w-[520px] px-4 pt-6 pb-28">
         {/* Debug/marker */}
         <div className="fixed top-3 right-3 z-[99999] rounded-xl border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-[11px] text-emerald-200">
-          APP · {isMobileMode ? "MODO APP" : "WEB"}
+          APP · {isMobileMode ? "MODO APP" : "WEB"} ·{" "}
+          {getQueryParam("mode") ? `mode=${getQueryParam("mode")}` : "mode=—"} ·{" "}
+          {getQueryParam("afinando") ? `afinando=${getQueryParam("afinando")}` : "afinando=—"}
         </div>
 
         {/* Header */}
@@ -935,12 +966,7 @@ export default function AppJourney() {
       </div>
 
       {/* ✅ Modal amort (abre con tab=amort o botón) */}
-      <AmortModalMini
-        open={amortOpen}
-        onClose={() => setAmortOpen(false)}
-        form={form}
-        calcResult={calcResult}
-      />
+      <AmortModalMini open={amortOpen} onClose={() => setAmortOpen(false)} form={form} calcResult={calcResult} />
     </PremiumBg>
   );
 }
