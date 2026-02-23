@@ -1,11 +1,9 @@
 // src/components/LeadModalBare.jsx
-import React, { useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useLeadCapture } from "../context/LeadCaptureContext.jsx";
 import ModalLead from "./ModalLead.jsx";
 import { crearLeadDesdeSimulador } from "../lib/api.js";
-
-// ✅ NUEVO: para detectar si el usuario ya está logueado
 import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
 
 // -------------------------------
@@ -37,54 +35,35 @@ const mapTipoCompraNumero = (raw) => {
   return null;
 };
 
-// ✅ Gate extra: si estás en /app, nunca abras modal ni navegues
-function isInsideAppShell() {
-  try {
-    const { hash, pathname } = window.location || {};
-    return String(hash || "").includes("#/app") || String(pathname || "").startsWith("/app");
-  } catch {
-    return false;
-  }
-}
-
 export default function LeadModalBare() {
   const navigate = useNavigate();
-  const { isOpen, result, closeLead, resetLeadCapture } = useLeadCapture();
+  const location = useLocation();
 
-  // ✅ token = ya hay sesión
+  const { isOpen, result, closeLead, resetLeadCapture } = useLeadCapture();
   const { token } = useCustomerAuth();
 
-  const inApp = useMemo(() => isInsideAppShell(), []);
+  const isInApp = location.pathname.startsWith("/app");
+  const progresoHref = isInApp ? "/app/progreso" : "/progreso";
 
-  // ✅ FIX: si ya hay sesión, NO debemos pedir datos otra vez.
-  // ✅ y si estás en /app, tampoco navegues (evita interferencias)
+  // ✅ Si ya hay sesión, NO pedir datos otra vez
   useEffect(() => {
     if (!isOpen) return;
     if (!token) return;
-    if (inApp) {
-      closeLead?.();
-      resetLeadCapture?.();
-      return;
-    }
 
     closeLead?.();
     resetLeadCapture?.();
 
-    // ✅ comportamiento recomendado: llevar al progreso/journey
-    navigate("/progreso", { replace: true });
-  }, [isOpen, token, inApp, closeLead, resetLeadCapture, navigate]);
+    navigate(progresoHref, { replace: true });
+  }, [isOpen, token, closeLead, resetLeadCapture, navigate, progresoHref]);
 
   const handleLeadSaved = () => {
     closeLead?.();
     resetLeadCapture?.();
-    if (!inApp) navigate("/gracias");
+    navigate("/gracias");
   };
 
   const handleSubmitLead = async (payloadContacto) => {
     try {
-      // ---------------------------------------------
-      // ✅ 1) Inputs originales del simulador
-      // ---------------------------------------------
       const inputs =
         result?.perfilInput ||
         result?.perfil ||
@@ -94,9 +73,6 @@ export default function LeadModalBare() {
         result?.rawInput ||
         null;
 
-      // ---------------------------------------------
-      // ✅ 2) Normalizar inputs
-      // ---------------------------------------------
       const afiliadoIess = toBool(inputs?.afiliadoIess ?? inputs?.afiliado_iess);
       const aniosEstabilidad = toNum(inputs?.aniosEstabilidad ?? inputs?.anios_estabilidad);
 
@@ -112,12 +88,6 @@ export default function LeadModalBare() {
           inputs?.ingreso_pareja ??
           inputs?.ingresoParejaMensual
       );
-
-      // (No lo mandas hoy como campo canónico, pero lo dejamos calculado por si lo necesitas)
-      const ingresoTotal =
-        ingresoIndividual != null || ingresoPareja != null
-          ? Number(ingresoIndividual || 0) + Number(ingresoPareja || 0)
-          : null;
 
       const deudas = toNum(
         inputs?.otrasDeudasMensuales ??
@@ -139,23 +109,16 @@ export default function LeadModalBare() {
       const tipoCompraNumero =
         inputs?.tipo_compra_numero != null ? toNum(inputs?.tipo_compra_numero) : mapTipoCompraNumero(tipoCompra);
 
-      // ✅ LOS QUE TE ESTÁN SALIENDO NULL EN BD
       const valorVivienda = toNum(inputs?.valorVivienda ?? inputs?.valor_vivienda ?? inputs?.valor);
       const entradaDisponible = toNum(inputs?.entradaDisponible ?? inputs?.entrada_disponible ?? inputs?.entrada);
 
       const edad = toNum(inputs?.edad);
       const tipoIngreso = String(inputs?.tipoIngreso ?? inputs?.tipo_ingreso ?? "").trim() || null;
 
-      // ---------------------------------------------
-      // ✅ 3) Enviar a API (inputs + resultado)
-      // ---------------------------------------------
       const resp = await crearLeadDesdeSimulador({
-        contacto: {
-          ...payloadContacto,
-        },
+        contacto: { ...payloadContacto },
         precalif: {
           ...(inputs || {}),
-          // claves canónicas
           afiliadoIess,
           aniosEstabilidad,
           ingresoNetoMensual: ingresoIndividual,
@@ -168,26 +131,18 @@ export default function LeadModalBare() {
           entradaDisponible,
           edad,
           tipoIngreso,
-          // (opcional) si luego quieres mandar ingresoTotal también:
-          // ingresoTotal,
         },
         resultado: result,
       });
 
       return resp;
     } catch (err) {
-      return {
-        ok: false,
-        error: err?.message || "No se pudo enviar el lead",
-      };
+      return { ok: false, error: err?.message || "No se pudo enviar el lead" };
     }
   };
 
   // ✅ Doble seguro: si ya hay token, nunca muestres el modal
   if (token) return null;
-
-  // ✅ y si estás dentro de /app, tampoco
-  if (inApp) return null;
 
   return (
     <ModalLead
