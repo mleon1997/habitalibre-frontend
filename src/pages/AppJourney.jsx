@@ -43,6 +43,63 @@ const yesNoToBool = (v) => {
   return null;
 };
 
+/* =========================================================
+   ✅ HashRouter-safe query helpers
+   - Lee desde location.search (si existe)
+   - o desde el hash real (window.location.hash) si el query quedó ahí:
+     "#/app?mode=journey&afinando=1&force=1"
+========================================================= */
+function getHashQueryString() {
+  try {
+    const h = String(window.location.hash || "");
+    const q = h.indexOf("?");
+    if (q === -1) return "";
+    return h.slice(q + 1); // sin '?'
+  } catch {
+    return "";
+  }
+}
+
+function getQueryParams(location) {
+  // 1) si React Router ya parseó search, úsalo
+  try {
+    if (location?.search && String(location.search).startsWith("?") && location.search.length > 1) {
+      return new URLSearchParams(location.search);
+    }
+  } catch {}
+
+  // 2) fallback: parse directo del hash real del navegador
+  const hqs = getHashQueryString();
+  try {
+    return new URLSearchParams(hqs || "");
+  } catch {
+    return new URLSearchParams("");
+  }
+}
+
+function getQueryParam(location, key) {
+  const qs = getQueryParams(location);
+  return qs.get(key);
+}
+
+function setOrDeleteParam(qs, key, value) {
+  if (value == null || value === "") qs.delete(key);
+  else qs.set(key, String(value));
+}
+
+function replaceCleanParams({ nav, location, removeKeys = [] }) {
+  const qs = getQueryParams(location);
+  removeKeys.forEach((k) => qs.delete(k));
+
+  const nextQs = qs.toString();
+
+  // Preferimos navegar al path actual + query,
+  // porque en HashRouter: nav("/app?x=1") => "#/app?x=1"
+  // y en BrowserRouter: nav("/app?x=1") => "/app?x=1"
+  const basePath = location?.pathname || "/app";
+  nav(`${basePath}${nextQs ? `?${nextQs}` : ""}`, { replace: true });
+}
+
 function Field({ label, hint, error, children }) {
   return (
     <div className="mb-4">
@@ -318,7 +375,8 @@ export default function AppJourney() {
   const location = useLocation();
   const { token, user } = useCustomerAuth();
 
-  const isMobileMode = new URLSearchParams(location.search).get("mode") === "mobile";
+  // ✅ Detectar mode=mobile en HashRouter o BrowserRouter
+  const isMobileMode = getQueryParam(location, "mode") === "mobile";
 
   const saved = useMemo(() => loadJourney(), []);
   const [welcomed, setWelcomed] = useState(!!saved?.welcomed);
@@ -379,10 +437,12 @@ export default function AppJourney() {
   }, []);
 
   /* =========================================================
-     ✅ AFINAR: si viene ?afinando=1, resetea al step 1
+     ✅ AFINAR: si viene afinando=1 (en search o en hash), resetea al step 1
+     - Debe resetear: form default, calcResult null, lastCalcKey vacío, step=1
+     - Luego limpiar el param de la URL (replace)
   ========================================================= */
   useEffect(() => {
-    const qs = new URLSearchParams(location.search);
+    const qs = getQueryParams(location);
     const afinando = qs.get("afinando") === "1";
     if (!afinando) return;
 
@@ -413,24 +473,22 @@ export default function AppJourney() {
       updatedAt: new Date().toISOString(),
     });
 
-    // limpiar query
-    qs.delete("afinando");
-    const nextSearch = qs.toString();
-    nav(`${location.pathname}${nextSearch ? `?${nextSearch}` : ""}`, { replace: true });
+    // ✅ limpiar param afinando (replace) — robusto para HashRouter
+    replaceCleanParams({ nav, location, removeKeys: ["afinando"] });
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search]);
+  }, [location.pathname, location.search, location.hash]);
 
   /* =========================================================
-     ✅ tab=amort => abre modal
+     ✅ tab=amort => abre modal (funciona con HashRouter)
   ========================================================= */
   useEffect(() => {
-    const qs = new URLSearchParams(location.search);
+    const qs = getQueryParams(location);
     const tab = qs.get("tab");
     if (tab === "amort") {
       setAmortOpen(true);
     }
-  }, [location.search]);
+  }, [location.pathname, location.search, location.hash]);
 
   // ✅ Validaciones mínimas
   const errors = useMemo(() => {
