@@ -351,6 +351,52 @@ function AmortModalMini({ open, onClose, form, calcResult }) {
   );
 }
 
+/* =====================================================
+   🔥 CrashShield INLINE (sin crear otro archivo)
+   - Si algo crashea, en vez de negro te muestra el error
+===================================================== */
+function CrashView({ error }) {
+  const msg = error?.message || String(error || "Error");
+  const stack = error?.stack || "";
+  return (
+    <div style={{ minHeight: "100vh", background: "#0b1220", color: "#e5e7eb", padding: 16 }}>
+      <div style={{ maxWidth: 900, margin: "0 auto" }}>
+        <div style={{ fontSize: 12, letterSpacing: 2, opacity: 0.8 }}>HABITALIBRE · ERROR</div>
+        <h1 style={{ fontSize: 22, marginTop: 8 }}>Se rompió el render 😬</h1>
+
+        <div
+          style={{
+            marginTop: 12,
+            padding: 12,
+            borderRadius: 12,
+            background: "rgba(239,68,68,0.12)",
+            border: "1px solid rgba(239,68,68,0.25)",
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>Mensaje</div>
+          <div style={{ whiteSpace: "pre-wrap" }}>{msg}</div>
+        </div>
+
+        {stack ? (
+          <details style={{ marginTop: 12 }}>
+            <summary style={{ cursor: "pointer", fontWeight: 700 }}>Stack</summary>
+            <pre style={{ whiteSpace: "pre-wrap", fontSize: 12, marginTop: 10 }}>{stack}</pre>
+          </details>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function withCrashShield(renderFn) {
+  try {
+    return renderFn();
+  } catch (e) {
+    console.error("💥 Crash AppJourney:", e);
+    return <CrashView error={e} />;
+  }
+}
+
 export default function AppJourney() {
   const nav = useNavigate();
   const location = useLocation();
@@ -601,7 +647,7 @@ export default function AppJourney() {
     }
   };
 
-  return (
+  return withCrashShield(() => (
     <PremiumBg>
       <div className="mx-auto max-w-[520px] px-4 pt-6 pb-28">
         {/* Debug/marker */}
@@ -897,5 +943,5 @@ export default function AppJourney() {
 
       <AmortModalMini open={amortOpen} onClose={() => setAmortOpen(false)} form={form} calcResult={calcResult} />
     </PremiumBg>
-  );
+  ));
 }
