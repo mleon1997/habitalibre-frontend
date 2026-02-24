@@ -12,6 +12,7 @@
     "preview:fallback": "node node_modules/vite/bin/vite.js preview"
   },
   "dependencies": {
+    "@capacitor/core": "^8.1.0",
     "@fontsource/plus-jakarta-sans": "^5.2.8",
     "@heroicons/react": "^2.2.0",
     "axios": "^1.7.2",

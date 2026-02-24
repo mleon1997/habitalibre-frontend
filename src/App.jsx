@@ -1,8 +1,7 @@
 // src/App.jsx
 import React from "react";
 import "./App.css";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-
+import { HashRouter as Router, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import AdminAuthListener from "./components/AdminAuthListener.jsx";
 import CustomerAuthListener from "./components/CustomerAuthListener.jsx";
 import AdminProtectedRoute from "./components/AdminProtectedRoute.jsx";
