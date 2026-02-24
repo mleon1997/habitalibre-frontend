@@ -1,6 +1,6 @@
 // src/App.jsx
 import React from "react";
-import { HashRouter as Router, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import "./App.css";
 
 import AdminAuthListener from "./components/AdminAuthListener.jsx";
@@ -37,36 +37,6 @@ import PoliticaPrivacidad from "./pages/PoliticaPrivacidad.jsx";
 import TerminosUso from "./pages/TerminosUso.jsx";
 import PoliticaCookies from "./pages/PoliticaCookies.jsx";
 
-/**
- * ✅ Layout mínimo para APP móvil (/app)
- */
-function AppMobileLayout() {
-  console.log("🔥 AppMobileLayout mounted");
-
-  return (
-    <div className="min-h-screen bg-[#060B14] text-slate-50">
-      
-      {/* DEBUG VISUAL */}
-      <div
-        style={{
-          position: "fixed",
-          top: 10,
-          left: 10,
-          zIndex: 9999,
-          fontSize: 12,
-          background: "rgba(0,0,0,0.6)",
-          padding: "4px 8px",
-          borderRadius: 6
-        }}
-      >
-        APP LAYOUT OK
-      </div>
-
-      <Outlet />
-    </div>
-  );
-}
-
 export default function App() {
   return (
     <Router>
@@ -74,24 +44,24 @@ export default function App() {
         <CustomerAuthListener />
         <AdminAuthListener />
 
+        {/* Modal global */}
         <LeadModalBare />
 
         <Routes>
           {/* =========================
-              ✅ APP MÓVIL AISLADA
+              ✅ APP MÓVIL (SIN OUTLET)
+              (esto evita pantallas en blanco en WebView con HashRouter)
              ========================= */}
-          <Route path="/app" element={<AppMobileLayout />}>
-            <Route index element={<AppJourney />} />
-            <Route path="precalificar" element={<AppJourney />} />
-            <Route
-              path="progreso"
-              element={
-                <CustomerProtectedRoute>
-                  <Progreso />
-                </CustomerProtectedRoute>
-              }
-            />
-          </Route>
+          <Route path="/app" element={<AppJourney />} />
+          <Route path="/app/precalificar" element={<AppJourney />} />
+          <Route
+            path="/app/progreso"
+            element={
+              <CustomerProtectedRoute>
+                <Progreso />
+              </CustomerProtectedRoute>
+            }
+          />
 
           {/* =========================
               WEB PÚBLICA
