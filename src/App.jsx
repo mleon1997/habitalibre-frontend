@@ -151,14 +151,16 @@ function AppJourneySafe() {
 }
 
 export default function App() {
+  const DEV = import.meta.env.DEV;
+
   return (
     <Router>
       {/* Listeners */}
       <CustomerAuthListener />
       <AdminAuthListener />
 
-      {/* ✅ Debug location */}
-      <DebugLocationPill label="ROUTER" />
+      {/* ✅ Debug location SOLO EN DEV */}
+      {DEV ? <DebugLocationPill label="ROUTER" /> : null}
 
       {/* ✅ modal global (provider está en main.jsx) */}
       <LeadModalBare />

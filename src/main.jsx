@@ -25,8 +25,7 @@ function BootBanner() {
         color: "#eafff6",
         padding: "8px 10px",
         borderRadius: 12,
-        fontFamily:
-          "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+        fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
         fontSize: 12,
         letterSpacing: 1.5,
       }}
@@ -36,9 +35,12 @@ function BootBanner() {
   );
 }
 
+const DEV = import.meta.env.DEV;
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <BootBanner />
+    {DEV ? <BootBanner /> : null}
+
     <CustomerAuthProvider>
       <LeadCaptureProvider>
         <App />
