@@ -37,6 +37,29 @@ function BootBanner() {
 
 const DEV = import.meta.env.DEV;
 
+// ✅ Forzar entrada correcta en Capacitor/Android (HashRouter)
+(function ensureMobileEntry() {
+  try {
+    const isCapacitor = typeof window !== "undefined" && !!window.Capacitor;
+    if (!isCapacitor) return;
+
+    const h = String(window.location.hash || "");
+
+    // Si abre sin hash o en "#/" → lo mandamos a la ruta móvil
+    if (!h || h === "#" || h === "#/" || h === "#/home") {
+      window.location.replace("#/app?mode=mobile");
+      return;
+    }
+
+    // Si abre en cualquier otra ruta web, igual lo mandamos a /app
+    // (puedes comentar esto si quieres permitir abrir web routes dentro de la app)
+    if (!h.startsWith("#/app")) {
+      window.location.replace("#/app?mode=mobile");
+      return;
+    }
+  } catch {}
+})();
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     {DEV ? <BootBanner /> : null}
