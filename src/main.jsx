@@ -13,7 +13,6 @@ import { CustomerAuthProvider } from "./context/CustomerAuthContext.jsx";
 import { LeadCaptureProvider } from "./context/LeadCaptureContext.jsx";
 
 function BootBanner() {
-  // 👇 opcional: puedes borrar este componente cuando ya todo esté estable
   return (
     <div
       style={{
@@ -37,20 +36,42 @@ function BootBanner() {
 }
 
 /**
- * ✅ Redirect SOLO en app nativa (Capacitor)
- * - En web: NO toca el hash.
- * - En Android/iOS: si estás en "/" te manda a "#/app?mode=mobile"
+ * ✅ Detecta “Capacitor NATIVO” (Android/iOS) de forma segura
+ * - En web puede existir window.Capacitor, pero isNativePlatform() debe ser false.
  */
-function ensureCorrectEntryForCapacitor() {
+function isNativeCapacitor() {
   try {
-    const isCapacitor = !!window?.Capacitor;
-    if (!isCapacitor) return;
+    const C = window?.Capacitor;
 
-    const hash = String(window.location.hash || ""); // "#/app?mode=mobile"
+    // Capacitor moderno
+    if (typeof C?.isNativePlatform === "function") {
+      return C.isNativePlatform() === true;
+    }
+
+    // Fallback (Capacitor.getPlatform)
+    if (typeof C?.getPlatform === "function") {
+      return C.getPlatform() !== "web";
+    }
+
+    // Si no hay API, asumimos NO nativo (web)
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * ✅ Redirect SOLO en app nativa
+ * - En web: NUNCA redirige
+ */
+function ensureCorrectEntryForNativeApp() {
+  try {
+    if (!isNativeCapacitor()) return;
+
+    const hash = String(window.location.hash || "");
     const isAlreadyInApp = hash.startsWith("#/app");
 
     if (!isAlreadyInApp) {
-      // OJO: replace para no ensuciar historial
       window.location.replace("#/app?mode=mobile");
     }
   } catch {
@@ -58,7 +79,7 @@ function ensureCorrectEntryForCapacitor() {
   }
 }
 
-ensureCorrectEntryForCapacitor();
+ensureCorrectEntryForNativeApp();
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
