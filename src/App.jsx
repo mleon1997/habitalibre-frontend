@@ -159,9 +159,6 @@ export default function App() {
       <CustomerAuthListener />
       <AdminAuthListener />
 
-      {/* ✅ Debug location SOLO EN DEV */}
-      {DEV ? <DebugLocationPill label="ROUTER" /> : null}
-
       {/* ✅ modal global (provider está en main.jsx) */}
       <LeadModalBare />
 
