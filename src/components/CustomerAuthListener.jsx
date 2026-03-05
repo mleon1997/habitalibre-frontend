@@ -15,10 +15,21 @@ export default function CustomerAuthListener() {
     const handler = (ev) => {
       const detail = ev?.detail || {};
 
+      // ✅ NUNCA tocar rutas admin aunque llegue un evento mal emitido
+      const pathNow =
+        detail?.pathname ||
+        (typeof window !== "undefined" ? window.location.hash || "" : "") ||
+        "";
+      const isAdminNow =
+        location?.pathname?.startsWith("/admin") ||
+        String(pathNow).includes("/admin");
+
+      if (isAdminNow) return;
+
       /**
        * ✅ FIX CRÍTICO:
        * Solo reaccionar a eventos que sean realmente de CUSTOMER.
-       * (evita que un 401 del ADMIN u otros endpoints te bote del Journey)
+       * (evita que un 401 del ADMIN u otros endpoints te bote al login de customer)
        */
       const scope = String(detail?.scope || detail?.kind || "").toLowerCase();
       if (scope && scope !== "customer") return;
@@ -28,8 +39,7 @@ export default function CustomerAuthListener() {
       if (now - lastKickRef.current < 700) return;
       lastKickRef.current = now;
 
-      const message =
-        detail?.message || "Tu sesión expiró. Inicia sesión nuevamente.";
+      const message = detail?.message || "Tu sesión expiró. Inicia sesión nuevamente.";
 
       // limpia auth + guarda mensaje
       onUnauthorized(message);
@@ -39,9 +49,7 @@ export default function CustomerAuthListener() {
       if (isOnLogin) return;
 
       // En HashRouter NO metas location.hash aquí (ya lo maneja router)
-      const returnTo =
-        detail?.returnTo ||
-        (location.pathname + (location.search || ""));
+      const returnTo = detail?.returnTo || (location.pathname + (location.search || ""));
 
       navigate("/login", {
         replace: true,
@@ -51,7 +59,8 @@ export default function CustomerAuthListener() {
 
     window.addEventListener("hl:customer-unauthorized", handler);
     return () => window.removeEventListener("hl:customer-unauthorized", handler);
-  }, [navigate, location, onUnauthorized]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigate, onUnauthorized, location.pathname, location.search]);
 
   return null;
 }

@@ -12,7 +12,6 @@ import "./index.css";
 import { CustomerAuthProvider } from "./context/CustomerAuthContext.jsx";
 import { LeadCaptureProvider } from "./context/LeadCaptureContext.jsx";
 
-
 /**
  * ✅ Detecta “Capacitor NATIVO” (Android/iOS) de forma segura
  * - En web puede existir window.Capacitor, pero isNativePlatform() debe ser false.
@@ -21,17 +20,14 @@ function isNativeCapacitor() {
   try {
     const C = window?.Capacitor;
 
-    // Capacitor moderno
     if (typeof C?.isNativePlatform === "function") {
       return C.isNativePlatform() === true;
     }
 
-    // Fallback (Capacitor.getPlatform)
     if (typeof C?.getPlatform === "function") {
       return C.getPlatform() !== "web";
     }
 
-    // Si no hay API, asumimos NO nativo (web)
     return false;
   } catch {
     return false;
@@ -41,17 +37,21 @@ function isNativeCapacitor() {
 /**
  * ✅ Redirect SOLO en app nativa
  * - En web: NUNCA redirige
+ * - En nativo: solo redirige si NO hay ruta (hash vacío)
+ *   (para no romper deep-links tipo #/admin/leads o #/app/precalificar)
  */
 function ensureCorrectEntryForNativeApp() {
   try {
     if (!isNativeCapacitor()) return;
 
     const hash = String(window.location.hash || "");
-    const isAlreadyInApp = hash.startsWith("#/app");
 
-    if (!isAlreadyInApp) {
-      window.location.replace("#/app?mode=mobile");
-    }
+    // si el hash ya tiene una ruta, no tocamos nada (respeta deep links)
+    const hasRoute = hash.startsWith("#/") && hash.length > 2;
+    if (hasRoute) return;
+
+    // si está vacío o solo "#", mandamos a la app
+    window.location.replace("#/app?mode=mobile");
   } catch {
     // no-op
   }
@@ -67,4 +67,4 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       </LeadCaptureProvider>
     </CustomerAuthProvider>
   </React.StrictMode>
-);npm
+);

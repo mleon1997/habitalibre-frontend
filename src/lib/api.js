@@ -22,7 +22,7 @@ const API_BASE = pick(
   env.VITE_BACKEND_URL,
   env.VITE_SERVER_URL,
   env.VITE_API,
-  "http://localhost:3001"
+ "http://localhost:4000"
 ).replace(/\/+$/, "");
 
 // Debug toggle: DEV o localStorage HL_DEBUG=1
