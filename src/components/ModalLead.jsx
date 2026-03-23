@@ -89,7 +89,12 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
   const nombreOk = (nombre || "").trim().length >= 2;
 
   const canSubmit =
-    nombreOk && emailOk && telOk && aceptaTerminos && aceptaCompartir && !loading;
+    nombreOk &&
+    emailOk &&
+    telOk &&
+    aceptaTerminos &&
+    aceptaCompartir &&
+    !loading;
 
   async function handleSubmit(e) {
     e?.preventDefault?.();
@@ -103,8 +108,6 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
     try {
       setLoading(true);
 
-      // ✅ SOLO CONTACTO.
-      // LeadModalBare ya se encarga de: inputs del wizard + resultado + normalización + llamada API.
       const payloadContacto = {
         nombre: nombre.trim(),
         email: email.trim(),
@@ -115,15 +118,23 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
         aceptaCompartir,
       };
 
-      // ✅ Debug visible en Console del browser
       console.log("🔥 ModalLead submit -> payloadContacto", payloadContacto);
 
       const resp = await onSubmitLead?.(payloadContacto);
 
-      if (!resp?.ok) throw new Error(resp?.error || "No se pudo guardar tu solicitud.");
+      if (!resp?.ok) {
+        throw new Error(
+          resp?.error || "No se pudo guardar tu solicitud."
+        );
+      }
 
       setSentOK(true);
-      setTimeout(() => onLeadSaved?.(), 350);
+
+      // Dejamos una pequeña pausa para que el usuario alcance a ver
+      // el estado exitoso antes de continuar el flujo.
+      setTimeout(() => {
+        onLeadSaved?.();
+      }, 900);
     } catch (e2) {
       console.error(e2);
       setErr(e2?.message || "No se pudo enviar. Intenta de nuevo.");
@@ -145,14 +156,25 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
 
       {sentOK ? (
         <div className="pt-2">
-          <p className="text-[11px] tracking-[0.22em] uppercase text-slate-400 mb-3">
-            LISTO
+          <p className="text-[11px] tracking-[0.22em] uppercase text-emerald-600 mb-3 font-medium">
+            SOLICITUD RECIBIDA
           </p>
-          <h3 className="text-2xl md:text-3xl font-semibold tracking-tight mb-2">
-            ¡Gracias! 🎉
+
+          <h3 className="text-2xl md:text-3xl font-semibold tracking-tight mb-2 text-slate-900">
+            ¡Listo! 🎉
           </h3>
-          <p className="text-slate-600 text-sm">
-            Guardamos tus datos. Ahora podrás ver tu resultado y continuar el proceso.
+
+          <p className="text-slate-700 text-sm leading-6">
+            Ya recibimos tu información correctamente.
+          </p>
+
+          <p className="text-slate-600 text-sm leading-6 mt-2">
+            Estamos preparando tu resultado personalizado y te lo enviaremos a{" "}
+            <span className="font-medium text-slate-800">{email}</span>.
+          </p>
+
+          <p className="text-slate-500 text-xs mt-3">
+            Revisa también promociones, notificaciones o spam por si llega ahí.
           </p>
 
           <div className="mt-6 flex gap-3">
@@ -171,7 +193,7 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
           </p>
 
           <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-slate-900 mb-2">
-            Déjanos tus datos y te mostramos tu mejor opción de crédito al instante
+            Déjanos tus datos y te mostramos tu mejor opción de crédito
           </h2>
 
           <p className="text-sm text-slate-600 mb-5">
@@ -182,6 +204,18 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
             <div className="mb-4 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-[12px] text-slate-700 flex items-center gap-2">
               <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
               Estamos analizando tu caso… llena tus datos mientras tanto.
+            </div>
+          )}
+
+          {loading && (
+            <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-[13px] text-emerald-800 flex items-start gap-2">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse mt-1" />
+              <div>
+                <div className="font-medium">Estamos guardando tu solicitud…</div>
+                <div className="text-emerald-700/90 mt-1">
+                  Esto toma solo unos segundos.
+                </div>
+              </div>
             </div>
           )}
 
@@ -200,6 +234,7 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
                   placeholder="Ej. Juan Pérez"
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
+                  disabled={loading}
                 />
               </div>
 
@@ -211,6 +246,7 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
                   placeholder="email@dominio.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
                 />
               </div>
 
@@ -221,6 +257,7 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
                   placeholder="+593..."
                   value={telefono}
                   onChange={(e) => setTelefono(e.target.value)}
+                  disabled={loading}
                 />
               </div>
 
@@ -231,6 +268,7 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
                   placeholder="Quito, Guayaquil, etc."
                   value={ciudad}
                   onChange={(e) => setCiudad(e.target.value)}
+                  disabled={loading}
                 />
               </div>
 
@@ -240,6 +278,7 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
                   className="input"
                   value={horizonteCompra}
                   onChange={(e) => setHorizonteCompra(e.target.value)}
+                  disabled={loading}
                 >
                   <option value="">Selecciona una opción</option>
                   <option value="0-6 meses">En los próximos 0–6 meses</option>
@@ -257,6 +296,7 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
                   checked={aceptaTerminos}
                   onChange={(e) => setAceptaTerminos(e.target.checked)}
                   className="mt-1"
+                  disabled={loading}
                 />
                 <span>
                   Acepto los{" "}
@@ -277,6 +317,7 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
                   checked={aceptaCompartir}
                   onChange={(e) => setAceptaCompartir(e.target.checked)}
                   className="mt-1"
+                  disabled={loading}
                 />
                 <span>
                   Autorizo que HabitaLibre comparta mis datos y el resultado de mi simulación con{" "}
@@ -290,7 +331,12 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-1">
-              <button onClick={onClose} type="button" className="btn-secondary">
+              <button
+                onClick={onClose}
+                type="button"
+                className="btn-secondary"
+                disabled={loading}
+              >
                 Cancelar
               </button>
 
@@ -302,7 +348,11 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
                   !canSubmit ? "opacity-50 cursor-not-allowed hover:scale-100" : "",
                 ].join(" ")}
               >
-                {loading ? "Procesando…" : resultadoLoading ? "Guardar y ver resultado" : "Ver mi resultado"}
+                {loading
+                  ? "Guardando..."
+                  : resultadoLoading
+                  ? "Guardar y continuar"
+                  : "Ver mi resultado"}
               </button>
             </div>
           </form>

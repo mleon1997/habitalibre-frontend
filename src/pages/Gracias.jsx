@@ -17,46 +17,41 @@ export default function Gracias() {
       <div className="w-full max-w-6xl grid gap-8 md:grid-cols-[minmax(0,1.7fr)_minmax(0,1.2fr)]">
         {/* PANEL IZQUIERDO – Mensaje principal */}
         <section className="rounded-3xl border border-slate-800/60 bg-slate-900/70 shadow-xl shadow-black/30 px-6 py-8 md:px-10 md:py-10">
-          {/* Etiqueta superior */}
           <p className="text-xs font-semibold tracking-[0.25em] text-emerald-400 uppercase mb-4">
-            Primer paso completado
+            Solicitud recibida
           </p>
 
-          {/* Título principal */}
           <h1 className="text-2xl md:text-3xl font-semibold leading-snug mb-3">
-            Felicidades, diste el primer paso
+            ¡Listo! Ya diste el primer paso
             <br />
             hacia tu casa propia 🏡
           </h1>
 
-          {/* Subtítulo / explicación */}
           <p className="text-sm md:text-base text-slate-300 max-w-xl">
-            Ya generamos tu{" "}
+            Ya recibimos tu información correctamente. Ahora estamos preparando tu{" "}
             <span className="font-semibold text-emerald-300">
               Reporte de Precalificación HabitaLibre
-            </span>
-            . En pocos minutos lo recibirás en tu correo para que puedas revisarlo
-            con calma y planear tu siguiente movimiento.
+            </span>{" "}
+            y te lo enviaremos a tu correo en pocos minutos para que lo revises con calma.
           </p>
 
-          {/* Pasos cortos 1–3 */}
           <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {/* Paso 1 */}
             <div className="rounded-2xl border border-slate-800/80 bg-slate-900/80 px-4 py-4">
               <div className="flex items-center gap-2 mb-2">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15 text-[11px] font-semibold text-emerald-300">
                   1
                 </span>
-                <p className="text-xs font-semibold text-slate-100">Revisa tu correo</p>
+                <p className="text-xs font-semibold text-slate-100">
+                  Revisa tu correo
+                </p>
               </div>
               <p className="text-[11px] leading-relaxed text-slate-400">
-                Busca un mail de <span className="font-semibold">HabitaLibre</span>{" "}
-                con tu reporte en PDF. Si no lo ves, revisa la carpeta de spam.
+                En unos minutos recibirás un mail de{" "}
+                <span className="font-semibold">HabitaLibre</span> con tu reporte.
+                Si no lo ves, revisa promociones o spam.
               </p>
-
             </div>
 
-            {/* Paso 2 */}
             <div className="rounded-2xl border border-slate-800/80 bg-slate-900/80 px-4 py-4">
               <div className="flex items-center gap-2 mb-2">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15 text-[11px] font-semibold text-emerald-300">
@@ -67,27 +62,27 @@ export default function Gracias() {
                 </p>
               </div>
               <p className="text-[11px] leading-relaxed text-slate-400">
-                El reporte te muestra cuánto podrías pedir, tu tipo de crédito
-                recomendado y la probabilidad aproximada por banco.
+                Tu reporte te mostrará cuánto podrías pedir, qué tipo de crédito
+                se ajusta mejor a tu perfil y tu probabilidad aproximada por banco.
               </p>
             </div>
 
-            {/* Paso 3 */}
             <div className="rounded-2xl border border-slate-800/80 bg-slate-900/80 px-4 py-4">
               <div className="flex items-center gap-2 mb-2">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15 text-[11px] font-semibold text-emerald-300">
                   3
                 </span>
-                <p className="text-xs font-semibold text-slate-100">Úsalo a tu favor</p>
+                <p className="text-xs font-semibold text-slate-100">
+                  Úsalo a tu favor
+                </p>
               </div>
               <p className="text-[11px] leading-relaxed text-slate-400">
-                Lleva el reporte como guía cuando hables con un banco o con el
-                BIESS. Te ayuda a negociar mejor tu hipoteca.
+                Te servirá como guía para hablar con más claridad con bancos,
+                cooperativas, BIESS o proyectos inmobiliarios.
               </p>
             </div>
           </div>
 
-          {/* CTA */}
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
             <button
               type="button"
@@ -110,43 +105,42 @@ export default function Gracias() {
               de vivienda, entrada o plazo.
             </p>
           </div>
-          {/* CTA A: Crear cuenta */}
-<div className="mt-6 rounded-3xl border border-emerald-500/20 bg-emerald-500/10 p-5 sm:p-6">
-  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-    <div>
-      <p className="text-sm font-semibold text-slate-50">
-        Desbloquea tu experiencia completa en HabitaLibre
-      </p>
-      <p className="mt-1 text-xs text-slate-300">
-        Guarda tus simulaciones, accede a tu progreso y recibe recomendaciones personalizadas.
-      </p>
 
-      <ul className="mt-3 grid gap-1 text-[11px] text-slate-200">
-        <li>✅ Historial de simulaciones y reportes</li>
-        <li>✅ Progreso hipotecario paso a paso</li>
-        <li>✅ Recomendaciones más precisas por banco</li>
-      </ul>
-    </div>
+          <div className="mt-6 rounded-3xl border border-emerald-500/20 bg-emerald-500/10 p-5 sm:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-50">
+                  Desbloquea tu experiencia completa en HabitaLibre
+                </p>
+                <p className="mt-1 text-xs text-slate-300">
+                  Guarda tus simulaciones, accede a tu progreso y recibe recomendaciones personalizadas.
+                </p>
 
-    <div className="flex flex-col gap-2 sm:items-end">
-      <button
-        type="button"
-        onClick={() => (window.location.hash = "#/login?intent=signup")}
-        className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-6 py-2.5 text-sm font-semibold text-slate-950 shadow-md shadow-emerald-500/30 hover:bg-emerald-400 transition focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-slate-950"
-      >
-        Crear mi cuenta gratis
-      </button>
-      <span className="text-[10px] text-slate-300/90">
-        Toma menos de 30 segundos · sin tarjetas
-      </span>
-    </div>
-  </div>
-</div>
+                <ul className="mt-3 grid gap-1 text-[11px] text-slate-200">
+                  <li>✅ Historial de simulaciones y reportes</li>
+                  <li>✅ Progreso hipotecario paso a paso</li>
+                  <li>✅ Recomendaciones más precisas por banco</li>
+                </ul>
+              </div>
 
-          {/* Disclaimer final */}
+              <div className="flex flex-col gap-2 sm:items-end">
+                <button
+                  type="button"
+                  onClick={() => (window.location.hash = "#/login?intent=signup")}
+                  className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-6 py-2.5 text-sm font-semibold text-slate-950 shadow-md shadow-emerald-500/30 hover:bg-emerald-400 transition focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-slate-950"
+                >
+                  Crear mi cuenta gratis
+                </button>
+                <span className="text-[10px] text-slate-300/90">
+                  Toma menos de 30 segundos · sin tarjetas
+                </span>
+              </div>
+            </div>
+          </div>
+
           <p className="mt-6 text-[10px] leading-relaxed text-slate-500 max-w-lg">
             HabitaLibre no solicita claves bancarias ni afecta tu buró. Tu
-            precalificación es una guía educativa para que tomes decisiones más
+            reporte es una guía educativa para ayudarte a tomar decisiones más
             claras sobre tu futura vivienda.
           </p>
         </section>
@@ -158,21 +152,19 @@ export default function Gracias() {
           </h2>
 
           <div className="space-y-5 text-sm">
-            {/* Paso A */}
             <div className="flex gap-3">
               <div className="mt-1 flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-[11px] font-semibold text-emerald-300">
                 1
               </div>
               <div>
-                <p className="font-semibold text-slate-100">Lee tu reporte con calma</p>
+                <p className="font-semibold text-slate-100">Espera tu reporte</p>
                 <p className="text-xs text-slate-400 mt-1">
-                  Fíjate en tu capacidad de pago, tipo de crédito recomendado
-                  (VIS/VIP/BIESS/Privado) y tu probabilidad aproximada por banco.
+                  Estamos procesando tu información para enviarte un resultado claro,
+                  útil y fácil de entender.
                 </p>
               </div>
             </div>
 
-            {/* Paso B */}
             <div className="flex gap-3">
               <div className="mt-1 flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-[11px] font-semibold text-emerald-300">
                 2
@@ -180,30 +172,28 @@ export default function Gracias() {
               <div>
                 <p className="font-semibold text-slate-100">Define tu estrategia</p>
                 <p className="text-xs text-slate-400 mt-1">
-                  Usa las recomendaciones para decidir si ajustas entrada, plazo
-                  o rango de precio de vivienda para mejorar tu perfil.
+                  Cuando recibas tu reporte, podrás entender si hoy ya puedes avanzar
+                  o si te conviene ajustar entrada, plazo o rango de precio.
                 </p>
               </div>
             </div>
 
-            {/* Paso C */}
             <div className="flex gap-3">
               <div className="mt-1 flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-[11px] font-semibold text-emerald-300">
                 3
               </div>
               <div>
                 <p className="font-semibold text-slate-100">
-                  Llega mejor preparado al banco
+                  Llega mejor preparado
                 </p>
                 <p className="text-xs text-slate-400 mt-1">
-                  Con tu reporte ya no vas “a ciegas”: sabes cuánto puedes pedir
-                  y qué tan probable es que te aprueben.
+                  Así no vas a ciegas: llegas con una base más clara para hablar con bancos,
+                  BIESS o proyectos inmobiliarios.
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Mensaje final */}
           <div className="mt-6 border-t border-slate-800 pt-4">
             <p className="text-[11px] text-slate-400 leading-relaxed">
               Cada simulación que haces en HabitaLibre es un paso más para dejar

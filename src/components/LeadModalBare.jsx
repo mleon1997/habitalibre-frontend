@@ -44,6 +44,7 @@ export default function LeadModalBare() {
 
   const isInApp = location.pathname.startsWith("/app");
   const progresoHref = isInApp ? "/app/progreso" : "/progreso";
+  const graciasHref = "/gracias";
 
   // ✅ Si ya hay sesión, NO pedir datos otra vez
   useEffect(() => {
@@ -59,7 +60,7 @@ export default function LeadModalBare() {
   const handleLeadSaved = () => {
     closeLead?.();
     resetLeadCapture?.();
-    navigate("/gracias");
+    navigate(graciasHref);
   };
 
   const handleSubmitLead = async (payloadContacto) => {
@@ -73,8 +74,12 @@ export default function LeadModalBare() {
         result?.rawInput ||
         null;
 
-      const afiliadoIess = toBool(inputs?.afiliadoIess ?? inputs?.afiliado_iess);
-      const aniosEstabilidad = toNum(inputs?.aniosEstabilidad ?? inputs?.anios_estabilidad);
+      const afiliadoIess = toBool(
+        inputs?.afiliadoIess ?? inputs?.afiliado_iess
+      );
+      const aniosEstabilidad = toNum(
+        inputs?.aniosEstabilidad ?? inputs?.anios_estabilidad
+      );
 
       const ingresoIndividual = toNum(
         inputs?.ingresoNetoMensual ??
@@ -105,15 +110,31 @@ export default function LeadModalBare() {
             ""
         ).trim() || null;
 
-      const tipoCompra = lowerOrNull(inputs?.tipoCompra ?? inputs?.tipo_compra);
-      const tipoCompraNumero =
-        inputs?.tipo_compra_numero != null ? toNum(inputs?.tipo_compra_numero) : mapTipoCompraNumero(tipoCompra);
+      const tipoCompra = lowerOrNull(
+        inputs?.tipoCompra ?? inputs?.tipo_compra
+      );
 
-      const valorVivienda = toNum(inputs?.valorVivienda ?? inputs?.valor_vivienda ?? inputs?.valor);
-      const entradaDisponible = toNum(inputs?.entradaDisponible ?? inputs?.entrada_disponible ?? inputs?.entrada);
+      const tipoCompraNumero =
+        inputs?.tipo_compra_numero != null
+          ? toNum(inputs?.tipo_compra_numero)
+          : mapTipoCompraNumero(tipoCompra);
+
+      const valorVivienda = toNum(
+        inputs?.valorVivienda ?? inputs?.valor_vivienda ?? inputs?.valor
+      );
+
+      const entradaDisponible = toNum(
+        inputs?.entradaDisponible ??
+          inputs?.entrada_disponible ??
+          inputs?.entrada
+      );
 
       const edad = toNum(inputs?.edad);
-      const tipoIngreso = String(inputs?.tipoIngreso ?? inputs?.tipo_ingreso ?? "").trim() || null;
+
+      const tipoIngreso =
+        String(
+          inputs?.tipoIngreso ?? inputs?.tipo_ingreso ?? ""
+        ).trim() || null;
 
       const resp = await crearLeadDesdeSimulador({
         contacto: { ...payloadContacto },
@@ -122,7 +143,7 @@ export default function LeadModalBare() {
           afiliadoIess,
           aniosEstabilidad,
           ingresoNetoMensual: ingresoIndividual,
-          ingresoPareja: ingresoPareja,
+          ingresoPareja,
           otrasDeudasMensuales: deudas,
           ciudadCompra,
           tipoCompra,
@@ -137,7 +158,10 @@ export default function LeadModalBare() {
 
       return resp;
     } catch (err) {
-      return { ok: false, error: err?.message || "No se pudo enviar el lead" };
+      return {
+        ok: false,
+        error: err?.message || "No se pudo enviar el lead",
+      };
     }
   };
 
