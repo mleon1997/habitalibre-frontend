@@ -35,7 +35,6 @@ import AdminUsers from "./pages/AdminUsers.jsx";
 import PoliticaPrivacidad from "./pages/PoliticaPrivacidad.jsx";
 import TerminosUso from "./pages/TerminosUso.jsx";
 import PoliticaCookies from "./pages/PoliticaCookies.jsx";
-<Route path="/eliminar-cuenta" element={<DeleteAccountWeb />} />
 
 /**
  * ✅ Layout mínimo para APP móvil (/app)
@@ -94,7 +93,6 @@ class ErrorBoundary extends React.Component {
     return { hasError: true, err: error };
   }
   componentDidCatch(error, info) {
-    // eslint-disable-next-line no-console
     console.error("💥 ErrorBoundary caught:", error, info);
     this.setState({ info });
   }
@@ -157,25 +155,16 @@ export default function App() {
 
   return (
     <Router>
-      {/* Listeners */}
       <CustomerAuthListener />
       <AdminAuthListener />
-
-      {/* ✅ modal global (provider está en main.jsx) */}
       <LeadModalBare />
 
       <Routes>
-        {/* =========================
-            ✅ APP MÓVIL AISLADA
-           ========================= */}
         <Route path="/app" element={<AppMobileLayout />}>
           <Route index element={<AppJourneySafe />} />
           <Route path="precalificar" element={<AppJourneySafe />} />
         </Route>
 
-        {/* =========================
-            WEB PÚBLICA
-           ========================= */}
         <Route element={<AppLayoutShell />}>
           <Route path="/" element={<Landing />} />
 
@@ -203,11 +192,9 @@ export default function App() {
           <Route path="/privacidad" element={<PoliticaPrivacidad />} />
           <Route path="/terminos" element={<TerminosUso />} />
           <Route path="/cookies" element={<PoliticaCookies />} />
+          <Route path="/eliminar-cuenta" element={<DeleteAccountWeb />} />
         </Route>
 
-        {/* =========================
-            ADMIN
-           ========================= */}
         <Route path="/admin" element={<Admin />} />
 
         <Route
@@ -228,9 +215,6 @@ export default function App() {
           }
         />
 
-        {/* =========================
-            DEFAULT
-           ========================= */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
