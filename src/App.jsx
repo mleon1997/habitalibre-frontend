@@ -6,6 +6,7 @@ import AdminAuthListener from "./components/AdminAuthListener.jsx";
 import CustomerAuthListener from "./components/CustomerAuthListener.jsx";
 import AdminProtectedRoute from "./components/AdminProtectedRoute.jsx";
 import CustomerProtectedRoute from "./components/CustomerProtectedRoute.jsx";
+import DeleteAccountWeb from "./pages/DeleteAccountWeb.jsx";
 
 // modal global (requiere LeadCaptureProvider en main.jsx)
 import LeadModalBare from "./components/LeadModalBare.jsx";
@@ -34,6 +35,7 @@ import AdminUsers from "./pages/AdminUsers.jsx";
 import PoliticaPrivacidad from "./pages/PoliticaPrivacidad.jsx";
 import TerminosUso from "./pages/TerminosUso.jsx";
 import PoliticaCookies from "./pages/PoliticaCookies.jsx";
+<Route path="/eliminar-cuenta" element={<DeleteAccountWeb />} />
 
 /**
  * ✅ Layout mínimo para APP móvil (/app)
