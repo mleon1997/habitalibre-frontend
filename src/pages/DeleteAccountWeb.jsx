@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const LS_KEYS_TO_CLEAR = [
@@ -146,22 +146,23 @@ export default function DeleteAccountWeb() {
   const [success, setSuccess] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  const token = useMemo(() => {
+    try {
+      return localStorage.getItem("hl_customer_token");
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const isLoggedIn = Boolean(token);
+
   async function runDelete() {
-    if (busy) return;
+    if (busy || !isLoggedIn) return;
 
     setBusy(true);
     setError("");
 
     try {
-      const token = localStorage.getItem("hl_customer_token");
-
-      if (!token) {
-        setError(
-          "Para eliminar tu cuenta desde esta página, primero debes iniciar sesión. Si no puedes acceder, escríbenos a hola@habitalibre.com."
-        );
-        return;
-      }
-
       const res = await fetch(
         "https://habitalibre-backend.onrender.com/api/customer-auth/delete-account",
         {
@@ -192,6 +193,20 @@ export default function DeleteAccountWeb() {
       setBusy(false);
       setShowConfirm(false);
     }
+  }
+
+  function handlePrimaryAction() {
+    if (isLoggedIn) {
+      setShowConfirm(true);
+      return;
+    }
+
+    navigate("/login?next=%2Feliminar-cuenta");
+  }
+
+  function handleSupportEmail() {
+    window.location.href =
+      "mailto:hola@habitalibre.com?subject=Solicitud%20de%20eliminaci%C3%B3n%20de%20cuenta%20HabitaLibre";
   }
 
   return (
@@ -310,6 +325,25 @@ export default function DeleteAccountWeb() {
                 Esta acción es permanente y no se puede deshacer.
               </p>
 
+              {!isLoggedIn ? (
+                <div
+                  style={{
+                    marginBottom: 14,
+                    padding: 14,
+                    borderRadius: 16,
+                    background: "rgba(59,130,246,0.10)",
+                    border: "1px solid rgba(59,130,246,0.25)",
+                    color: "#dbeafe",
+                    fontSize: 14,
+                    lineHeight: 1.55,
+                  }}
+                >
+                  No tienes una sesión activa en este navegador. Para eliminar tu
+                  cuenta directamente desde aquí, primero debes iniciar sesión.
+                  También puedes solicitar la eliminación por correo.
+                </div>
+              ) : null}
+
               {success ? (
                 <div
                   style={{
@@ -347,7 +381,7 @@ export default function DeleteAccountWeb() {
               <div style={{ display: "grid", gap: 10, maxWidth: 420 }}>
                 <button
                   type="button"
-                  onClick={() => setShowConfirm(true)}
+                  onClick={handlePrimaryAction}
                   disabled={busy || success}
                   style={{
                     height: 52,
@@ -356,7 +390,9 @@ export default function DeleteAccountWeb() {
                     background:
                       busy || success
                         ? "rgba(239,68,68,0.35)"
-                        : "linear-gradient(180deg, #ff5c61 0%, #ef4444 100%)",
+                        : isLoggedIn
+                        ? "linear-gradient(180deg, #ff5c61 0%, #ef4444 100%)"
+                        : "linear-gradient(180deg, #4f8df7 0%, #2563eb 100%)",
                     color: "#fff",
                     fontWeight: 800,
                     fontSize: 15,
@@ -364,29 +400,54 @@ export default function DeleteAccountWeb() {
                     boxShadow:
                       busy || success
                         ? "none"
-                        : "0 16px 30px rgba(239,68,68,0.24)",
+                        : isLoggedIn
+                        ? "0 16px 30px rgba(239,68,68,0.24)"
+                        : "0 16px 30px rgba(37,99,235,0.22)",
                   }}
                 >
-                  {busy ? "Eliminando..." : "Eliminar mi cuenta"}
+                  {isLoggedIn
+                    ? busy
+                      ? "Eliminando..."
+                      : "Eliminar mi cuenta"
+                    : "Iniciar sesión para eliminar"}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => navigate("/")}
-                  disabled={busy}
-                  style={{
-                    height: 48,
-                    borderRadius: 16,
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    background: "transparent",
-                    color: "#fff",
-                    fontWeight: 700,
-                    fontSize: 14,
-                    cursor: busy ? "not-allowed" : "pointer",
-                  }}
-                >
-                  Volver al inicio
-                </button>
+                {!isLoggedIn ? (
+                  <button
+                    type="button"
+                    onClick={handleSupportEmail}
+                    style={{
+                      height: 48,
+                      borderRadius: 16,
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      background: "transparent",
+                      color: "#fff",
+                      fontWeight: 700,
+                      fontSize: 14,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Solicitar por correo
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => navigate("/")}
+                    disabled={busy}
+                    style={{
+                      height: 48,
+                      borderRadius: 16,
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      background: "transparent",
+                      color: "#fff",
+                      fontWeight: 700,
+                      fontSize: 14,
+                      cursor: busy ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    Volver al inicio
+                  </button>
+                )}
               </div>
             </div>
 
