@@ -7,6 +7,7 @@ import CustomerAuthListener from "./components/CustomerAuthListener.jsx";
 import AdminProtectedRoute from "./components/AdminProtectedRoute.jsx";
 import CustomerProtectedRoute from "./components/CustomerProtectedRoute.jsx";
 import DeleteAccountWeb from "./pages/DeleteAccountWeb.jsx";
+import Soporte from "./pages/Soporte.jsx";
 
 // modal global (requiere LeadCaptureProvider en main.jsx)
 import LeadModalBare from "./components/LeadModalBare.jsx";
@@ -175,6 +176,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/soporte" element={<Soporte />} />
 
           <Route
             path="/progreso"
