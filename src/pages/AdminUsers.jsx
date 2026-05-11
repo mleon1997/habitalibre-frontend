@@ -69,9 +69,22 @@ function whatsappHref(phone) {
 
   if (digits.startsWith("593")) return `https://wa.me/${digits}`;
   if (digits.startsWith("09")) return `https://wa.me/593${digits.slice(1)}`;
-  if (digits.startsWith("9") && digits.length === 9) return `https://wa.me/593${digits}`;
+  if (digits.startsWith("9") && digits.length === 9) {
+    return `https://wa.me/593${digits}`;
+  }
 
   return `https://wa.me/${digits}`;
+}
+
+async function copyToClipboard(text) {
+  const value = String(text || "").trim();
+  if (!value) return;
+
+  try {
+    await navigator.clipboard.writeText(value);
+  } catch {
+    // fallback silencioso
+  }
 }
 
 function safeText(v, fallback = "-") {
@@ -190,6 +203,173 @@ function normalizeBreakdown(arr) {
     .filter((x) => x.count > 0);
 }
 
+function DetailItem({ label, value }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+      <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
+        {label}
+      </div>
+      <div className="mt-2 text-sm font-bold text-slate-100 break-words">
+        {value ?? "-"}
+      </div>
+    </div>
+  );
+}
+
+function UserDetailPanel({ user, onClose }) {
+  if (!user) return null;
+
+  const email = user._email || user.email || "-";
+  const phone = user._telefono || user.telefono || "-";
+  const wa = whatsappHref(user.telefonoWhatsapp || phone);
+
+  return (
+    <div className="mt-6 rounded-3xl border border-emerald-400/20 bg-emerald-400/[0.06] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.24)]">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="inline-flex rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-bold text-emerald-100">
+            Detalle operativo
+          </div>
+
+          <h2 className="mt-3 text-2xl font-black tracking-[-0.04em] text-slate-50">
+            {user._nombre || "Usuario sin nombre"}
+          </h2>
+
+          <div className="mt-2 flex flex-wrap gap-2">
+            {user.contactable ? (
+              <StatusPill tone="blue">Contactable</StatusPill>
+            ) : (
+              <StatusPill>Sin contacto</StatusPill>
+            )}
+
+            {user.accionable ? (
+              <StatusPill tone="green">Listo para gestión</StatusPill>
+            ) : null}
+
+            {user.llamarHoy ? (
+              <StatusPill tone="amber">Llamar hoy</StatusPill>
+            ) : null}
+
+            {user.sinOferta === true ? (
+              <StatusPill tone="red">Sin oferta</StatusPill>
+            ) : null}
+
+            {user.hasSnapshot ? <StatusPill>Snapshot</StatusPill> : null}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {wa ? (
+            <a
+              href={wa}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-sm font-bold text-emerald-100 hover:bg-emerald-400/15"
+            >
+              Abrir WhatsApp
+            </a>
+          ) : null}
+
+          {email !== "-" ? (
+            <a
+              href={`mailto:${email}`}
+              className="rounded-xl border border-blue-400/20 bg-blue-400/10 px-4 py-2 text-sm font-bold text-blue-100 hover:bg-blue-400/15"
+            >
+              Enviar email
+            </a>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={() => copyToClipboard(phone)}
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-slate-100 hover:bg-white/10"
+          >
+            Copiar teléfono
+          </button>
+
+          <button
+            type="button"
+            onClick={() => copyToClipboard(email)}
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-slate-100 hover:bg-white/10"
+          >
+            Copiar email
+          </button>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-slate-300 hover:bg-white/10"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <DetailItem label="Email" value={email} />
+        <DetailItem label="Teléfono" value={phone} />
+        <DetailItem label="Ciudad" value={user._ciudad || user.ciudad || "-"} />
+        <DetailItem
+          label="Última actividad"
+          value={fmtDate(user._lastActivity || user.lastActivity)}
+        />
+
+        <DetailItem
+          label="Ingreso"
+          value={user._ingreso != null ? money(user._ingreso) : "-"}
+        />
+        <DetailItem
+          label="Deudas"
+          value={user._deudas != null ? money(user._deudas) : "-"}
+        />
+        <DetailItem
+          label="Entrada"
+          value={user._entrada != null ? money(user._entrada) : "-"}
+        />
+        <DetailItem
+          label="Vivienda objetivo"
+          value={user._valorVivienda != null ? money(user._valorVivienda) : "-"}
+        />
+
+        <DetailItem label="Producto" value={user._producto || user.producto || "-"} />
+        <DetailItem label="Banco" value={user._banco || user.banco || "-"} />
+        <DetailItem label="Score HL" value={scoreText(user._score ?? user.scoreHL)} />
+        <DetailItem
+          label="Cuota estimada"
+          value={user._cuota != null ? money(user._cuota) : "-"}
+        />
+
+        <DetailItem
+          label="Decisión"
+          value={user._decisionEstado || user.decisionEstado || "-"}
+        />
+        <DetailItem
+          label="Heat"
+          value={user.decisionHeat != null ? intSafe(user.decisionHeat) : "-"}
+        />
+        <DetailItem label="Lead ID" value={user.leadId || "-"} />
+        <DetailItem label="User ID" value={user.userId || "-"} />
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-white/10 bg-black/10 p-4">
+        <div className="text-sm font-black text-slate-100">
+          Lectura comercial sugerida
+        </div>
+
+        <p className="mt-2 text-sm leading-6 text-slate-300">
+          {user.accionable
+            ? "Este usuario tiene información suficiente para gestión comercial. Prioridad: contactar, validar intención de compra y confirmar si quiere avanzar con asesoría."
+            : user.sinOferta === true
+            ? "Este usuario no tiene oferta viable hoy. Prioridad: nurturing, educación financiera y recalibrar datos si cambia su situación."
+            : user.contactable
+            ? "Este usuario es contactable, pero todavía falta información para convertirlo en oportunidad lista para gestión."
+            : "Este usuario tiene datos incompletos de contacto. Prioridad: completar email o teléfono antes de gestión comercial."}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 const DEFAULT_KPIS = {
   totalUsers: 0,
   conLogin: 0,
@@ -231,6 +411,7 @@ export default function AdminUsers() {
   const [kpis, setKpis] = useState(DEFAULT_KPIS);
   const [count, setCount] = useState(0);
   const [items, setItems] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
   const [err, setErr] = useState("");
 
   const [q, setQ] = useState("");
@@ -359,6 +540,14 @@ export default function AdminUsers() {
     setProducto("");
     setBanco("");
     setSort("activity_desc");
+    setSelectedUser(null);
+  }
+
+  function showReadyForManagement() {
+    setPage(1);
+    setAccionable("true");
+    setSinOferta("false");
+    setSelectedUser(null);
   }
 
   async function loadKpis() {
@@ -634,7 +823,7 @@ export default function AdminUsers() {
           />
 
           <KpiCard
-            label="Accionables"
+            label="Listos para gestión"
             value={kpiLoading ? "…" : totals.accionables.toLocaleString("es-EC")}
             hint="Teléfono + ingreso + resultado/precalificación."
             footer="Base prioritaria para gestión comercial"
@@ -674,7 +863,7 @@ export default function AdminUsers() {
           />
 
           <KpiCard
-            label="Con evaluación"
+            label="Con resultado guardado"
             value={
               kpiLoading
                 ? "…"
@@ -752,17 +941,26 @@ export default function AdminUsers() {
             <div>
               <div className="text-sm font-black text-slate-100">Filtros</div>
               <div className="text-xs text-slate-400 mt-1">
-                Úsalos para encontrar usuarios contactables, accionables o con
-                mayor potencial.
+                Úsalos para encontrar usuarios contactables, listos para gestión
+                o con mayor potencial.
               </div>
             </div>
 
-            <button
-              onClick={resetFilters}
-              className="px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-sm font-semibold"
-            >
-              Limpiar filtros
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={showReadyForManagement}
+                className="px-3 py-2 rounded-xl border border-emerald-400/20 bg-emerald-400/10 hover:bg-emerald-400/15 text-sm font-semibold text-emerald-100"
+              >
+                Ver listos para gestión
+              </button>
+
+              <button
+                onClick={resetFilters}
+                className="px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-sm font-semibold"
+              >
+                Limpiar filtros
+              </button>
+            </div>
           </div>
 
           <div className="mt-4 grid gap-3 md:grid-cols-12">
@@ -1007,7 +1205,7 @@ export default function AdminUsers() {
                     setAccionable(e.target.checked ? "true" : "");
                   }}
                 />
-                Solo accionables
+                Solo listos para gestión
               </label>
 
               <label className="flex items-center gap-2 text-sm text-slate-200">
@@ -1025,6 +1223,11 @@ export default function AdminUsers() {
           </div>
         </div>
 
+        <UserDetailPanel
+          user={selectedUser}
+          onClose={() => setSelectedUser(null)}
+        />
+
         {/* tabla */}
         <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.04] overflow-hidden">
           <div className="flex items-center justify-between gap-3 flex-wrap border-b border-white/10 px-4 py-3">
@@ -1033,7 +1236,9 @@ export default function AdminUsers() {
                 Usuarios encontrados
               </div>
               <div className="text-xs text-slate-400 mt-1">
-                {loading ? "Cargando…" : `${count.toLocaleString("es-EC")} resultados`}
+                {loading
+                  ? "Cargando…"
+                  : `${count.toLocaleString("es-EC")} resultados`}
               </div>
             </div>
 
@@ -1078,7 +1283,10 @@ export default function AdminUsers() {
                     const phoneOk = u.telefonoValido && u._telefono !== "-";
 
                     return (
-                      <tr key={u.userId} className="border-t border-white/5 hover:bg-white/[0.03]">
+                      <tr
+                        key={u.userId}
+                        className="border-t border-white/5 hover:bg-white/[0.03]"
+                      >
                         <td className="p-3 text-slate-300">
                           {fmtDate(u._lastActivity)}
                         </td>
@@ -1104,7 +1312,9 @@ export default function AdminUsers() {
                                 {u._telefono}
                               </a>
                             ) : (
-                              <span className="text-slate-500">{u._telefono}</span>
+                              <span className="text-slate-500">
+                                {u._telefono}
+                              </span>
                             )}
                           </div>
                         </td>
@@ -1121,7 +1331,9 @@ export default function AdminUsers() {
                             )}
 
                             {u.accionable ? (
-                              <StatusPill tone="green">Accionable</StatusPill>
+                              <StatusPill tone="green">
+                                Listo para gestión
+                              </StatusPill>
                             ) : null}
 
                             {u.sinOferta === true ? (
@@ -1151,7 +1363,9 @@ export default function AdminUsers() {
                         </td>
 
                         <td className="p-3 text-right">
-                          {u._valorVivienda != null ? money(u._valorVivienda) : "-"}
+                          {u._valorVivienda != null
+                            ? money(u._valorVivienda)
+                            : "-"}
                         </td>
 
                         <td className="p-3">{u._producto}</td>
@@ -1178,6 +1392,14 @@ export default function AdminUsers() {
 
                         <td className="p-3">
                           <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedUser(u)}
+                              className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-slate-100 hover:bg-white/10"
+                            >
+                              Ver detalle
+                            </button>
+
                             {wa ? (
                               <a
                                 href={wa}
@@ -1196,6 +1418,16 @@ export default function AdminUsers() {
                               >
                                 Email
                               </a>
+                            ) : null}
+
+                            {phoneOk ? (
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(u._telefono)}
+                                className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-slate-100 hover:bg-white/10"
+                              >
+                                Copiar
+                              </button>
                             ) : null}
                           </div>
                         </td>
