@@ -1,147 +1,77 @@
 // src/pages/Signup.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { trackEvent, trackPageView } from "../lib/analytics";
-import * as customerApi from "../lib/customerApi.js";
-import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
+
+function getReturnTo(location) {
+  const sp = new URLSearchParams(location.search || "");
+
+  const stateReturnTo = location?.state?.returnTo || "";
+  const qsReturnTo = sp.get("returnTo") || sp.get("next") || "";
+
+  const raw = String(stateReturnTo || qsReturnTo || "/progreso").trim();
+
+  if (!raw.startsWith("/")) return "/progreso";
+  if (raw.includes("login")) return "/progreso";
+  if (raw.includes("signup")) return "/progreso";
+  if (raw.includes("register")) return "/progreso";
+  if (raw.includes("forgot-password")) return "/progreso";
+  if (raw.includes("reset-password")) return "/progreso";
+
+  return raw;
+}
 
 export default function Signup() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setToken, setCustomer } = useCustomerAuth();
-
-  const prefilledEmail = location.state?.email || "";
-  const returnTo = location.state?.returnTo || "/progreso";
-
-  const [email, setEmail] = useState(prefilledEmail);
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
   useEffect(() => {
-    trackPageView("customer_signup");
-  }, []);
+    trackPageView("customer_signup_redirect");
 
-  const validate = () => {
-    if (!email || !email.includes("@")) {
-      return "Ingresa un email válido.";
-    }
-    if (!password || password.length < 6) {
-      return "La contraseña debe tener al menos 6 caracteres.";
-    }
-    return "";
-  };
+    const returnTo = getReturnTo(location);
+    const prefilledEmail = location?.state?.email || "";
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
+    trackEvent("customer_signup_redirect_to_login_register", {
+      returnTo,
+      hasPrefilledEmail: Boolean(prefilledEmail),
+      from: location?.state?.from || "unknown",
+    });
 
-    const msg = validate();
-    if (msg) {
-      setError(msg);
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const data = await customerApi.registerCustomer({
-        email: email.trim().toLowerCase(),
-        password,
-      });
-
-      // ✅ auto login
-      if (data?.token) setToken(data.token);
-      if (data?.user) setCustomer(data.user);
-
-      trackEvent("customer_signup_success", {
-        from: location.state?.from || "unknown",
-      });
-
-      navigate(returnTo, { replace: true });
-    } catch (err) {
-      console.error("[SIGNUP] error:", err);
-      const msg2 =
-        err?.message ||
-        "No pudimos crear tu cuenta. Verifica tu email o intenta nuevamente.";
-
-      setError(msg2);
-
-      trackEvent("customer_signup_error", {
-        message: String(msg2).slice(0, 120),
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+    navigate(
+      `/login?intent=register&returnTo=${encodeURIComponent(returnTo)}`,
+      {
+        replace: true,
+        state: {
+          email: prefilledEmail,
+          returnTo,
+          from: location?.state?.from || "signup_redirect",
+        },
+      }
+    );
+  }, [navigate, location]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#070B16] px-4">
-      <div className="w-full max-w-xl rounded-3xl border border-white/10 bg-white/5 p-8 shadow-2xl">
-        {/* Header */}
-        <div className="mb-6">
-          <div className="text-xs tracking-[0.3em] text-emerald-300/80">
-            CUSTOMER JOURNEY
-          </div>
-          <h1 className="mt-2 text-4xl font-semibold text-white">
-            Empieza tu camino
-          </h1>
-          <p className="mt-2 text-white/70">
-            Guarda tu progreso y recibe un plan paso a paso para lograr tu
-            hipoteca.
-          </p>
+    <main className="min-h-screen bg-slate-950 text-slate-50 flex items-center justify-center px-4">
+      <div className="w-full max-w-md rounded-[32px] border border-white/10 bg-white/[0.04] p-7 text-center shadow-[0_30px_90px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
+        <img
+          src="/LOGOHL.png"
+          alt="HabitaLibre"
+          className="h-9 w-auto mx-auto mb-5 drop-shadow-[0_8px_18px_rgba(45,212,191,0.22)]"
+        />
+
+        <div className="text-[11px] tracking-[0.24em] uppercase text-slate-400">
+          HabitaLibre
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Email */}
-          <div>
-            <label className="block text-sm text-white/70 mb-2">Email</label>
-            <input
-              className="w-full rounded-2xl bg-black/30 border border-white/10 px-4 py-3 text-white outline-none focus:border-emerald-400/60"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="tu@email.com"
-              autoComplete="email"
-            />
-          </div>
+        <h1 className="mt-3 text-2xl font-black tracking-[-0.04em]">
+          Preparando tu registro
+        </h1>
 
-          {/* Password */}
-          <div>
-            <label className="block text-sm text-white/70 mb-2">
-              Crea una contraseña
-            </label>
-            <input
-              className="w-full rounded-2xl bg-black/30 border border-white/10 px-4 py-3 text-white outline-none focus:border-emerald-400/60"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              type="password"
-              placeholder="••••••••"
-              autoComplete="new-password"
-            />
-            <div className="mt-2 text-xs text-white/50">
-              Mínimo 6 caracteres.
-            </div>
-          </div>
-
-          {error && (
-            <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-2xl bg-emerald-500 px-5 py-4 font-semibold text-black hover:bg-emerald-400 disabled:opacity-60"
-          >
-            {loading ? "Creando cuenta..." : "Guardar mi progreso"}
-          </button>
-
-          <div className="pt-2 text-center text-xs text-white/40">
-            Gratis. Sin compromiso. Puedes salir cuando quieras.
-          </div>
-        </form>
+        <p className="mt-3 text-sm leading-6 text-slate-400">
+          Te estamos llevando a la nueva experiencia para crear tu cuenta y
+          guardar tu progreso.
+        </p>
       </div>
-    </div>
+    </main>
   );
 }

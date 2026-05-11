@@ -480,3 +480,74 @@ export async function adminLogin(email, password) {
 }
 
 export { API_BASE, IS_DEV };
+
+export async function apiGet(path, options = {}) {
+  const token = (() => {
+    try {
+      return localStorage.getItem("hl_customer_token") || "";
+    } catch {
+      return "";
+    }
+  })();
+
+  const url = path.startsWith("http") ? path : `${API_BASE}${path}`;
+
+  const res = await fetch(url, {
+    method: "GET",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    const err = new Error(
+      data?.error || data?.message || `HTTP ${res.status}`
+    );
+    err.status = res.status;
+    err.data = data;
+    throw err;
+  }
+
+  return data;
+}
+
+export async function apiPost(path, body = {}, options = {}) {
+  const token = (() => {
+    try {
+      return localStorage.getItem("hl_customer_token") || "";
+    } catch {
+      return "";
+    }
+  })();
+
+  const url = path.startsWith("http") ? path : `${API_BASE}${path}`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
+    body: JSON.stringify(body),
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    const err = new Error(
+      data?.error || data?.message || `HTTP ${res.status}`
+    );
+    err.status = res.status;
+    err.data = data;
+    throw err;
+  }
+
+  return data;
+}

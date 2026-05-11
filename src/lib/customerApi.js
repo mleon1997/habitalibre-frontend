@@ -1,21 +1,32 @@
 // src/lib/customerApi.js
-import { API_BASE } from "./api"; // en Vite esto está OK
+import { API_BASE } from "./api";
+import {
+  getCustomerToken,
+  setCustomerSession,
+  clearCustomerSession,
+} from "./customerSession";
 
-const LS_TOKEN = "hl_customer_token";
+/**
+ * Compatibilidad:
+ * Si algún archivo viejo importa getCustomerToken desde customerApi.js,
+ * no se rompe.
+ */
+export { getCustomerToken };
 
-export function getCustomerToken() {
-  try {
-    return localStorage.getItem(LS_TOKEN) || "";
-  } catch {
-    return "";
-  }
-}
-
+/**
+ * Compatibilidad:
+ * Si algún archivo viejo usa setCustomerToken(token), seguirá funcionando.
+ * Pero internamente ya usa la misma sesión que mobile.
+ */
 export function setCustomerToken(token) {
-  try {
-    if (!token) localStorage.removeItem(LS_TOKEN);
-    else localStorage.setItem(LS_TOKEN, token);
-  } catch {}
+  if (!token) {
+    clearCustomerSession();
+    return;
+  }
+
+  setCustomerSession({
+    token,
+  });
 }
 
 async function apiFetch(path, options = {}) {
@@ -51,8 +62,24 @@ export async function loginCustomer(payload) {
     body: JSON.stringify(payload),
   });
 
-  // ✅ guarda token automáticamente si viene
-  if (data?.token) setCustomerToken(data.token);
+  const token = data?.token || data?.accessToken || data?.jwt || "";
+
+  const customer =
+    data?.customer ||
+    data?.user ||
+    data?.data?.customer ||
+    data?.data?.user ||
+    null;
+
+  const email = payload?.email;
+
+  if (token) {
+    setCustomerSession({
+      token,
+      customer,
+      email,
+    });
+  }
 
   return data;
 }
@@ -63,15 +90,32 @@ export async function registerCustomer(payload) {
     body: JSON.stringify(payload),
   });
 
-  if (data?.token) setCustomerToken(data.token);
+  const token = data?.token || data?.accessToken || data?.jwt || "";
+
+  const customer =
+    data?.customer ||
+    data?.user ||
+    data?.data?.customer ||
+    data?.data?.user ||
+    null;
+
+  const email = payload?.email;
+
+  if (token) {
+    setCustomerSession({
+      token,
+      customer,
+      email,
+    });
+  }
 
   return data;
 }
 
 /**
- * ✅ Robusto:
- * - si pasas tokenOverride, lo usa (evita race conditions)
- * - si no, lee de localStorage (fallback)
+ * Robusto:
+ * - si pasas tokenOverride, lo usa
+ * - si no, lee de localStorage con la misma key que mobile
  */
 export async function meCustomer(tokenOverride) {
   const token = String(tokenOverride || getCustomerToken() || "").trim();

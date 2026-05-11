@@ -1,1765 +1,2106 @@
-// src/pages/Progreso.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import { readJourneyLocal, clearJourneyLocal } from "../lib/journeyLocal";
-import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
-import { API_BASE } from "../lib/api"; // ✅ FIX: IMPORT REAL (evita pegarle a habitalibre.com/api)
-import HIcon from "../assets/HICON.png";
-import AdvisorPanel from "../components/AdvisorPanel.jsx";
-import HLScoreCard from "../components/HLScoreCard.jsx";
-import { Capacitor } from "@capacitor/core";
+import { useNavigate } from "react-router-dom";
+import {
+  Sparkles,
+  Home as HomeIcon,
+  Compass,
+  CheckCircle2,
+  Target,
+  MapPin,
+  Lock,
+  ChevronDown,
+  Calculator,
+  Building2,
+  ShieldCheck,
+  ArrowRight,
+} from "lucide-react";
+import { summarizeProfile } from "../lib/profileSummary.js";
+import { moneyUSD } from "../lib/money";
+import { apiGet } from "../lib/api";
+import { buildPlan } from "../lib/planEngine.js";
+import { getCustomerToken, getCustomer } from "../lib/customerSession.js";
+import { fetchLatestSnapshot } from "../lib/snapshots.js";
 
-/* =========================
-   Utils
-========================= */
-function toNum(v) {
-  const n = Number((v ?? "").toString().replace(/[^0-9.]/g, ""));
-  return Number.isFinite(n) ? n : 0;
+import {
+  Card,
+  InnerCard,
+  Chip,
+  PrimaryButton,
+  SecondaryButton,
+  ProgressBar,
+} from "../ui/kit.jsx";
+import HabitaShell from "../components/HabitaShell.jsx";
+
+const LS_SNAPSHOT = "hl_mobile_last_snapshot_v1";
+const LS_JOURNEY = "hl_mobile_journey_v1";
+const LS_SELECTED_PROPERTY = "hl_selected_property_v1";
+
+const COPY = {
+  appSubtitle:
+    "Descubre cuánto podrías comprar hoy y cuál debería ser tu siguiente paso.",
+  guideTag: "Tu guía",
+  guideResultTag: "Tu resultado",
+
+  scoreLocked: "Completa tu simulación para ver tu resultado",
+  scoreReady: "Listo",
+
+  probabilityTitle: "Qué tan sólido se ve hoy tu perfil",
+  probabilityFallback: "Estimación",
+
+  quotaInsightLabel: "Pago mensual aprox.",
+  quotaInsightHint: "Una referencia mensual para este escenario.",
+
+  rateInsightLabel: "Interés aprox.",
+  rateInsightHint: "Tasa estimada para este escenario.",
+
+  amountInsightLabel: "Monto de préstamo",
+  amountInsightHint: "Monto estimado del crédito para este escenario.",
+
+  limitInsightLabel: "Factor limitante",
+  limitInsightHint: "Lo que más está limitando tu capacidad hoy.",
+
+  connecting: "Conectando con HabitaLibre…",
+};
+
+const isFiniteNum = (v) => typeof v === "number" && Number.isFinite(v);
+
+const toNum = (v) => {
+  if (isFiniteNum(v)) return v;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+function moneySafe(n) {
+  const x = toNum(n);
+  return x == null ? "—" : moneyUSD(x);
 }
 
-function fmtMoney(n) {
-  return `$${Number(n || 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+function safePctFromRate(rate) {
+  const x = Number(rate);
+  if (!Number.isFinite(x)) return "—";
+  const pctRate = x <= 1 ? x * 100 : x;
+  return `${pctRate.toFixed(2)}%`;
 }
 
-function chipClass(type) {
-  if (type === "ok") return "bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-500/25";
-  if (type === "warn") return "bg-amber-500/15 text-amber-200 ring-1 ring-amber-500/25";
-  if (type === "bad") return "bg-red-500/15 text-red-200 ring-1 ring-red-500/25";
-  return "bg-slate-500/10 text-slate-300 ring-1 ring-slate-600/30";
+function normalizeLimitingFactor(v) {
+  const s = String(v || "").toLowerCase();
+  if (s === "cuota") return "Cuota";
+  if (s === "entrada") return "Entrada";
+  if (s === "programa") return "Programa";
+  return "—";
 }
 
-function clamp(n, a, b) {
-  return Math.max(a, Math.min(b, n));
+function loadJSON(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
 }
 
-function gradeFromProgress(p) {
-  if (p >= 85) return { label: "Alta", type: "ok", hint: "Tu perfil está bastante listo para aplicar." };
-  if (p >= 70) return { label: "Media", type: "warn", hint: "Estás cerca. Enfócate en 1–2 mejoras clave." };
-  if (p >= 50) return { label: "En construcción", type: "neutral", hint: "Aún faltan piezas para mejorar aprobación." };
-  return { label: "Baja", type: "bad", hint: "Primero construyamos base (entrada/estabilidad/deudas)." };
+function saveJSON(key, val) {
+  try {
+    localStorage.setItem(key, JSON.stringify(val));
+  } catch {}
 }
 
-function fmtPct(n) {
-  const x = Number(n || 0);
-  return `${Math.round(x)}%`;
+function clearLocalScenarioState() {
+  try {
+    localStorage.removeItem(LS_SNAPSHOT);
+    localStorage.removeItem(LS_JOURNEY);
+    localStorage.removeItem(LS_SELECTED_PROPERTY);
+  } catch {}
 }
 
-function safeNameFromEmail(email) {
-  const s = String(email || "").trim();
-  if (!s.includes("@")) return "";
-  const left = s.split("@")[0] || "";
-  const clean = left.replace(/[0-9._-]+/g, " ").trim();
-  const first = clean.split(" ").filter(Boolean)[0] || "";
-  if (!first) return "";
-  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+function mapMobilePathToWeb(path) {
+  const p = String(path || "");
+
+  if (p === "/journey/full") {
+    return "/app?mode=journey&afinando=1&force=1";
+  }
+
+  if (p === "/journey") {
+    return "/app?mode=journey";
+  }
+if (p === "/unlock") {
+  return "/unlock";
 }
 
-// helpers para leer formatos distintos
-function pick(obj, keys, fallback = undefined) {
+  if (p === "/marketplace") {
+    return "/match";
+  }
+
+  if (p === "/ruta") {
+    return "/ruta";
+  }
+
+  if (p === "/perfil") {
+    return "/perfil";
+  }
+
+  if (p === "/") {
+    return "/progreso";
+  }
+
+  return p;
+}
+
+
+function getStorageOwnerEmail() {
+  try {
+    const email = String(getCustomer()?.email || "")
+      .trim()
+      .toLowerCase();
+    return email || null;
+  } catch {
+    return null;
+  }
+}
+
+function hasCompletedEvaluation(snapshot) {
+  if (!snapshot) return false;
+
+  const input =
+    snapshot?.input ||
+    snapshot?.perfilInput ||
+    snapshot?.__entrada ||
+    snapshot?.inputNormalizado ||
+    snapshot?.output?.input ||
+    snapshot?.output?.perfilInput ||
+    snapshot?.output?.__entrada ||
+    snapshot?.output?.inputNormalizado ||
+    null;
+
+  const ingreso =
+    toNum(input?.ingresoNetoMensual) ??
+    toNum(input?.ingreso) ??
+    toNum(snapshot?.ingresoNetoMensual) ??
+    toNum(snapshot?.ingreso) ??
+    toNum(snapshot?.output?.ingresoNetoMensual) ??
+    toNum(snapshot?.output?.ingreso) ??
+    null;
+
+  const tipoIngreso =
+    input?.tipoIngreso ||
+    snapshot?.tipoIngreso ||
+    snapshot?.output?.tipoIngreso ||
+    null;
+
+  const hasValidIncome = ingreso != null && ingreso > 0;
+
+  const hasValidIncomeType =
+    tipoIngreso != null && String(tipoIngreso).trim() !== "";
+
+  const hasRealResult =
+    snapshot?.bestMortgage != null ||
+    snapshot?.output?.bestMortgage != null ||
+    snapshot?.financialCapacity != null ||
+    snapshot?.output?.financialCapacity != null ||
+    snapshot?.homeRecommendation != null ||
+    snapshot?.output?.homeRecommendation != null ||
+    snapshot?.creditAssessment != null ||
+    snapshot?.output?.creditAssessment != null;
+
+  return hasValidIncome && hasValidIncomeType && hasRealResult;
+}
+
+
+function snapshotLooksValid(snap) {
+  return hasCompletedEvaluation(snap);
+}
+
+function pickLegacyCompatible(snapshot, keys) {
+  if (!snapshot) return null;
+
   for (const k of keys) {
-    const v = obj?.[k];
-    if (v !== undefined && v !== null && v !== "") return v;
-  }
-  return fallback;
-}
-function pickNum(obj, keys, fallback = 0) {
-  const v = pick(obj, keys, null);
-  if (v === null) return fallback;
-  return toNum(v);
-}
-function pickStr(obj, keys, fallback = "") {
-  const v = pick(obj, keys, null);
-  return v == null ? fallback : String(v);
-}
-function pickBoolIess(obj) {
-  const raw = pick(obj, ["afiliadoIESS", "afiliadoIess", "afiliado_iess", "iess", "afiliado"], null);
-  if (raw == null) return false;
-  if (typeof raw === "boolean") return raw;
-
-  const s = String(raw).trim().toLowerCase();
-  if (s === "si" || s === "sí" || s === "true" || s === "1") return true;
-  if (s === "no" || s === "false" || s === "0") return false;
-  return false;
-}
-
-/**
- * ✅ merge seguro (no pisa con vacíos / 0 innecesarios)
- */
-function mergePreferValues(...objs) {
-  const out = {};
-  for (const o of objs) {
-    if (!o || typeof o !== "object") continue;
-
-    for (const [k, v] of Object.entries(o)) {
-      if (v === undefined || v === null) continue;
-
-      // strings vacíos no pisan
-      if (typeof v === "string" && v.trim() === "") continue;
-
-      // si llega 0 pero ya existe un valor "real" (no 0), NO pises
-      if (typeof v === "number" && v === 0) {
-        const prev = out[k];
-        if (typeof prev === "number" && prev !== 0) continue;
-      }
-
-      out[k] = v;
-    }
-  }
-  return out;
-}
-
-/* =========================
-   ✅ Local fallback seguro (por usuario y recencia)
-========================= */
-const LS_TASKS = "hl_progress_tasks_v1";
-
-const LS_JOURNEY_OWNER_EMAIL = "hl_journey_owner_email_v1";
-const LS_JOURNEY_TS = "hl_journey_ts_v1";
-
-function normalizeEmail(s) {
-  return String(s || "").trim().toLowerCase();
-}
-
-function extractLocalSnapEmail(localSnap) {
-  return (
-    localSnap?.userEmail ||
-    localSnap?.email ||
-    localSnap?.customerEmail ||
-    localSnap?.meta?.email ||
-    localSnap?.meta?.userEmail ||
-    localSnap?.entrada?.email ||
-    localSnap?.input?.email ||
-    ""
-  );
-}
-
-function extractLocalSnapTs(localSnap) {
-  const raw =
-    localSnap?.ts ||
-    localSnap?.timestamp ||
-    localSnap?.createdAt ||
-    localSnap?.updatedAt ||
-    localSnap?.meta?.ts ||
-    localSnap?.meta?.timestamp ||
-    null;
-
-  const n = raw ? Number(new Date(raw).getTime()) : 0;
-  return Number.isFinite(n) ? n : 0;
-}
-
-function isRecent(ts, days = 14) {
-  if (!ts || !Number.isFinite(ts)) return false;
-  const maxAge = days * 24 * 60 * 60 * 1000;
-  return Date.now() - ts <= maxAge;
-}
-
-function shouldUseLocalFallback(localSnap, currentEmail) {
-  if (!localSnap) return false;
-
-  const hasResult = localSnap?.resultado && Object.keys(localSnap.resultado || {}).length > 0;
-  if (!hasResult) return false;
-
-  const emailNow = normalizeEmail(currentEmail);
-  if (!emailNow) return false;
-
-  // 1) si el snap trae email, debe coincidir
-  const snapEmail = normalizeEmail(extractLocalSnapEmail(localSnap));
-  if (snapEmail && snapEmail !== emailNow) return false;
-
-  // 2) si NO trae email, usamos owner guardado como “candado”
-  // 🚫 OJO: esto SOLO funciona si currentEmail viene de SESIÓN real
-  const owner = normalizeEmail(localStorage.getItem(LS_JOURNEY_OWNER_EMAIL));
-  if (owner && owner !== emailNow) return false;
-
-  // 3) recencia: si el snap trae ts úsalo; si no, usa LS_JOURNEY_TS; si no, NO confíes
-  const tsFromSnap = extractLocalSnapTs(localSnap);
-  const tsFromLS = toNum(localStorage.getItem(LS_JOURNEY_TS));
-  const ts = tsFromSnap || tsFromLS || 0;
-  if (!isRecent(ts, 14)) return false;
-
-  return true;
-}
-
-/* =========================
-   Amortización (preview liviano)
-========================= */
-function pmt(principal, annualRate, years) {
-  const n = Math.max(1, Math.round(years * 12));
-  const r = annualRate / 100 / 12;
-  if (!Number.isFinite(principal) || principal <= 0) return 0;
-  if (!Number.isFinite(r) || r <= 0) return principal / n;
-
-  const pow = Math.pow(1 + r, n);
-  return (principal * (r * pow)) / (pow - 1);
-}
-
-function buildAmortSchedulePreview({ principal, annualRate, years }) {
-  const n = Math.max(1, Math.round(years * 12));
-  const r = annualRate / 100 / 12;
-  const payment = pmt(principal, annualRate, years);
-
-  let balance = principal;
-  let totalInt = 0;
-  let totalPrin = 0;
-
-  const rows = [];
-
-  for (let m = 1; m <= Math.min(12, n); m++) {
-    const interest = r > 0 ? balance * r : 0;
-    const principalPay = Math.max(0, payment - interest);
-    balance = Math.max(0, balance - principalPay);
-
-    totalInt += interest;
-    totalPrin += principalPay;
-
-    rows.push({
-      mes: m,
-      pago: payment,
-      interes: interest,
-      capital: principalPay,
-      saldo: balance,
-    });
+    if (snapshot?.[k] != null) return snapshot[k];
+    if (snapshot?.output?.[k] != null) return snapshot.output[k];
+    if (snapshot?.legacy?.[k] != null) return snapshot.legacy[k];
+    if (snapshot?.output?.legacy?.[k] != null) return snapshot.output.legacy[k];
   }
 
-  return {
-    payment,
-    rows,
-    totals: {
-      pagoTotal: payment * rows.length,
-      interesTotal: totalInt,
-      capitalTotal: totalPrin,
-      saldoFinal: balance,
-    },
+  return null;
+}
+
+function pickMatcherFirst(snapshot, keys) {
+  if (!snapshot) return null;
+
+  for (const k of keys) {
+    if (snapshot?.[k] != null) return snapshot[k];
+  }
+
+  for (const k of keys) {
+    if (snapshot?.output?.[k] != null) return snapshot.output[k];
+  }
+
+  return null;
+}
+
+function parseAnyToPctUniversal(x) {
+  const clampPct = (p) => {
+    if (!Number.isFinite(p)) return null;
+    return Math.max(0, Math.min(100, p));
   };
+
+  if (x == null) return null;
+
+  if (typeof x === "number") return clampPct(x <= 1 ? x * 100 : x);
+
+  if (typeof x === "string") {
+    const s0 = x.trim();
+    if (!s0) return null;
+
+    const lower = s0.toLowerCase();
+    if (lower === "alta") return 85;
+    if (lower === "media") return 60;
+    if (lower === "baja") return 35;
+    if (lower.includes("sin oferta")) return 0;
+
+    const s = s0.includes(",") && !s0.includes(".") ? s0.replace(",", ".") : s0;
+    const m = s.match(/(\d+(\.\d+)?)/);
+
+    if (!m) return null;
+
+    const n = Number(m[1]);
+    if (!Number.isFinite(n)) return null;
+
+    const p = s.includes("%") ? n : n <= 1 ? n * 100 : n;
+    return clampPct(p);
+  }
+
+  if (typeof x === "object") {
+    const direct =
+      parseAnyToPctUniversal(x.pct) ??
+      parseAnyToPctUniversal(x.value) ??
+      parseAnyToPctUniversal(x.total) ??
+      parseAnyToPctUniversal(x.pTotal) ??
+      parseAnyToPctUniversal(x.prob) ??
+      parseAnyToPctUniversal(x.probabilidad) ??
+      parseAnyToPctUniversal(x.aprobacion) ??
+      parseAnyToPctUniversal(x.score);
+
+    if (direct != null) return direct;
+  }
+
+  return null;
 }
 
-function inferTasaForModal(data) {
-  const rr =
-    data?.resultado?.rutaRecomendada ||
-    data?.resultado?.ruta ||
-    data?.resultado?.recomendacion ||
-    data?.rutaRecomendada ||
-    null;
+function normalizeProbability(prob) {
+  if (prob == null) return { label: COPY.probabilityFallback, pct: null };
 
-  const min = toNum(rr?.tasaMin ?? data?.resultado?.tasaMin ?? data?.tasaMin);
-  const max = toNum(rr?.tasaMax ?? data?.resultado?.tasaMax ?? data?.tasaMax);
-  if (min > 0 && max > 0) return { min, max, mid: (min + max) / 2, source: "data" };
+  if (typeof prob === "string") {
+    const s = prob.trim().toLowerCase();
+    if (s === "alta") return { label: "Alta", pct: 85 };
+    if (s === "media") return { label: "Media", pct: 60 };
+    if (s === "baja") return { label: "Baja", pct: 35 };
+    if (s.includes("sin oferta")) return { label: "Sin oferta hoy", pct: 0 };
+  }
 
-  const tipoRaw =
-    data?.resultado?.productoSugerido ||
-    data?.resultado?.producto ||
-    data?.resultado?.tipoCredito ||
-    data?.resultado?.programa ||
-    data?.productoSugerido ||
-    data?.suggestedCredit ||
-    data?.input?.productoSugerido ||
-    data?.input?.tipoCredito ||
-    "";
+  const pctValue = parseAnyToPctUniversal(prob);
 
-  let tipo = String(tipoRaw || "").toLowerCase();
-
-  if (tipo.includes("biess")) return { min: 4.8, max: 6.5, mid: 5.6, source: "heur" };
-  if (tipo.includes("vip")) return { min: 4.8, max: 7.0, mid: 6.0, source: "heur" };
-  if (tipo.includes("vis")) return { min: 5.0, max: 7.8, mid: 6.6, source: "heur" };
-
-  return { min: 8.5, max: 10.8, mid: 9.7, source: "heur" };
+  return pctValue == null
+    ? { label: COPY.probabilityFallback, pct: null }
+    : { label: `${Math.round(pctValue)}%`, pct: pctValue };
 }
 
-/* =========================
-   Normalización de data desde snap
-========================= */
-function buildDataFromSnap(snap) {
-  if (!snap) return { hasSnap: false };
+function scoreToPctFallback(score) {
+  const s = Number(score);
+  if (!Number.isFinite(s)) return null;
 
-  const input = snap?.input || snap?.entrada || {};
-  const resultado = snap?.resultado || {};
-
-  const estadoCivil = pickStr(input, ["estadoCivil"], "soltero");
-  const esParejaFormal = ["casado", "union_de_hecho"].includes(String(estadoCivil || "").toLowerCase());
-
-  const ingreso = pickNum(input, ["ingreso", "ingresoNetoMensual"], 0);
-  const ingresoPareja = esParejaFormal ? pickNum(input, ["ingresoPareja"], 0) : 0;
-
-  const deudas = pickNum(input, ["deudas", "otrasDeudasMensuales"], 0);
-
-  const valor = pickNum(
-    input,
-    ["valor", "valorVivienda", "precioVivienda", "valorInmueble", "precioInmueble", "houseValue", "valorPropiedad"],
-    0
-  );
-
-  const entrada = pickNum(
-    input,
-    ["entrada", "entradaDisponible", "downPayment", "enganche", "cuotaInicial", "entradaAprox"],
-    0
-  );
-
-  const valorFinal = valor > 0 ? valor : pickNum(resultado, ["valor", "valorVivienda", "precioVivienda"], 0);
-  const entradaFinal = entrada > 0 ? entrada : pickNum(resultado, ["entrada", "entradaDisponible"], 0);
-
-  const afiliadoIESS = pickBoolIess(input);
-
-  const aportesTotales = pickNum(input, ["aportesTotales", "iessAportesTotales"], 0);
-  const aportesConsecutivos = pickNum(input, ["aportesConsecutivos", "iessAportesConsecutivos"], 0);
-
-  const tipoIngreso = pickStr(input, ["tipoIngreso"], "");
-  const aniosEstabilidad = pickNum(input, ["aniosEstabilidad"], 0);
-  const sustentoIndependiente = pickStr(input, ["sustentoIndependiente"], "");
-
-  const horizonteCompra = pickStr(input, ["horizonteCompra", "tiempoCompra"], "");
-
-  const capacidadPago = resultado?.capacidadPago ?? null;
-  const montoMaximo = resultado?.montoMaximo ?? null;
-  const precioMaxVivienda = resultado?.precioMaxVivienda ?? null;
-  const cuotaEstimada = resultado?.cuotaEstimada ?? null;
-  const productoSugerido = resultado?.productoSugerido ?? null;
-  const bancoSugerido = resultado?.bancoSugerido ?? null;
-
-  const entradaPct = valorFinal > 0 ? Math.round((entradaFinal / valorFinal) * 100) : 0;
-
-  const entradaObjetivoPct = 10;
-  const entradaObjetivo = valorFinal > 0 ? Math.round((valorFinal * entradaObjetivoPct) / 100) : 0;
-  const faltanteEntrada = Math.max(0, entradaObjetivo - entradaFinal);
-
-  let progreso = 0;
-
-  const ingresoTotal = ingreso + ingresoPareja;
-  if (ingresoTotal >= 800) progreso += 25;
-  else if (ingresoTotal >= 400) progreso += 15;
-  else progreso += 5;
-
-  if (entradaPct >= 10) progreso += 30;
-  else if (entradaPct >= 5) progreso += 20;
-  else if (entradaPct > 0) progreso += 10;
-
-  if (!afiliadoIESS) progreso += 5;
-  else {
-    if (aportesTotales >= 36) progreso += 20;
-    else if (aportesTotales >= 12) progreso += 12;
-    else progreso += 6;
-
-    if (aportesConsecutivos >= 13) progreso += 10;
-    else if (aportesConsecutivos >= 6) progreso += 6;
-    else progreso += 2;
+  if (s >= 0 && s <= 100) {
+    return Math.max(0, Math.min(100, s));
   }
 
-  if (tipoIngreso === "Dependiente" || tipoIngreso === "Mixto") {
-    if (aniosEstabilidad >= 1) progreso += 15;
-    else progreso += 5;
-  } else {
-    if (sustentoIndependiente === "ambos") progreso += 15;
-    else if (sustentoIndependiente === "declaracion" || sustentoIndependiente === "movimientos") progreso += 10;
-    else progreso += 5;
-  }
-
-  progreso = clamp(progreso, 0, 100);
-
-  const palancaEntrada =
-    entradaPct >= 10
-      ? { type: "ok", label: "OK" }
-      : entradaPct > 0
-      ? { type: "warn", label: "Mejorable" }
-      : { type: "bad", label: "Pendiente" };
-
-  const palancaIess = !afiliadoIESS
-    ? { type: "neutral", label: "Opcional" }
-    : aportesConsecutivos >= 13 && aportesTotales >= 36
-    ? { type: "ok", label: "OK" }
-    : { type: "warn", label: "Mejorable" };
-
-  const palancaEstabilidad =
-    tipoIngreso === "Dependiente" || tipoIngreso === "Mixto"
-      ? aniosEstabilidad >= 1
-        ? { type: "ok", label: "OK" }
-        : { type: "warn", label: "Mejorable" }
-      : sustentoIndependiente === "ambos" ||
-        sustentoIndependiente === "declaracion" ||
-        sustentoIndependiente === "movimientos"
-      ? { type: "ok", label: "OK" }
-      : { type: "warn", label: "Mejorable" };
-
-  const probAprobacion = clamp(Math.round(progreso * 0.95 + 5), 0, 100);
-  const probGrade = gradeFromProgress(progreso);
-
-  const suggestedCredit =
-    productoSugerido ||
-    (afiliadoIESS && aportesTotales >= 12 ? "BIESS / VIS" : entradaPct >= 10 ? "VIS / VIP" : "VIS (perfil en construcción)");
-
-  const nextBestAction =
-    entradaPct < 10
-      ? { title: "Sube tu entrada al 10%", desc: "Es la palanca más rápida para mejorar aprobación y tasa.", impact: "Alto" }
-      : deudas > 0
-      ? { title: "Reduce deudas mensuales", desc: "Bajar deudas sube tu capacidad y baja el DTI.", impact: "Alto" }
-      : !afiliadoIESS
-      ? { title: "Evalúa IESS (abre BIESS)", desc: "Podría desbloquear escenarios adicionales según aportes.", impact: "Medio" }
-      : { title: "Prepara documentos y aplica", desc: "Tu perfil ya está bien encaminado para avanzar.", impact: "Alto" };
-
-  return {
-    hasSnap: true,
-    input,
-    resultado,
-
-    ingresoTotal,
-    deudas,
-    valor: valorFinal,
-    entrada: entradaFinal,
-    entradaPct,
-    entradaObjetivoPct,
-    entradaObjetivo,
-    faltanteEntrada,
-    afiliadoIESS,
-    aportesTotales,
-    aportesConsecutivos,
-    tipoIngreso,
-    aniosEstabilidad,
-    sustentoIndependiente,
-    horizonteCompra,
-
-    capacidadPago,
-    montoMaximo,
-    precioMaxVivienda,
-    cuotaEstimada,
-    productoSugerido,
-    bancoSugerido,
-
-    progreso,
-    probAprobacion,
-    probGrade,
-    suggestedCredit,
-    nextBestAction,
-
-    palancaEntrada,
-    palancaIess,
-    palancaEstabilidad,
-  };
+  const pct = ((s - 300) / (850 - 300)) * 100;
+  return Math.max(0, Math.min(100, pct));
 }
 
-/* =========================
-   Checklist / Tasks
-========================= */
-function buildSuggestedTasks(d, SIM_JOURNEY) {
-  const tasks = [];
+function withTimeout(promise, ms, msg = "ping timeout") {
+  let t;
 
-  if (d.entradaPct < 10) {
-    tasks.push({
-      id: "entrada",
-      title: "Subir entrada para mejorar aprobación",
-      desc:
-        d.faltanteEntrada > 0
-          ? `Hoy tienes ${fmtMoney(d.entrada)} (${d.entradaPct}%). Para llegar a ${d.entradaObjetivoPct}% te faltan aprox. ${fmtMoney(
-              d.faltanteEntrada
-            )}.`
-          : `Hoy tienes ${fmtMoney(d.entrada)} (${d.entradaPct}%).`,
-      ctaText: "Ajustar datos",
-      ctaHref: SIM_JOURNEY,
-      badge: "Impacto alto",
-      impact: "alto",
-    });
-  } else {
-    tasks.push({
-      id: "entrada_ok",
-      title: "Entrada en buen nivel",
-      desc: `Tienes ${fmtMoney(d.entrada)} (${d.entradaPct}%). Esto te ayuda mucho en aprobación.`,
-      ctaText: "Actualizar datos",
-      ctaHref: SIM_JOURNEY,
-      badge: "OK",
-      impact: "bajo",
-    });
-  }
-
-  if (d.afiliadoIESS) {
-    const ok = d.aportesTotales >= 36 && d.aportesConsecutivos >= 13;
-    tasks.push({
-      id: "iess",
-      title: ok ? "Aportes IESS sólidos" : "Mejorar elegibilidad BIESS",
-      desc: ok
-        ? `Vas bien: ${d.aportesTotales} aportes totales y ${d.aportesConsecutivos} consecutivos.`
-        : `Referencia común BIESS: 36 totales + 13 consecutivos. Hoy: ${d.aportesTotales} / ${d.aportesConsecutivos}.`,
-      ctaText: "Comparar",
-      ctaHref: SIM_JOURNEY,
-      badge: ok ? "OK" : "Impacto medio",
-      impact: ok ? "bajo" : "medio",
-    });
-  } else {
-    tasks.push({
-      id: "iess_opcional",
-      title: "Evaluar afiliación IESS (abre BIESS)",
-      desc: "Si te afilias y acumulas aportes, podrías abrir opciones BIESS según tu perfil.",
-      ctaText: "Comparar",
-      ctaHref: SIM_JOURNEY,
-      badge: "Opcional",
-      impact: "medio",
-    });
-  }
-
-  const estOk = d.palancaEstabilidad.type === "ok";
-  tasks.push({
-    id: "estabilidad",
-    title: estOk ? "Estabilidad/sustento bien respaldado" : "Fortalecer sustento (documentos)",
-    desc:
-      d.tipoIngreso === "Dependiente" || d.tipoIngreso === "Mixto"
-        ? `Tipo ingreso: ${d.tipoIngreso || "—"}. Estabilidad: ${d.aniosEstabilidad || 0} años.`
-        : `Tipo ingreso: ${d.tipoIngreso || "—"}. Sustento: ${d.sustentoIndependiente || "—"}.`,
-    ctaText: "Ver checklist",
-    ctaHref: "#docs",
-    badge: estOk ? "OK" : "Impacto alto",
-    impact: estOk ? "bajo" : "alto",
+  const timeout = new Promise((_, rej) => {
+    t = setTimeout(() => rej(new Error(msg)), ms);
   });
 
-  tasks.push({
-    id: "asesor",
-    title: "Hablar con un asesor HabitaLibre",
-    desc: "Te guiamos para elegir banco/programa y armar tu carpeta. Te respondemos en minutos.",
-    ctaText: "WhatsApp",
-    ctaHref: "whatsapp",
-    badge: "Recomendado",
-    impact: "alto",
-  });
-
-  return tasks;
+  return Promise.race([promise.finally(() => clearTimeout(t)), timeout]);
 }
 
-function buildDocumentChecklist(d) {
-  const items = [];
-  const isDependiente = d.tipoIngreso === "Dependiente" || d.tipoIngreso === "Mixto";
-
-  items.push({ id: "docs_identidad", title: "Cédula + papeleta de votación", desc: "Documento básico para apertura de trámite.", status: "todo" });
-  items.push({ id: "docs_servicios", title: "Planilla de servicios (domicilio)", desc: "Agua/luz/teléfono (según banco).", status: "todo" });
-
-  if (isDependiente) {
-    items.push({
-      id: "docs_roles",
-      title: "Roles de pago / certificado laboral",
-      desc: "Normalmente 3–6 meses + certificado.",
-      status: d.aniosEstabilidad >= 1 ? "ok" : "warn",
-    });
-    items.push({
-      id: "docs_estabilidad",
-      title: "Antigüedad laboral",
-      desc: "Ideal: 2–3 años para maximizar aprobación.",
-      status: d.aniosEstabilidad >= 1 ? "ok" : "warn",
-    });
-  } else {
-    items.push({
-      id: "docs_ruc",
-      title: "RUC + actividad económica",
-      desc: "Independiente: sustento formal ayuda mucho.",
-      status: d.sustentoIndependiente ? "warn" : "todo",
-    });
-    items.push({
-      id: "docs_movimientos",
-      title: "Movimientos bancarios",
-      desc: "6–12 meses según entidad.",
-      status: d.sustentoIndependiente === "movimientos" || d.sustentoIndependiente === "ambos" ? "ok" : "warn",
-    });
-    items.push({
-      id: "docs_declaracion",
-      title: "Declaración de impuestos / facturación",
-      desc: "Fortalece sustento. (depende del banco)",
-      status: d.sustentoIndependiente === "declaracion" || d.sustentoIndependiente === "ambos" ? "ok" : "warn",
-    });
-  }
-
-  items.push({
-    id: "docs_iess",
-    title: "Historia laboral IESS (si aplica)",
-    desc: "Útil demostración de estabilidad y para BIESS.",
-    status: d.afiliadoIESS ? (d.aportesTotales >= 12 ? "ok" : "warn") : "neutral",
-  });
-
-  return items;
-}
-
-function statusPill(status) {
-  if (status === "ok") return { type: "ok", label: "Listo" };
-  if (status === "warn") return { type: "warn", label: "Mejorable" };
-  if (status === "neutral") return { type: "neutral", label: "Opcional" };
-  return { type: "bad", label: "Pendiente" };
-}
-
-/* =========================
-   Background premium wrapper
-========================= */
-function PremiumBg({ children }) {
-  return (
-    <main className="relative min-h-screen text-slate-50 bg-slate-950 overflow-x-hidden">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-slate-950" />
-        <div className="absolute inset-0 bg-[radial-gradient(900px_500px_at_50%_0%,rgba(56,189,248,0.14),transparent_60%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(700px_420px_at_15%_15%,rgba(16,185,129,0.12),transparent_55%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(700px_420px_at_85%_35%,rgba(59,130,246,0.12),transparent_55%)]" />
-        <div className="absolute inset-x-0 top-0 h-[420px] bg-gradient-to-b from-black/35 to-transparent" />
-      </div>
-      <div className="relative">{children}</div>
-    </main>
-  );
-}
-
-/* =========================
-   ✅ Mobile Sticky CTA
-========================= */
-function MobileStickyCTA({ waHref, onAfinar, onPlan }) {
-  return (
-    <div className="fixed inset-x-0 bottom-0 z-[70] sm:hidden">
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent" />
-      <div className="pointer-events-auto mx-auto max-w-[1100px] px-4 pb-[max(14px,env(safe-area-inset-bottom,0px))] pt-3">
-        <div className="rounded-2xl border border-slate-800/70 bg-slate-950/80 backdrop-blur shadow-[0_20px_60px_rgba(0,0,0,0.55)] p-2">
-          <div className="grid grid-cols-2 gap-2">
-            <a
-              href={waHref}
-              target="_blank"
-              rel="noreferrer"
-              className="h-12 rounded-2xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-semibold text-sm inline-flex items-center justify-center"
-            >
-              WhatsApp →
-            </a>
-            <button
-              type="button"
-              onClick={onAfinar}
-              className="h-12 rounded-2xl border border-slate-700 bg-slate-900/40 hover:bg-slate-900/60 text-slate-100 font-semibold text-sm"
-            >
-              Afinar
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={onPlan}
-            className="mt-2 h-11 w-full rounded-2xl border border-slate-800/70 bg-slate-950/30 hover:bg-slate-950/40 text-slate-200 font-semibold text-sm"
-          >
-            Ver mi plan
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* =========================
-   Modal Amortización
-========================= */
-function AmortModal({ open, onClose, data, onGoSimular }) {
-  const preview = useMemo(() => {
-    if (!open) return null;
-
-    const base = data?.input || data?.entrada || {};
-    const root = data || {};
-    const resultado = data?.resultado || data?.result || data?.resultadoNormalizado || {};
-
-    const valor = toNum(
-      base?.valorVivienda ??
-        base?.precioVivienda ??
-        base?.valor ??
-        root?.valorVivienda ??
-        root?.valor ??
-        resultado?.valorVivienda ??
-        resultado?.valor ??
-        0
-    );
-
-    const entrada = toNum(
-      base?.entradaDisponible ??
-        base?.entrada ??
-        root?.entradaDisponible ??
-        root?.entrada ??
-        resultado?.entradaDisponible ??
-        resultado?.entrada ??
-        0
-    );
-
-    const principal = Math.max(0, valor - entrada);
-
-    const years =
-      toNum(
-        resultado?.plazoAnios ??
-          resultado?.plazo ??
-          base?.plazoAnios ??
-          base?.plazo ??
-          root?.plazoAnios ??
-          root?.plazo ??
-          25
-      ) || 25;
-
-    if (principal <= 0) {
-      return { error: "No tenemos monto a financiar (valor - entrada) para generar la amortización." };
-    }
-
-    // ✅ Preferir tasa FIJA del backend si viene en resultado
-    const tasaRaw =
-      resultado?.tasaAnual ??
-      resultado?.tasa ??
-      resultado?.tasaFija ??
-      resultado?.tasaInteres ??
-      data?.tasaAnual ??
-      data?.tasa ??
-      null;
-
-    // Normaliza: 4.99 -> 4.99 | 0.0499 -> 4.99
-    const tasaBackendPct = (() => {
-      const x = toNum(tasaRaw);
-      if (!Number.isFinite(x) || x <= 0) return null;
-      return x > 1.5 ? x : x * 100;
-    })();
-
-    let tasaUI = null;
-    let annualRateToUse = null;
-
-    if (tasaBackendPct) {
-      annualRateToUse = tasaBackendPct; // %
-      tasaUI = {
-        mode: "exacta",
-        labelMain: `${tasaBackendPct.toFixed(2)}%`,
-        labelSub: "Tasa fija (backend)",
-      };
-    } else {
-      const t = inferTasaForModal(data); // %
-      annualRateToUse = t.mid;
-      tasaUI = {
-        mode: "rango",
-        labelMain: `${t.min.toFixed(1)}% – ${t.max.toFixed(1)}%`,
-        labelSub: `Usando punto medio: ${t.mid.toFixed(1)}%`,
-      };
-    }
-
-    const sched = buildAmortSchedulePreview({
-      principal,
-      annualRate: annualRateToUse,
-      years,
-    });
-
-    return {
-      principal,
-      years,
-      tasaUI,
-      ...sched,
-    };
-  }, [open, data]);
+function useFadeIn(delay = 0) {
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (!open) return;
-    const onKey = (e) => {
-      if (e.key === "Escape") onClose?.();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+    const t = setTimeout(() => setVisible(true), delay);
+    return () => clearTimeout(t);
+  }, [delay]);
 
-  if (!open) return null;
+  return {
+    opacity: visible ? 1 : 0,
+    transform: visible ? "translateY(0px)" : "translateY(10px)",
+    transition: "opacity 0.45s ease, transform 0.45s ease",
+  };
+}
+
+const visibleInViewStyle = {
+  opacity: 1,
+  transform: "translateY(0px)",
+  transition: "opacity 0.5s ease, transform 0.5s ease",
+};
+
+function ProbabilityBar({ valuePct, hint, valueText = null }) {
+  const v =
+    valuePct == null ? null : Math.max(0, Math.min(100, Number(valuePct)));
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center">
-      <button type="button" aria-label="Cerrar" onClick={onClose} className="absolute inset-0 bg-black/55 backdrop-blur-sm" />
+    <InnerCard style={{ marginTop: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+        <div
+          style={{
+            fontSize: 12,
+            opacity: 0.9,
+            fontWeight: 900,
+            color: "rgba(148,163,184,0.95)",
+          }}
+        >
+          {COPY.probabilityTitle}
+        </div>
 
-      <div className="relative w-full sm:max-w-[980px] m-0 sm:m-6 rounded-t-3xl sm:rounded-3xl border border-slate-800/80 bg-slate-950/90 shadow-[0_30px_120px_rgba(0,0,0,0.65)]">
-        <div className="p-5 sm:p-6 border-b border-slate-800/70 flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[11px] tracking-[0.2em] uppercase text-slate-400">Tabla de amortización (preview)</p>
-            <h3 className="mt-2 text-xl sm:text-2xl font-semibold text-slate-50">Primer año: así se repartiría tu cuota</h3>
-            <p className="mt-2 text-[12px] text-slate-400">Orientativo. La tasa real y condiciones finales las confirma el banco.</p>
+        <div style={{ fontSize: 12, opacity: 0.95, fontWeight: 950 }}>
+          {valueText || (v == null ? "—" : `${Math.round(v)}%`)}
+        </div>
+      </div>
+
+      {v != null ? (
+        <div style={{ marginTop: 8 }}>
+          <ProgressBar value={v} />
+        </div>
+      ) : null}
+
+      {hint ? (
+        <div
+          style={{
+            marginTop: 8,
+            fontSize: 12,
+            opacity: 0.8,
+            lineHeight: 1.3,
+            color: "rgba(148,163,184,0.95)",
+          }}
+        >
+          {hint}
+        </div>
+      ) : null}
+    </InnerCard>
+  );
+}
+
+function InsightGrid({ items, cols = 2 }) {
+  if (!items?.length) return null;
+
+  return (
+    <div
+      style={{
+        marginTop: 12,
+        display: "grid",
+        gridTemplateColumns: cols === 3 ? "1fr 1fr 1fr" : "1fr 1fr",
+        gap: 10,
+      }}
+    >
+      {items.slice(0, 4).map((it) => (
+        <div
+          key={it.id}
+          style={{
+            padding: 12,
+            borderRadius: 16,
+            border: "1px solid rgba(148,163,184,0.16)",
+            background: "rgba(2,6,23,0.18)",
+          }}
+        >
+          <div style={{ fontSize: 12, color: "rgba(148,163,184,0.95)" }}>
+            {it.label}
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="shrink-0 rounded-full border border-slate-700 px-3 py-2 text-xs text-slate-200 hover:border-slate-500"
+          <div style={{ marginTop: 6, fontSize: 18, fontWeight: 950 }}>
+            {it.value}
+          </div>
+
+          <div
+            style={{
+              marginTop: 6,
+              fontSize: 12,
+              color: "rgba(148,163,184,0.90)",
+              lineHeight: 1.25,
+            }}
           >
-            Cerrar
-          </button>
+            {it.hint}
+          </div>
         </div>
+      ))}
+    </div>
+  );
+}
 
-        <div className="p-5 sm:p-6">
-          {preview?.error ? (
-            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">
-              {preview.error}
+function SoftMetric({ label, value, hint }) {
+  return (
+    <div
+      style={{
+        padding: 12,
+        borderRadius: 14,
+        border: "1px solid rgba(148,163,184,0.16)",
+        background: "rgba(2,6,23,0.18)",
+      }}
+    >
+      <div style={{ fontSize: 12, color: "rgba(148,163,184,0.95)" }}>
+        {label}
+      </div>
+
+      <div style={{ marginTop: 6, fontSize: 18, fontWeight: 980 }}>{value}</div>
+
+      {hint ? (
+        <div
+          style={{
+            marginTop: 6,
+            fontSize: 12,
+            color: "rgba(148,163,184,0.90)",
+            lineHeight: 1.3,
+          }}
+        >
+          {hint}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function AccordionSection({
+  title,
+  subtitle = null,
+  open,
+  onToggle,
+  children,
+  style = {},
+}) {
+  return (
+    <InnerCard
+      style={{
+        marginTop: 12,
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(148,163,184,0.16)",
+        overflow: "hidden",
+        ...style,
+      }}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        style={{
+          all: "unset",
+          cursor: "pointer",
+          width: "100%",
+          display: "block",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 900,
+                color: "rgba(148,163,184,0.95)",
+              }}
+            >
+              {title}
             </div>
-          ) : (
-            <>
-              <div className="grid gap-3 sm:grid-cols-4">
-                <div className="rounded-2xl border border-slate-800/70 bg-slate-950/30 p-4">
-                  <p className="text-[11px] text-slate-400">Monto a financiar</p>
-                  <p className="mt-1 text-lg font-semibold">{fmtMoney(preview?.principal)}</p>
-                </div>
 
-                <div className="rounded-2xl border border-slate-800/70 bg-slate-950/30 p-4">
-                  <p className="text-[11px] text-slate-400">Tasa estimada</p>
-                  <p className="mt-1 text-lg font-semibold">{preview?.tasaUI?.labelMain || "—"}</p>
-                  {preview?.tasaUI?.labelSub ? <p className="mt-1 text-[11px] text-slate-500">{preview.tasaUI.labelSub}</p> : null}
-                </div>
-
-                <div className="rounded-2xl border border-slate-800/70 bg-slate-950/30 p-4">
-                  <p className="text-[11px] text-slate-400">Plazo</p>
-                  <p className="mt-1 text-lg font-semibold">{preview?.years} años</p>
-                </div>
-
-                <div className="rounded-2xl border border-slate-800/70 bg-slate-950/30 p-4">
-                  <p className="text-[11px] text-slate-400">Cuota estimada</p>
-                  <p className="mt-1 text-lg font-semibold">{fmtMoney(preview?.payment)}/mes</p>
-                </div>
+            {subtitle ? (
+              <div
+                style={{
+                  marginTop: 6,
+                  fontSize: 12,
+                  lineHeight: 1.35,
+                  color: "rgba(148,163,184,0.86)",
+                }}
+              >
+                {subtitle}
               </div>
+            ) : null}
+          </div>
 
-              <div className="mt-4 overflow-hidden rounded-2xl border border-slate-800/70">
-                <div className="max-h-[360px] overflow-auto bg-slate-950/20">
-                  <table className="min-w-full text-left text-[12px]">
-                    <thead className="sticky top-0 bg-slate-950/90 backdrop-blur border-b border-slate-800/70">
-                      <tr className="text-slate-300">
-                        <th className="px-4 py-3 font-semibold">Mes</th>
-                        <th className="px-4 py-3 font-semibold">Pago</th>
-                        <th className="px-4 py-3 font-semibold">Interés</th>
-                        <th className="px-4 py-3 font-semibold">Capital</th>
-                        <th className="px-4 py-3 font-semibold">Saldo</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-slate-200">
-                      {(preview?.rows || []).map((r) => (
-                        <tr key={r.mes} className="border-b border-slate-900/60">
-                          <td className="px-4 py-3 text-slate-300">{r.mes}</td>
-                          <td className="px-4 py-3">{fmtMoney(r.pago)}</td>
-                          <td className="px-4 py-3">{fmtMoney(r.interes)}</td>
-                          <td className="px-4 py-3">{fmtMoney(r.capital)}</td>
-                          <td className="px-4 py-3">{fmtMoney(r.saldo)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="p-4 bg-slate-950/40 border-t border-slate-800/70 grid gap-3 sm:grid-cols-4">
-                  <div>
-                    <p className="text-[11px] text-slate-400">Pago total (12 meses)</p>
-                    <p className="mt-1 font-semibold">{fmtMoney(preview?.totals?.pagoTotal)}</p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] text-slate-400">Interés total (12 meses)</p>
-                    <p className="mt-1 font-semibold">{fmtMoney(preview?.totals?.interesTotal)}</p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] text-slate-400">Capital total (12 meses)</p>
-                    <p className="mt-1 font-semibold">{fmtMoney(preview?.totals?.capitalTotal)}</p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] text-slate-400">Saldo fin año 1</p>
-                    <p className="mt-1 font-semibold">{fmtMoney(preview?.totals?.saldoFinal)}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 flex flex-col sm:flex-row gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose?.();
-                    onGoSimular?.();
-                  }}
-                  className="inline-flex items-center justify-center px-5 py-3 rounded-2xl bg-blue-500 hover:bg-blue-400 text-slate-950 font-semibold text-sm transition"
-                >
-                  Ajustar escenario (tasa/plazo/entrada) →
-                </button>
-
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="inline-flex items-center justify-center px-5 py-3 rounded-2xl border border-slate-700 text-slate-100 font-semibold text-sm hover:border-slate-500 transition"
-                >
-                  Volver al resumen
-                </button>
-              </div>
-
-              <p className="mt-3 text-[11px] text-slate-500">Nota: no incluye seguros/costos del banco. Asume tasa fija para estimación.</p>
-            </>
-          )}
+          <div
+            style={{
+              marginTop: 1,
+              transform: open ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.25s ease",
+              color: "rgba(226,232,240,0.82)",
+              flexShrink: 0,
+            }}
+          >
+            <ChevronDown size={18} strokeWidth={2.4} />
+          </div>
         </div>
+      </button>
+
+      <div
+        style={{
+          maxHeight: open ? 1200 : 0,
+          opacity: open ? 1 : 0,
+          overflow: "hidden",
+          transition: "max-height 0.35s ease, opacity 0.25s ease",
+        }}
+      >
+        <div style={{ paddingTop: open ? 12 : 0 }}>{children}</div>
+      </div>
+    </InnerCard>
+  );
+}
+
+function BenefitCard({ icon, title, body }) {
+  return (
+    <div
+      style={{
+        padding: 14,
+        borderRadius: 16,
+        border: "1px solid rgba(148,163,184,0.14)",
+        background: "rgba(255,255,255,0.04)",
+      }}
+    >
+      <div
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          fontWeight: 900,
+          color: "rgba(226,232,240,0.98)",
+          marginBottom: 8,
+          fontSize: 14,
+        }}
+      >
+        {icon}
+        {title}
+      </div>
+
+      <div
+        style={{
+          fontSize: 13,
+          lineHeight: 1.4,
+          color: "rgba(148,163,184,0.95)",
+        }}
+      >
+        {body}
       </div>
     </div>
   );
 }
 
-/* =========================
-   Progreso (Page)
-========================= */
-export default function Progreso() {
-  const nav = useNavigate();
-  const location = useLocation();
+function CreditValidationCard({ creditAssessment, readinessStatus, onReview }) {
+  const level = String(creditAssessment?.level || "unknown");
+  const blocksBankSubmission = creditAssessment?.blocksBankSubmission === true;
 
-  // ✅ FIX CLAVE: NO usar window.location fuera del componente
-const baseJourneyPath = "/app";
-const SIM_JOURNEY = `${baseJourneyPath}?mode=journey`;
-  const SIM_JOURNEY_AMORT = `${baseJourneyPath}?mode=journey&force=1`;
+  const reasons = Array.isArray(creditAssessment?.reasons)
+    ? creditAssessment.reasons
+    : [];
 
-  function withAfinando(path) {
-    try {
-      const [pathname, search = ""] = String(path || "").split("?");
-      const params = new URLSearchParams(search);
-      params.set("afinando", "1");
-      params.set("force", "1"); // ✅ evita redirect a /progreso
-      const qs = params.toString();
-      return qs ? `${pathname}?${qs}` : pathname;
-    } catch {
-      if (String(path || "").includes("?")) return `${path}&afinando=1&force=1`;
-      return `${path}?afinando=1&force=1`;
-    }
+  const primaryReason = reasons[0] || null;
+
+  let title = "Historial crediticio por revisar";
+  let subtitle =
+    "Antes de avanzar con banco, falta validar mejor tu comportamiento de pago.";
+  let chip = "Por revisar";
+  let tone = "neutral";
+  let border = "1px solid rgba(148,163,184,0.16)";
+  let background = "rgba(255,255,255,0.04)";
+
+  if (level === "healthy" || level === "low_risk") {
+    title = "Historial crediticio favorable";
+    subtitle =
+      "Tu historial declarado se ve alineado con una revisión bancaria más sólida.";
+    chip = "Favorable";
+    tone = "good";
+    border = "1px solid rgba(16,185,129,0.24)";
+    background = "rgba(16,185,129,0.08)";
   }
 
-  const { token, logout, user } = useCustomerAuth();
+  if (level === "medium_risk") {
+    title = "Historial crediticio por revisar";
+    subtitle =
+      "Tu capacidad puede verse bien, pero tu historial declarado podría requerir revisión antes de avanzar con un banco.";
+    chip = "Revisión";
+    tone = "neutral";
+    border = "1px solid rgba(245,158,11,0.24)";
+    background = "rgba(245,158,11,0.08)";
+  }
+
+  if (blocksBankSubmission || level === "high_risk") {
+    title = "Primero revisa tu perfil crediticio";
+    subtitle =
+      "Tu capacidad de pago puede verse bien, pero una alerta crediticia podría frenar la aprobación bancaria.";
+    chip = "No enviar aún";
+    tone = "neutral";
+    border = "1px solid rgba(244,63,94,0.26)";
+    background = "rgba(244,63,94,0.08)";
+  }
+
+  if (readinessStatus === "ready_financially_credit_pending") {
+    title = "Capacidad lista, historial pendiente";
+    subtitle =
+      "Financieramente te ves bien, pero falta validar tu historial crediticio antes de considerarte listo para banco.";
+    chip = "Pendiente";
+  }
+
+  return (
+    <Card style={{ marginTop: 18, background, border }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 12,
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontSize: 12,
+              color: "rgba(148,163,184,0.95)",
+              fontWeight: 950,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <ShieldCheck size={14} strokeWidth={2.4} />
+            Validación crediticia
+          </div>
+
+          <div
+            style={{
+              marginTop: 8,
+              fontSize: 18,
+              fontWeight: 980,
+              lineHeight: 1.18,
+              color: "rgba(226,232,240,0.98)",
+            }}
+          >
+            {title}
+          </div>
+
+          <div
+            style={{
+              marginTop: 8,
+              fontSize: 13,
+              lineHeight: 1.4,
+              color: "rgba(226,232,240,0.88)",
+            }}
+          >
+            {subtitle}
+          </div>
+        </div>
+
+        <Chip tone={tone}>{chip}</Chip>
+      </div>
+
+      {creditAssessment?.recommendedAction ? (
+        <InnerCard
+          style={{
+            marginTop: 12,
+            background: "rgba(2,6,23,0.18)",
+            border: "1px solid rgba(148,163,184,0.12)",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 12,
+              color: "rgba(148,163,184,0.92)",
+              fontWeight: 900,
+            }}
+          >
+            Recomendación
+          </div>
+
+          <div
+            style={{
+              marginTop: 6,
+              fontSize: 13,
+              lineHeight: 1.4,
+              color: "rgba(226,232,240,0.90)",
+            }}
+          >
+            {creditAssessment.recommendedAction}
+          </div>
+        </InnerCard>
+      ) : null}
+
+      {primaryReason ? (
+        <div
+          style={{
+            marginTop: 10,
+            padding: "10px 12px",
+            borderRadius: 12,
+            background: "rgba(2,6,23,0.16)",
+            border: "1px solid rgba(148,163,184,0.10)",
+            fontSize: 12,
+            lineHeight: 1.35,
+            color: "rgba(148,163,184,0.92)",
+          }}
+        >
+          {primaryReason}
+        </div>
+      ) : null}
+
+      <div style={{ marginTop: 12 }}>
+        <SecondaryButton onClick={onReview}>
+          Actualizar historial crediticio
+        </SecondaryButton>
+      </div>
+    </Card>
+  );
+}
+
+function LockedHomeExperience({ firstName, onStart, onUnlock }) {
+  return (
+    <>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 12,
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontSize: 13,
+              color: "rgba(148,163,184,0.95)",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <span>{firstName ? `Hola, ${firstName}` : "Hola"}</span>
+            <Sparkles
+              size={14}
+              strokeWidth={2.2}
+              style={{ opacity: 0.95, flexShrink: 0 }}
+            />
+          </div>
+
+          <div
+            style={{
+              marginTop: 6,
+              fontSize: 31,
+              letterSpacing: -1,
+              maxWidth: 330,
+              fontWeight: 980,
+              lineHeight: 1.02,
+            }}
+          >
+            Descubre si hoy ya podrías comprar vivienda
+          </div>
+
+          <div
+            style={{
+              color: "rgba(226,232,240,0.88)",
+              marginTop: 10,
+              fontSize: 14,
+              lineHeight: 1.4,
+              maxWidth: 340,
+            }}
+          >
+            En menos de 2 minutos te mostramos cuánto podrías comprar, cuánto
+            pagarías al mes y cuál podría ser tu mejor camino.
+          </div>
+        </div>
+
+        <Chip tone="neutral">
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <HomeIcon size={13} strokeWidth={2.2} />
+            Tu primer paso
+          </span>
+        </Chip>
+      </div>
+
+      <Card style={{ marginTop: 18 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: 12,
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontSize: 13,
+                color: "rgba(148,163,184,0.95)",
+                fontWeight: 900,
+              }}
+            >
+              Empieza por aquí
+            </div>
+
+            <div
+              style={{
+                marginTop: 8,
+                fontWeight: 980,
+                fontSize: 22,
+                lineHeight: 1.1,
+                color: "rgba(226,232,240,0.98)",
+                maxWidth: 340,
+              }}
+            >
+              Completa tu evaluación para ver tu resultado
+            </div>
+
+            <div
+              style={{
+                marginTop: 10,
+                fontSize: 14,
+                lineHeight: 1.45,
+                color: "rgba(148,163,184,0.95)",
+                maxWidth: 360,
+              }}
+            >
+              Todavía necesitamos tu información base para mostrarte una
+              capacidad estimada real, una cuota referencial y opciones que sí
+              hagan match contigo.
+            </div>
+          </div>
+
+          <Chip tone="good">
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <Lock size={13} strokeWidth={2.2} />
+              Resultado bloqueado
+            </span>
+          </Chip>
+        </div>
+
+        <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
+          <BenefitCard
+            icon={<Calculator size={15} />}
+            title="Capacidad estimada"
+            body="Te mostramos hasta cuánto podrías comprar hoy según tu perfil."
+          />
+          <BenefitCard
+            icon={<Compass size={15} />}
+            title="Cuota mensual referencial"
+            body="Entiende cuánto podrías pagar al mes en un escenario realista."
+          />
+          <BenefitCard
+            icon={<Building2 size={15} />}
+            title="Propiedades que sí hacen match"
+            body="Verás opciones más alineadas contigo, no inventario genérico."
+          />
+        </div>
+
+        <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
+          <PrimaryButton onClick={onStart}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              Empezar mi evaluación
+              <ArrowRight size={16} />
+            </span>
+          </PrimaryButton>
+
+          <SecondaryButton onClick={onUnlock}>
+            Explorar sin crear cuenta
+          </SecondaryButton>
+        </div>
+
+        <div
+          style={{
+            marginTop: 12,
+            fontSize: 12,
+            lineHeight: 1.4,
+            color: "rgba(148,163,184,0.86)",
+          }}
+        >
+          No necesitas documentos para empezar. Solo tu información básica.
+        </div>
+      </Card>
+
+      <Card style={{ marginTop: 18 }}>
+        <div
+          style={{
+            fontSize: 12,
+            color: "rgba(148,163,184,0.95)",
+            fontWeight: 900,
+          }}
+        >
+          En 2 minutos vas a obtener
+        </div>
+
+        <div
+          style={{
+            marginTop: 10,
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 10,
+          }}
+        >
+          <SoftMetric
+            label="Tiempo"
+            value="2 min"
+            hint="Una primera evaluación rápida."
+          />
+          <SoftMetric
+            label="Resultado"
+            value="Tu ruta"
+            hint="Capacidad, cuota y siguiente paso."
+          />
+        </div>
+
+        <div
+          style={{
+            marginTop: 12,
+            padding: 12,
+            borderRadius: 14,
+            border: "1px solid rgba(148,163,184,0.14)",
+            background: "rgba(2,6,23,0.18)",
+          }}
+        >
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              fontWeight: 900,
+              fontSize: 14,
+              color: "rgba(226,232,240,0.98)",
+              marginBottom: 8,
+            }}
+          >
+            <ShieldCheck size={15} />
+            Luego podrás guardar todo
+          </div>
+
+          <div
+            style={{
+              fontSize: 13,
+              lineHeight: 1.4,
+              color: "rgba(148,163,184,0.95)",
+            }}
+          >
+            Cuando quieras guardar tu resultado, tu ruta y retomar después, ahí
+            sí podrás entrar con tu cuenta.
+          </div>
+        </div>
+      </Card>
+    </>
+  );
+}
+
+export default function Progreso() {
+  const navigate = useNavigate();
+
+  const [raw, setRaw] = useState(null);
+  const [journey, setJourney] = useState(null);
 
   const [loading, setLoading] = useState(true);
-  const [source, setSource] = useState("unknown"); // "backend" | "local" | "none"
-  const [snap, setSnap] = useState(null);
-  const [error, setError] = useState("");
+  const [, setIsOnline] = useState(false);
+  const [, setErr] = useState("");
 
-  const [taskDone, setTaskDone] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem(LS_TASKS) || "{}");
-    } catch {
-      return {};
-    }
+  const [expandedSections, setExpandedSections] = useState({
+    blocker: false,
+    rhythm: false,
+    actionGuide: false,
   });
 
-  const [advisorOpen, setAdvisorOpen] = useState(false);
-  const [showAllTasks, setShowAllTasks] = useState(false);
-  const [amortOpen, setAmortOpen] = useState(false);
+  function toggleSection(key) {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  }
 
-  useEffect(() => {
-    localStorage.setItem(LS_TASKS, JSON.stringify(taskDone || {}));
-  }, [taskDone]);
+function go(path) {
+  navigate(mapMobilePathToWeb(path));
+}
 
-  // ✅ NAV HELPERS (IMPORTANTE): asegura que "Afinar" NUNCA caiga al formulario/quick
-  const goAfinar = (path = SIM_JOURNEY) => {
+  const snapshot = raw || null;
+
+  const targetPropertyValue =
+    toNum(snapshot?.input?.valorVivienda) ??
+    toNum(snapshot?.perfilInput?.valorVivienda) ??
+    toNum(snapshot?.__entrada?.valorVivienda) ??
+    toNum(snapshot?.inputNormalizado?.valorVivienda) ??
+    null;
+
+  const hasTargetPropertyValue =
+    targetPropertyValue != null && targetPropertyValue > 0;
+
+  const snapshotEngine = snapshot?.engine || snapshot?.output?.engine || null;
+
+  const canonicalBestMortgage =
+    snapshot?.bestMortgage ?? snapshot?.output?.bestMortgage ?? null;
+
+  const financialCapacity =
+    snapshot?.financialCapacity ?? snapshot?.output?.financialCapacity ?? null;
+
+  const hasImmediateViableMortgage =
+    financialCapacity?.hasImmediateViableMortgage === true ||
+    canonicalBestMortgage?.viable === true;
+
+  const estimatedMaxPropertyValue =
+    toNum(financialCapacity?.estimatedMaxPropertyValue) ??
+    toNum(canonicalBestMortgage?.precioMaxVivienda) ??
+    toNum(pickMatcherFirst(snapshot, ["precioMaxVivienda", "propertyPrice"])) ??
+    null;
+
+  const estimatedMaxLoanAmount =
+    toNum(financialCapacity?.estimatedMaxLoanAmount) ??
+    toNum(canonicalBestMortgage?.montoPrestamo) ??
+    toNum(pickMatcherFirst(snapshot, ["montoMaximo", "loanAmount"])) ??
+    null;
+
+  const estimatedMonthlyPayment =
+    toNum(financialCapacity?.estimatedMonthlyPayment) ??
+    toNum(canonicalBestMortgage?.cuota) ??
+    toNum(pickMatcherFirst(snapshot, ["cuotaEstimada", "monthlyPayment"])) ??
+    null;
+
+  const estimatedAnnualRate =
+    toNum(financialCapacity?.estimatedAnnualRate) ??
+    toNum(canonicalBestMortgage?.annualRate) ??
+    toNum(pickMatcherFirst(snapshot, ["tasaAnual", "annualRate"])) ??
+    null;
+
+  const limitingFactor =
+    financialCapacity?.limitingFactor ||
+    canonicalBestMortgage?.factorLimitante ||
+    null;
+
+  const homeRecommendation =
+    snapshot?.homeRecommendation ?? snapshot?.output?.homeRecommendation ?? null;
+
+  const homeActionHints = Array.isArray(homeRecommendation?.actionHints)
+    ? homeRecommendation.actionHints
+    : [];
+
+  const creditAssessment =
+    snapshot?.creditAssessment ??
+    snapshot?.output?.creditAssessment ??
+    homeRecommendation?.creditAssessment ??
+    null;
+
+  const creditWarnings =
+    snapshot?.creditWarnings ?? snapshot?.output?.creditWarnings ?? null;
+
+  const readinessStatus =
+    snapshot?.readinessStatus ??
+    snapshot?.output?.readinessStatus ??
+    homeRecommendation?.readinessStatus ??
+    null;
+
+  const effectiveCreditAssessment =
+    creditAssessment ||
+    (creditWarnings
+      ? {
+          level: creditWarnings?.level || "unknown",
+          label: creditWarnings?.label || "Validación crediticia pendiente",
+          blocksBankSubmission:
+            creditWarnings?.blocksBankSubmission === true,
+          reasons: creditWarnings?.reasons || [],
+          recommendedAction: creditWarnings?.recommendedAction || null,
+        }
+      : null);
+
+  const realityCheck = homeRecommendation?.realityCheck || null;
+  const goalSummary = homeRecommendation?.goalSummary || null;
+
+  const probabilityRaw =
+    pickMatcherFirst(snapshot, ["probabilidad"]) ??
+    canonicalBestMortgage?.probabilidad ??
+    summarizeProfile(snapshot)?.probability ??
+    null;
+
+  const summary = useMemo(() => {
+    const base = summarizeProfile(snapshot) || {};
+
+    const unlocked = hasCompletedEvaluation(snapshot);
+
+    const score =
+      snapshot?.score ??
+      snapshot?.output?.score ??
+      canonicalBestMortgage?.score ??
+      base?.score ??
+      null;
+
+    const probability =
+      snapshot?.probabilidad ??
+      snapshot?.output?.probabilidad ??
+      canonicalBestMortgage?.probabilidad ??
+      base?.probability ??
+      null;
+
+    return {
+      ...base,
+      unlocked,
+      score,
+      probability,
+      progress: base?.progress ?? 0,
+    };
+  }, [snapshot, financialCapacity, estimatedMaxPropertyValue, canonicalBestMortgage]);
+
+  const shouldShowCreditValidation =
+    summary?.unlocked && !!effectiveCreditAssessment && !!readinessStatus;
+
+  const hasCreditBlocker =
+    readinessStatus === "credit_repair_needed" ||
+    effectiveCreditAssessment?.blocksBankSubmission === true;
+
+  const plan = useMemo(() => {
     try {
-      localStorage.setItem("hl_entry_mode", "journey");
-    } catch {}
-
-    // ✅ fuerza “reset” en el wizard/journey
-    const target = withAfinando(path);
-
-    nav(target);
-  };
-
-  const goQuick = () => {
-    try {
-      localStorage.setItem("hl_entry_mode", "quick");
-    } catch {}
-    nav("/precalificar?mode=quick");
-  };
-
-  // ✅ Regla: Progreso es SOLO Journey (requiere login)
-  useEffect(() => {
-    if (!token) {
-      nav("/login", { replace: true, state: { returnTo: "/progreso", from: "progreso" } });
+      return buildPlan({ journey, snapshot });
+    } catch (e) {
+      console.error("[HL] buildPlan error:", e);
+      return null;
     }
-  }, [token, nav]);
+  }, [journey, snapshot]);
+
+  const entryTrajectory = plan?.entryTrajectory || null;
+
+  async function checkBackend() {
+    setLoading(true);
+    setErr("");
+
+    try {
+      await withTimeout(
+        apiGet("/api/precalificar/ping"),
+        12000,
+        "El servidor está despertando (ping timeout)."
+      );
+      setIsOnline(true);
+    } catch (e) {
+      setIsOnline(false);
+      const msg = e?.message || "No se pudo conectar con el servidor";
+      setErr(msg);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function syncLatestSnapshotFromBackend() {
+    try {
+      const t = getCustomerToken();
+
+      if (!t) {
+        clearLocalScenarioState();
+        setRaw(null);
+        return;
+      }
+
+      const res = await fetchLatestSnapshot();
+      const snap = res?.snapshot ?? null;
+
+      if (!snapshotLooksValid(snap)) {
+        return;
+      }
+
+      const ownerEmail = getStorageOwnerEmail();
+
+      setRaw(snap);
+      saveJSON(LS_SNAPSHOT, {
+        ownerEmail,
+        data: snap,
+      });
+    } catch (e) {
+      console.warn("[HL] fetchLatestSnapshot failed:", e?.message || e);
+    }
+  }
 
   useEffect(() => {
     let alive = true;
 
-    async function load() {
-      setLoading(true);
-      setError("");
+    (async () => {
+      await checkBackend();
+
+      if (!alive) return;
+
+      const token = getCustomerToken();
 
       if (!token) {
-        setSnap(null);
-        setSource("none");
-        setLoading(false);
+        clearLocalScenarioState();
+        setRaw(null);
+        setJourney(null);
         return;
       }
 
-      try {
-        // 1) Validar sesión y obtener email real
-        const meRes = await fetch(`${API_BASE}/api/customer-auth/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+      const currentOwnerEmail = getStorageOwnerEmail();
 
-        if (meRes.status === 401) {
-          logout();
-          nav("/login", { replace: true, state: { returnTo: "/progreso", from: "progreso" } });
-          return;
-        }
-        if (!meRes.ok) throw new Error(`Error sesión (${meRes.status})`);
+      const snapEnvelope = loadJSON(LS_SNAPSHOT);
+      const journeyEnvelope = loadJSON(LS_JOURNEY);
 
-        const meJson = await meRes.json().catch(() => null);
+      const snap =
+        snapEnvelope?.ownerEmail && snapEnvelope.ownerEmail === currentOwnerEmail
+          ? snapEnvelope.data
+          : null;
 
-        const meEmail =
-          meJson?.email ||
-          meJson?.customer?.email ||
-          meJson?.user?.email ||
-          meJson?.data?.email ||
-          user?.email ||
-          "";
+      const j =
+        journeyEnvelope?.ownerEmail &&
+        journeyEnvelope.ownerEmail === currentOwnerEmail
+          ? journeyEnvelope.data
+          : null;
 
-        const meEmailNorm = normalizeEmail(meEmail);
-
-        // 2) Cargar lead del journey (backend)
-        const leadRes = await fetch(`${API_BASE}/api/customer/leads/mine`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (leadRes.status === 401) {
-          logout();
-          nav("/login", { replace: true, state: { returnTo: "/progreso", from: "progreso" } });
-          return;
-        }
-
-        if (leadRes.status === 404) {
-          // ✅ No hay lead: NO mostrar datos viejos
-          try {
-            clearJourneyLocal?.();
-          } catch {}
-          if (!alive) return;
-          setSnap(null);
-          setSource("none");
-          setLoading(false);
-          return;
-        }
-
-        if (!leadRes.ok) throw new Error(`No se pudo cargar lead (${leadRes.status})`);
-
-        const leadData = await leadRes.json().catch(() => null);
-        const lead = leadData?.lead || leadData?.data || leadData;
-
-        // algunos backends guardan entrada dentro de lead.entrada.entrada
-        const entradaObj =
-          lead?.entrada &&
-          typeof lead.entrada === "object" &&
-          lead.entrada.entrada &&
-          typeof lead.entrada.entrada === "object"
-            ? lead.entrada.entrada
-            : lead?.entrada || {};
-
-        const mergedInput = mergePreferValues(
-          lead?.input && typeof lead.input === "object" ? lead.input : {},
-          lead?.metadata?.input && typeof lead.metadata.input === "object" ? lead.metadata.input : {},
-          entradaObj && typeof entradaObj === "object" ? entradaObj : {}
-        );
-
-        const backendResult =
-          lead?.resultado ||
-          lead?.resultadoNormalizado ||
-          lead?.resultadoSimulacion ||
-          lead?.result ||
-          lead?.resultadoV1 ||
-          lead?.entrada?.resultado ||
-          {};
-
-        const hasBackendResult = backendResult && Object.keys(backendResult || {}).length > 0;
-
-        if (!hasBackendResult) {
-          if (!alive) return;
-          setSnap(null);
-          setSource("none");
-          setLoading(false);
-          return;
-        }
-
-        // ✅ SOLO AQUÍ sellamos owner + ts (porque ya hay lead real)
-        if (meEmailNorm) {
-          try {
-            localStorage.setItem(LS_JOURNEY_OWNER_EMAIL, meEmailNorm);
-            localStorage.setItem(LS_JOURNEY_TS, String(Date.now()));
-          } catch {}
-        }
-
-        // ✅ backendSnap “sellado”
-        const backendSnap = {
-          input: mergedInput,
-          resultado: backendResult,
-          userEmail: meEmailNorm || "",
-          ts: Date.now(),
-        };
-
-        if (!alive) return;
-        setSnap(backendSnap);
-        setSource("backend");
-      } catch (e) {
-        // 3) Fallback local SOLO si:
-        // - tenemos email real de SESIÓN (no usamos owner LS como sustituto)
-        const localSnap = readJourneyLocal?.() || null;
-
-        if (!alive) return;
-
-        const currentEmail = normalizeEmail(user?.email); // ✅ solo sesión real
-
-        if (currentEmail && shouldUseLocalFallback(localSnap, currentEmail)) {
-          setSnap(localSnap);
-          setSource("local");
-          setError("No pudimos cargar tu progreso sincronizado. Mostrando tu guardado local (de tu cuenta) por ahora.");
-        } else {
-          try {
-            clearJourneyLocal?.();
-          } catch {}
-
-          setSnap(null);
-          setSource("none");
-          setError(e?.message || "No se pudo cargar tu progreso");
-        }
-      } finally {
-        if (!alive) return;
-        setLoading(false);
+      if (snapshotLooksValid(snap)) {
+        setRaw(snap);
+      } else {
+        setRaw(null);
       }
-    }
 
-    load();
+      setJourney(j || null);
+
+      await syncLatestSnapshotFromBackend();
+    })();
+
     return () => {
       alive = false;
     };
-  }, [token, logout, nav, user?.email]);
+  }, []);
 
-  const data = useMemo(() => buildDataFromSnap(snap), [snap]);
-  const sourceLabel = source === "backend" ? "Sincronizado" : source === "local" ? "Guardado local" : "—";
+  useEffect(() => {
+    if (!snapshot) return;
 
-  const suggestedTasks = useMemo(() => (data.hasSnap ? buildSuggestedTasks(data, SIM_JOURNEY) : []), [data, SIM_JOURNEY]);
-  const completedCount = suggestedTasks.reduce((acc, t) => acc + (taskDone?.[t.id] ? 1 : 0), 0);
+    console.log("[HOME] snapshotEngine:", snapshotEngine);
+    console.log("[HOME] canonicalBestMortgage:", canonicalBestMortgage);
+    console.log("[HOME] financialCapacity:", financialCapacity);
+    console.log("[HOME] homeRecommendation:", homeRecommendation);
+    console.log("[HOME] creditAssessment:", effectiveCreditAssessment);
+    console.log("[HOME] readinessStatus:", readinessStatus);
+    console.log("[HOME] plan:", plan);
+  }, [
+    snapshot,
+    snapshotEngine,
+    canonicalBestMortgage,
+    financialCapacity,
+    homeRecommendation,
+    effectiveCreditAssessment,
+    readinessStatus,
+    plan,
+  ]);
 
-  const displayName = useMemo(() => {
-    const raw =
-      user?.firstName ||
-      user?.nombre ||
-      user?.name ||
-      user?.fullName ||
-      user?.displayName ||
-      safeNameFromEmail(user?.email) ||
-      "👋";
-    return String(raw || "").trim();
-  }, [user]);
+  const prob = useMemo(() => {
+    const normal = normalizeProbability(probabilityRaw);
 
-  const greeting = displayName === "👋" ? "Hola" : `Hola, ${displayName}`;
+    if ((normal?.pct == null || normal?.pct === 0) && summary?.unlocked) {
+      const fb = scoreToPctFallback(summary?.score);
+      if (fb != null) return { label: `${Math.round(fb)}%`, pct: fb };
+    }
 
-  const waMessage = useMemo(() => {
-    const parts = [];
-    parts.push("Hola HabitaLibre, quiero ayuda con mi precalificación.");
-    if (user?.email) parts.push(`Mi correo: ${user.email}`);
-    if (data?.precioMaxVivienda != null) parts.push(`Precio máximo estimado: ${fmtMoney(data.precioMaxVivienda)}`);
-    if (data?.cuotaEstimada != null) parts.push(`Cuota estimada: ${fmtMoney(data.cuotaEstimada)}/mes`);
-    if (data?.suggestedCredit) parts.push(`Crédito sugerido: ${data.suggestedCredit}`);
-    if (data?.probAprobacion != null) parts.push(`Probabilidad estimada hoy: ${data.probAprobacion}%`);
-    parts.push("¿Me pueden orientar con los siguientes pasos?");
-    return encodeURIComponent(parts.join("\n"));
-  }, [user?.email, data?.precioMaxVivienda, data?.cuotaEstimada, data?.suggestedCredit, data?.probAprobacion]);
+    return normal;
+  }, [probabilityRaw, summary?.unlocked, summary?.score]);
 
-  const WHATSAPP_NUMBER = "593985476936"; // 👈 cambia esto
-  const waHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${waMessage}`;
+  const isGoalAboveCapacity =
+    hasTargetPropertyValue &&
+    homeRecommendation?.type === "goal_above_capacity";
 
-  const docChecklist = useMemo(() => (data.hasSnap ? buildDocumentChecklist(data) : []), [data]);
+  const isImmediateRoute =
+    homeRecommendation?.type === "immediate_viable" && !hasCreditBlocker;
 
-  const topTasks = useMemo(() => {
-    const weight = (x) => (x.impact === "alto" ? 3 : x.impact === "medio" ? 2 : 1);
-    const sorted = [...suggestedTasks].sort((a, b) => weight(b) - weight(a));
-    return sorted.slice(0, 3);
-  }, [suggestedTasks]);
+  const heroAnim = useFadeIn(40);
 
-  const tasksToRender = showAllTasks ? suggestedTasks : topTasks;
+  const firstName = useMemo(() => {
+    const customer = getCustomer?.() || {};
+    const nombre =
+      journey?.form?.nombre ||
+      journey?.nombre ||
+      customer?.nombre ||
+      customer?.name ||
+      "";
 
-  const goJourney = () => {
-    try {
-      localStorage.setItem("hl_entry_mode", "journey");
-    } catch {}
-    nav(SIM_JOURNEY);
-  };
+    return String(nombre).trim().split(" ")[0] || "";
+  }, [journey]);
 
-  if (loading) {
-    return (
-      <PremiumBg>
-        <div className="mx-auto max-w-[1100px] px-5 sm:px-6 py-10">
-          <div className="rounded-3xl border border-slate-800/70 bg-slate-900/50 p-6">
-            <h1 className="text-xl font-semibold">Camino hacia tu aprobación</h1>
-            <p className="mt-2 text-sm text-slate-400">Cargando tu información…</p>
+  const primaryHeadlineValue = useMemo(() => {
+    if (isGoalAboveCapacity) {
+      const min = toNum(realityCheck?.recommendedSearchMin);
+      const max = toNum(realityCheck?.recommendedSearchMax);
+
+      if (min != null && max != null) {
+        return `${moneySafe(min)} – ${moneySafe(max)}`;
+      }
+
+      if (max != null) {
+        return moneySafe(max);
+      }
+    }
+
+    return moneySafe(
+      realityCheck?.currentMaxPropertyValue ?? estimatedMaxPropertyValue
+    );
+  }, [isGoalAboveCapacity, realityCheck, estimatedMaxPropertyValue]);
+
+  const primaryHeadlineLabel = isGoalAboveCapacity
+    ? "Rango recomendado hoy"
+    : "Capacidad financiera estimada";
+
+  const primaryHeadlineHelp = isGoalAboveCapacity
+    ? "Este es el rango donde tu perfil tiene mayor probabilidad de aprobación hoy."
+    : hasCreditBlocker
+    ? "Tu capacidad financiera existe, pero tu historial crediticio declarado debe revisarse antes de considerar una solicitud bancaria."
+    : hasImmediateViableMortgage
+    ? `Tu perfil ya tiene una ruta hipotecaria viable hoy${
+        canonicalBestMortgage?.label ? ` con ${canonicalBestMortgage.label}` : ""
+      }.`
+    : "Este valor resume el rango de vivienda al que hoy podrías apuntar con tu perfil actual.";
+
+  const currentEntryAmount =
+    toNum(journey?.form?.entradaDisponible) ??
+    toNum(journey?.entradaDisponible) ??
+    toNum(snapshot?.input?.entradaDisponible) ??
+    toNum(snapshot?.perfilInput?.entradaDisponible) ??
+    toNum(snapshot?.__entrada?.entradaDisponible) ??
+    toNum(snapshot?.inputNormalizado?.entradaDisponible) ??
+    toNum(snapshot?.entradaDisponible) ??
+    toNum(pickLegacyCompatible(snapshot, ["entradaDisponible"])) ??
+    0;
+
+  const homePrimaryBlocker = hasCreditBlocker
+    ? "historial_crediticio"
+    : homeRecommendation?.blockers?.primary || limitingFactor || null;
+
+  const blockerExplanationTitle = useMemo(() => {
+    if (!summary?.unlocked) return null;
+
+    if (homePrimaryBlocker === "historial_crediticio") {
+      return "Qué podría frenar la aprobación bancaria";
+    }
+
+    if (homePrimaryBlocker === "entrada") {
+      return "Qué está frenando tu capacidad hoy";
+    }
+
+    if (homePrimaryBlocker === "cuota") {
+      return "Qué está frenando tu capacidad hoy";
+    }
+
+    if (homePrimaryBlocker === "programa") {
+      return "Qué está frenando tu capacidad hoy";
+    }
+
+    return null;
+  }, [summary?.unlocked, homePrimaryBlocker]);
+
+  const blockerExplanationBody = useMemo(() => {
+    if (!summary?.unlocked) return null;
+
+    if (homePrimaryBlocker === "historial_crediticio") {
+      return "Tus números pueden mostrar capacidad de compra, pero una alerta crediticia declarada puede hacer que un banco no apruebe la solicitud hasta revisar o regularizar ese punto.";
+    }
+
+    if (homePrimaryBlocker === "entrada") {
+      return `Tu ingreso sí tiene potencial, pero con una entrada disponible de ${moneySafe(
+        currentEntryAmount
+      )} hoy tu rango más realista baja a ${primaryHeadlineValue}.`;
+    }
+
+    if (homePrimaryBlocker === "cuota") {
+      return "Tu ingreso sí tiene base, pero hoy la cuota que el sistema considera sana todavía limita el rango al que podrías apuntar con más probabilidad de aprobación.";
+    }
+
+    if (homePrimaryBlocker === "programa") {
+      return "Hoy no solo influye tu perfil financiero. También te limita el tipo de programa o segmento de vivienda al que estás apuntando.";
+    }
+
+    return null;
+  }, [
+    summary?.unlocked,
+    homePrimaryBlocker,
+    currentEntryAmount,
+    primaryHeadlineValue,
+  ]);
+
+  const bestNext = useMemo(() => {
+    if (!summary?.unlocked) {
+      return {
+        title: "Descubre si hoy ya podrías comprar casa",
+        subtitle:
+          "Te toma menos de 2 minutos. Te mostramos cuánto podrías comprar, cuánto pagarías al mes y cuál podría ser tu mejor camino.",
+        cta: "Ver mi resultado",
+        to: "/journey/full",
+      };
+    }
+
+    if (hasCreditBlocker) {
+      return {
+        title: "Siguiente paso: revisar tu historial crediticio",
+        subtitle:
+          "Tu capacidad financiera puede verse bien. Antes de enviar tu caso a banco, conviene revisar o regularizar el punto crediticio.",
+        cta: "Actualizar historial crediticio",
+        to: "/journey/full",
+      };
+    }
+
+    if (hasTargetPropertyValue && homeRecommendation) {
+      return {
+        title: homeRecommendation?.title || "Tu mejor siguiente paso",
+        subtitle:
+          homeRecommendation?.subtitle ||
+          "Ya tenemos una recomendación base para seguir avanzando.",
+        cta: homeRecommendation?.cta?.label || "Continuar",
+        to: homeRecommendation?.cta?.path || "/marketplace",
+      };
+    }
+
+    if (hasImmediateViableMortgage) {
+      return {
+        title: "Hoy ya tienes una ruta hipotecaria clara",
+        subtitle:
+          "Tu perfil sí muestra una opción de crédito viable hoy. Ahora lo más útil es revisar propiedades que encajen con esa capacidad.",
+        cta: "Ver propiedades compatibles",
+        to: "/marketplace",
+      };
+    }
+
+    if (toNum(estimatedMaxPropertyValue) > 0) {
+      return {
+        title: "Esto es lo que hoy sí podrías comprar",
+        subtitle: `Con tu perfil actual, hoy podrías apuntar aproximadamente a viviendas de hasta ${moneySafe(
+          estimatedMaxPropertyValue
+        )} con una cuota cercana a ${moneySafe(estimatedMonthlyPayment)}.`,
+        cta: "Ver propiedades compatibles",
+        to: "/marketplace",
+      };
+    }
+
+    return {
+      title: "Todavía no vemos una ruta clara",
+      subtitle:
+        "Con los datos actuales, todavía no aparece una opción de crédito sólida. Ajustar ingreso, ahorro inicial o valor de vivienda puede mejorar tu resultado.",
+      cta: "Ajustar mi escenario",
+      to: "/journey/full",
+    };
+  }, [
+    summary?.unlocked,
+    hasCreditBlocker,
+    homeRecommendation,
+    hasTargetPropertyValue,
+    hasImmediateViableMortgage,
+    estimatedMaxPropertyValue,
+    estimatedMonthlyPayment,
+  ]);
+
+  const heroHint = hasCreditBlocker
+    ? "Tu capacidad financiera puede verse bien, pero tu historial crediticio declarado podría frenar una aprobación bancaria. Antes de avanzar con banco, conviene revisar o regularizar este punto."
+    : homeRecommendation?.mainMessage && hasTargetPropertyValue
+    ? homeRecommendation.mainMessage
+    : hasImmediateViableMortgage
+    ? `Hoy sí vemos una ruta hipotecaria viable. Tu capacidad estimada llega alrededor de ${moneySafe(
+        estimatedMaxPropertyValue
+      )} con una cuota aproximada de ${moneySafe(estimatedMonthlyPayment)}.`
+    : toNum(estimatedMaxPropertyValue) > 0
+    ? `Con tu perfil actual, hoy podrías apuntar aproximadamente a viviendas de hasta ${moneySafe(
+        estimatedMaxPropertyValue
+      )}, con una cuota referencial cercana a ${moneySafe(
+        estimatedMonthlyPayment
+      )}.`
+    : "Con los datos actuales, todavía no aparece una opción de crédito viable. Ajustar ingreso, ahorro inicial o valor de vivienda puede mejorar tu resultado.";
+
+  const mainInsightItems = useMemo(() => {
+    const items = [];
+
+    if (estimatedMonthlyPayment != null) {
+      items.push({
+        id: "cuota",
+        label: COPY.quotaInsightLabel,
+        value: moneySafe(estimatedMonthlyPayment),
+        hint: COPY.quotaInsightHint,
+      });
+    }
+
+    if (!isGoalAboveCapacity && estimatedAnnualRate != null) {
+      items.push({
+        id: "tasa",
+        label: COPY.rateInsightLabel,
+        value: safePctFromRate(estimatedAnnualRate),
+        hint: COPY.rateInsightHint,
+      });
+    }
+
+    if (!isGoalAboveCapacity && estimatedMaxLoanAmount != null) {
+      items.push({
+        id: "monto",
+        label: COPY.amountInsightLabel,
+        value: moneySafe(estimatedMaxLoanAmount),
+        hint: COPY.amountInsightHint,
+      });
+    }
+
+    if (limitingFactor && !hasCreditBlocker) {
+      items.push({
+        id: "limitante",
+        label: COPY.limitInsightLabel,
+        value: normalizeLimitingFactor(limitingFactor),
+        hint: COPY.limitInsightHint,
+      });
+    }
+
+    return items.slice(0, 4);
+  }, [
+    estimatedMonthlyPayment,
+    estimatedAnnualRate,
+    estimatedMaxLoanAmount,
+    limitingFactor,
+    isGoalAboveCapacity,
+    hasCreditBlocker,
+  ]);
+
+  const showConnecting = loading && !snapshot;
+  const isLockedHome = !summary?.unlocked;
+
+if (isLockedHome) {
+  return (
+    <HabitaShell maxWidth={760}>
+      <div style={{ paddingBottom: 24 }}>
+        <LockedHomeExperience
+          firstName={firstName}
+          onStart={() => go("/journey/full")}
+          onUnlock={() => go("/unlock")}
+        />
+      </div>
+    </HabitaShell>
+  );
+}
+
+return (
+  <HabitaShell maxWidth={760}>
+    <div style={{ paddingBottom: 24 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 12,
+          ...heroAnim,
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontSize: 13,
+              color: "rgba(148,163,184,0.95)",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <span>{firstName ? `Hola, ${firstName}` : "Hola"}</span>
+            <Sparkles
+              size={14}
+              strokeWidth={2.2}
+              style={{ opacity: 0.95, flexShrink: 0 }}
+            />
+          </div>
+
+          <div
+            style={{
+              marginTop: 6,
+              fontSize: 31,
+              letterSpacing: -1,
+              maxWidth: 320,
+              fontWeight: 980,
+              lineHeight: 1.02,
+            }}
+          >
+            Tu avance para comprar vivienda
+          </div>
+
+          <div
+            style={{
+              color: "rgba(226,232,240,0.88)",
+              marginTop: 10,
+              fontSize: 14,
+              lineHeight: 1.4,
+              maxWidth: 330,
+            }}
+          >
+            {COPY.appSubtitle}
           </div>
         </div>
-      </PremiumBg>
-    );
-  }
 
-  // ✅ EMPTY STATE
-  if (!data?.hasSnap) {
-    return (
-      <PremiumBg>
-        <header className="sticky top-0 z-50 border-b border-slate-800/60 bg-slate-950/70 backdrop-blur-xl">
-          <div className="mx-auto max-w-[1100px] px-5 sm:px-6 py-4 flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-3">
-              <div
-                className="h-11 w-11 rounded-2xl bg-slate-900/90 border border-emerald-400/60
-                           shadow-[0_0_25px_rgba(16,185,129,0.35)]
-                           flex items-center justify-center overflow-hidden"
+        <Chip tone="neutral">
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <HomeIcon size={13} strokeWidth={2.2} />
+            Camino a Casa
+          </span>
+        </Chip>
+      </div>
+
+      {showConnecting ? (
+        <div
+          style={{
+            marginTop: 18,
+            color: "rgba(148,163,184,0.95)",
+            fontSize: 13,
+          }}
+        >
+          {COPY.connecting}
+        </div>
+      ) : null}
+
+      <div style={visibleInViewStyle}>
+        <Card style={{ marginTop: 18 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 12,
+            }}
+          >
+            <div style={{ fontSize: 13, color: "rgba(148,163,184,0.95)" }}>
+              Tu capacidad hoy
+            </div>
+
+            <Chip tone={hasCreditBlocker ? "neutral" : "good"}>
+              <span
+                style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
               >
-                <img src={HIcon} alt="HabitaLibre" className="h-7 w-7 object-contain" />
-              </div>
-              <div className="leading-tight">
-                <div className="font-bold text-lg text-white tracking-tight">HabitaLibre</div>
-                <div className="text-[11px] text-emerald-300/90">Camino hacia tu aprobación</div>
-              </div>
-            </Link>
-
-            <div className="flex items-center gap-2">
-              <span className="hidden sm:inline rounded-full bg-slate-900/70 px-3 py-1 text-[11px] text-slate-300 ring-1 ring-slate-700/70">
-                {sourceLabel}
+                <CheckCircle2 size={13} strokeWidth={2.4} />
+                {hasCreditBlocker ? "En revisión" : COPY.scoreReady}
               </span>
-
-              <button
-                type="button"
-                onClick={() => {
-                  logout();
-                  nav("/login", { replace: true });
-                }}
-                className="rounded-full border border-slate-700 px-4 py-2 text-xs text-slate-200 hover:border-slate-600"
-              >
-                Cerrar sesión
-              </button>
-            </div>
+            </Chip>
           </div>
-        </header>
 
-        <div className="mx-auto max-w-[1100px] px-5 sm:px-6 py-8">
-          {error ? (
-            <div className="mb-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">
-              {error}
-            </div>
-          ) : null}
-
-          <div className="rounded-3xl border border-slate-800/70 bg-slate-950/40 shadow-[0_20px_80px_-40px_rgba(0,0,0,0.8)]">
-            <div className="p-6 sm:p-8">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-sm text-slate-400">Tu tablero personal</div>
-                  <h1 className="mt-1 text-2xl sm:text-3xl font-semibold tracking-tight text-slate-50">
-                    Tu Camino HabitaLibre comienza aquí
-                  </h1>
-                  <p className="mt-2 text-sm sm:text-base text-slate-300 max-w-2xl">
-                    En menos de 2 minutos analizamos tu perfil y te damos un plan claro para aumentar tu probabilidad de aprobación.
-                  </p>
-                  {user?.email ? <p className="mt-2 text-[12px] text-slate-500">Sesión: {user.email}</p> : null}
-                </div>
-
-                <span className="shrink-0 rounded-full border border-slate-700/70 bg-slate-900/60 px-3 py-1 text-[11px] text-slate-300">
-                  Nuevo
-                </span>
+          <div
+            style={{
+              marginTop: 12,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 14,
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 42, fontWeight: 980, letterSpacing: -1 }}>
+                {moneySafe(estimatedMaxPropertyValue)}
               </div>
 
-              <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  { t: "Probabilidad real", d: "Un estimado claro según tu perfil." },
-                  { t: "Ruta óptima", d: "VIS / VIP / BIESS / banca privada." },
-                  { t: "Plan 30-60-90", d: "Acciones concretas para mejorar." },
-                  { t: "Progreso guardado", d: "Vuelves cuando quieras sin empezar de cero." },
-                ].map((x) => (
-                  <div key={x.t} className="rounded-2xl border border-slate-800/70 bg-slate-900/30 px-4 py-3">
-                    <div className="text-sm font-semibold text-slate-100">{x.t}</div>
-                    <div className="mt-0.5 text-[12px] text-slate-400">{x.d}</div>
+              <div
+                style={{
+                  marginTop: 6,
+                  color: "rgba(148,163,184,0.95)",
+                  fontSize: 13,
+                  lineHeight: 1.35,
+                  maxWidth: 250,
+                }}
+              >
+                {hasCreditBlocker
+                  ? "Capacidad financiera referencial. Historial crediticio por revisar."
+                  : "Hasta aquí podría llegar tu compra con tu perfil actual."}
+              </div>
+            </div>
+
+            <Chip
+              tone={
+                hasCreditBlocker
+                  ? "neutral"
+                  : hasImmediateViableMortgage
+                  ? "good"
+                  : "neutral"
+              }
+            >
+              {hasCreditBlocker
+                ? "Historial por revisar"
+                : hasImmediateViableMortgage
+                ? "Ruta viable hoy"
+                : "Perfil en construcción"}
+            </Chip>
+          </div>
+
+          <ProbabilityBar
+            valuePct={isGoalAboveCapacity ? null : prob?.pct}
+            valueText={
+              isGoalAboveCapacity ? "Baja" : hasCreditBlocker ? "En revisión" : null
+            }
+            hint={heroHint}
+          />
+
+          {homeActionHints.length > 0 && !hasCreditBlocker ? (
+            <AccordionSection
+              title="Qué te conviene hacer ahora"
+              subtitle="Te mostramos solo el siguiente mejor movimiento para avanzar."
+              open={expandedSections.actionGuide}
+              onToggle={() => toggleSection("actionGuide")}
+              style={{
+                background: isImmediateRoute
+                  ? "rgba(16,185,129,0.10)"
+                  : "rgba(37,211,166,0.08)",
+                border: isImmediateRoute
+                  ? "1px solid rgba(16,185,129,0.22)"
+                  : "1px solid rgba(37,211,166,0.20)",
+              }}
+            >
+              <div style={{ display: "grid", gap: 8 }}>
+                {homeActionHints.slice(0, 3).map((hint, idx) => (
+                  <div
+                    key={`${hint}-${idx}`}
+                    style={{
+                      fontSize: 13,
+                      lineHeight: 1.35,
+                      color: "rgba(226,232,240,0.88)",
+                      padding: "10px 12px",
+                      borderRadius: 12,
+                      background: "rgba(2,6,23,0.18)",
+                      border: "1px solid rgba(148,163,184,0.12)",
+                    }}
+                  >
+                    {idx + 1}. {hint}
                   </div>
                 ))}
               </div>
 
-              <div className="mt-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-[12px] text-emerald-100">Completa tu Camino y desbloquea tu checklist + plan personalizado.</div>
-                  <div className="flex items-center gap-1">
-                    {[0, 1, 2, 3].map((i) => (
-                      <span
-                        key={i}
-                        className={[
-                          "h-2.5 w-2.5 rounded-full border",
-                          i === 0 ? "bg-emerald-400 border-emerald-300" : "bg-transparent border-emerald-500/30",
-                        ].join(" ")}
-                      />
-                    ))}
-                    <span className="ml-2 text-[11px] text-emerald-200/80">0/4</span>
-                  </div>
-                </div>
+              <div style={{ marginTop: 12 }}>
+                <SecondaryButton onClick={() => go(bestNext.to)}>
+                  {isGoalAboveCapacity ? "Ver propiedades en mi rango" : bestNext.cta}
+                </SecondaryButton>
               </div>
-
-              <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                <button
-                  type="button"
-                  onClick={goJourney}
-                  className="rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-950 hover:opacity-95 active:scale-[0.99] transition"
-                >
-                  Iniciar mi Camino →
-                  <span className="block text-[11px] font-medium opacity-80">guarda tu progreso y tu plan</span>
-                </button>
-
-                <div className="sm:ml-auto text-[11px] text-slate-500 leading-relaxed">
-                  HabitaLibre no es un banco. Te ayudamos a prepararte para que el banco te diga que sí.
-                </div>
-              </div>
-
-              {/* Mantengo goQuick si luego quieres usarlo en UI */}
-              {/* <button onClick={goQuick}>Modo quick</button> */}
-            </div>
-          </div>
-
-          <div className="mt-4 flex items-center justify-between">
-            <button
-              type="button"
-              className="text-[11px] text-slate-400 hover:text-slate-200 underline"
-              onClick={() => {
-                clearJourneyLocal?.();
-                localStorage.removeItem(LS_TASKS);
-                try {
-                  localStorage.removeItem(LS_JOURNEY_OWNER_EMAIL);
-                  localStorage.removeItem(LS_JOURNEY_TS);
-                } catch {}
-              }}
-            >
-              Borrar progreso local
-            </button>
-            <span className="text-[11px] text-slate-600">Tip: completa el Journey para ver tu tablero.</span>
-          </div>
-        </div>
-      </PremiumBg>
-    );
-  }
-
-  return (
-    <PremiumBg>
-      <header className="sticky top-0 z-50 border-b border-slate-800/60 bg-slate-950/70 backdrop-blur-xl">
-        <div className="mx-auto max-w-[1100px] px-5 sm:px-6 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
-            <div
-              className="h-11 w-11 rounded-2xl bg-slate-900/90 border border-emerald-400/60
-                         shadow-[0_0_25px_rgba(16,185,129,0.35)]
-                         flex items-center justify-center overflow-hidden"
-            >
-              <img src={HIcon} alt="HabitaLibre" className="h-7 w-7 object-contain" />
-            </div>
-            <div className="leading-tight">
-              <div className="font-bold text-lg text-white tracking-tight">HabitaLibre</div>
-              <div className="text-[11px] text-emerald-300/90">Camino hacia tu aprobación</div>
-            </div>
-          </Link>
-
-          <div className="flex items-center gap-2">
-            <span className="hidden sm:inline rounded-full bg-slate-900/70 px-3 py-1 text-[11px] text-slate-300 ring-1 ring-slate-700/70">
-              {sourceLabel}
-            </span>
-
-            {/* ✅ CTA PRIMARIO (desktop) */}
-            <a
-              href={waHref}
-              target="_blank"
-              rel="noreferrer"
-              className="hidden sm:inline-flex items-center justify-center px-4 py-2 rounded-full bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-semibold text-xs transition"
-              title="Hablar con un asesor por WhatsApp"
-            >
-              Hablar con asesor →
-            </a>
-
-            {/* ✅ AFINAR: usa helper para forzar journey */}
-            <button
-              type="button"
-              onClick={() => goAfinar(SIM_JOURNEY)}
-              className="inline-flex items-center justify-center px-4 py-2 rounded-full border border-slate-700 text-slate-100 font-semibold text-xs hover:border-slate-500 transition"
-              title="Ajusta tu escenario para mejorar tu resultado"
-            >
-              Afinar
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setAdvisorOpen(true)}
-              className="hidden md:inline-flex items-center justify-center px-4 py-2 rounded-full border border-slate-700/70 bg-slate-950/20 text-slate-200 font-semibold text-xs hover:bg-slate-950/30 transition"
-              title="Ver tu plan y checklist"
-            >
-              Ver mi plan
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                logout();
-                nav("/login", { replace: true });
-              }}
-              className="rounded-full border border-slate-700 px-4 py-2 text-xs text-slate-200 hover:border-slate-600"
-            >
-              Cerrar sesión
-            </button>
-          </div>
-        </div>
-
-        <div className="mx-auto max-w-[1100px] px-5 sm:px-6 pb-4">
-          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/40 px-4 py-3">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className={`rounded-full px-2.5 py-1 text-[11px] ${chipClass(data.probGrade.type)}`}>
-                  Probabilidad {data.probGrade.label}: {data.probAprobacion}%
-                </span>
-                <span className="text-[11px] text-slate-400">{data.probGrade.hint}</span>
-              </div>
-              <div className="text-[11px] text-slate-400">{greeting}</div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* ✅ pb-32 en mobile para que el sticky CTA no tape el contenido */}
-      <div className="mx-auto max-w-[1100px] px-5 sm:px-6 py-8 pb-32 sm:pb-8">
-        {error ? (
-          <div className="mb-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">
-            {error}. Mostrando <span className="font-semibold">{sourceLabel.toLowerCase()}</span>.
-          </div>
-        ) : null}
-
-        <section className="rounded-3xl border border-slate-800/70 bg-slate-900/50 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.9)]">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-[11px] tracking-[0.2em] uppercase text-slate-400">Tu resumen de hoy</p>
-              <h1 className="mt-2 text-2xl md:text-3xl font-semibold tracking-tight">{greeting}</h1>
-              <p className="mt-2 text-[12px] text-slate-400">Te mostramos lo esencial para avanzar sin complicarte.</p>
-              {user?.email ? <p className="mt-2 text-[12px] text-slate-500">Sesión: {user.email}</p> : null}
-            </div>
-
-            <span
-              title="Esto no es aprobación bancaria. Es una lectura referencial."
-              className="rounded-full bg-slate-900/70 px-3 py-1 text-[11px] text-slate-300 ring-1 ring-slate-700/70"
-            >
-              Precalificación
-            </span>
-          </div>
-
-          <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="rounded-2xl border border-slate-800/70 bg-slate-950/30 p-4">
-              <p className="text-[11px] text-slate-400">Precio máximo estimado</p>
-              <p className="mt-1 text-xl font-semibold">{data.precioMaxVivienda != null ? fmtMoney(data.precioMaxVivienda) : "—"}</p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-800/70 bg-slate-950/30 p-4">
-              <p className="text-[11px] text-slate-400">Cuota mensual estimada</p>
-              <p className="mt-1 text-xl font-semibold">{data.cuotaEstimada != null ? `${fmtMoney(data.cuotaEstimada)}/mes` : "—"}</p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-800/70 bg-slate-950/30 p-4">
-              <p className="text-[11px] text-slate-400">Crédito sugerido</p>
-              <p className="mt-1 text-xl font-semibold">{data.suggestedCredit || "—"}</p>
-            </div>
-          </div>
-
-          <div className="mt-5 rounded-2xl border border-slate-800/70 bg-slate-950/20 p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <p className="text-[11px] tracking-[0.2em] uppercase text-slate-400">Tu siguiente paso</p>
-                <p className="mt-1 text-sm font-semibold text-slate-100">{data.nextBestAction.title}</p>
-                <p className="mt-1 text-[12px] text-slate-400">{data.nextBestAction.desc}</p>
-                <p className="mt-2 text-[11px] text-slate-500">
-                  Tip: con 1–2 ajustes puedes mejorar condiciones. Si quieres, te guiamos en WhatsApp.
-                </p>
-              </div>
-              <span className="self-start sm:self-auto rounded-full bg-slate-900/70 px-3 py-1 text-[11px] text-slate-300 ring-1 ring-slate-700/70">
-                Impacto {data.nextBestAction.impact}
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-5 hidden sm:flex flex-col sm:flex-row gap-3">
-            <a
-              href={waHref}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center justify-center px-6 py-3 rounded-2xl bg-emerald-400 text-slate-950 font-semibold text-sm hover:bg-emerald-300 transition"
-            >
-              Hablar con un asesor →
-            </a>
-
-            {/* ✅ AFINAR (CTA) */}
-            <button
-              type="button"
-              onClick={() => goAfinar(SIM_JOURNEY)}
-              className="inline-flex items-center justify-center px-6 py-3 rounded-2xl border border-slate-700 text-slate-100 font-semibold text-sm hover:border-slate-500 transition"
-            >
-              Afinar mi resultado
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setAdvisorOpen(true)}
-              className="inline-flex items-center justify-center px-6 py-3 rounded-2xl border border-slate-800/70 bg-slate-950/20 text-slate-200 font-semibold text-sm hover:bg-slate-950/30 transition"
-            >
-              Ver mi plan
-            </button>
-          </div>
-
-          <p className="mt-3 text-[11px] text-slate-400">Estimación basada en tu información declarada. No es aprobación bancaria.</p>
-        </section>
-
-        <div className="mt-4">
-          <HLScoreCard
-            data={data}
-            onGoSimular={() => goAfinar(SIM_JOURNEY)}
-            onOpenAmortizacion={() => setAmortOpen(true)}
-            onOpenAsesor={() => window.open(waHref, "_blank", "noreferrer")}
-          />
-        </div>
-
-        <section id="mejoras" className="mt-5 rounded-3xl border border-slate-800/70 bg-slate-900/50 p-6">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <h2 className="text-base font-semibold text-slate-100">Tu plan (simple)</h2>
-              <p className="mt-1 text-[12px] text-slate-400">
-                Enfócate en lo que más sube tu probabilidad.{" "}
-                <span className="text-slate-200 font-semibold">
-                  {completedCount}/{suggestedTasks.length}
-                </span>{" "}
-                completadas
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowAllTasks((v) => !v)}
-              className="inline-flex items-center justify-center px-4 py-2 rounded-full border border-slate-700 text-slate-100 text-xs hover:border-slate-500 transition"
-            >
-              {showAllTasks ? "Ver menos" : "Ver todas"}
-            </button>
-          </div>
-
-          <div className="mt-4 grid gap-3">
-            {tasksToRender.map((t) => {
-              const done = !!taskDone?.[t.id];
-
-              const impactPill =
-                t.impact === "alto"
-                  ? { type: "warn", label: "Impacto alto" }
-                  : t.impact === "medio"
-                  ? { type: "neutral", label: "Impacto medio" }
-                  : { type: "ok", label: "OK" };
-
-              const isPrimaryWhatsApp = t.ctaHref === "whatsapp";
-
-              return (
-                <div
-                  key={t.id}
-                  className="rounded-2xl border border-slate-800/70 bg-slate-950/20 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                >
-                  <div className="flex items-start gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setTaskDone((prev) => ({ ...(prev || {}), [t.id]: !done }))}
-                      className={`mt-1 h-5 w-5 rounded border ${done ? "bg-emerald-400 border-emerald-300" : "border-slate-600"}`}
-                      aria-label={done ? "Marcar como pendiente" : "Marcar como hecho"}
-                    />
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className={`font-semibold ${done ? "text-slate-400 line-through" : "text-slate-100"}`}>{t.title}</p>
-                        <span className="rounded-full bg-slate-900/70 px-2.5 py-0.5 text-[10px] text-slate-300 ring-1 ring-slate-700/70">
-                          {t.badge}
-                        </span>
-                        <span className={`rounded-full px-2.5 py-0.5 text-[10px] ${chipClass(impactPill.type)}`}>
-                          {impactPill.label}
-                        </span>
-                      </div>
-                      <p className={`mt-1 text-[12px] ${done ? "text-slate-500" : "text-slate-400"}`}>{t.desc}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    {t.ctaHref === "whatsapp" ? (
-                      <a
-                        href={waHref}
-                        target="_blank"
-                        rel="noreferrer"
-                        className={[
-                          "inline-flex items-center justify-center px-4 py-2 rounded-full font-semibold text-xs transition",
-                          isPrimaryWhatsApp
-                            ? "bg-emerald-400 hover:bg-emerald-300 text-slate-950"
-                            : "bg-blue-500 hover:bg-blue-400 text-slate-950",
-                        ].join(" ")}
-                      >
-                        {t.ctaText}
-                      </a>
-                    ) : t.ctaHref?.startsWith("#") ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const id = String(t.ctaHref).replace("#", "");
-                          const el = document.getElementById(id);
-                          if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                        }}
-                        className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-blue-500 hover:bg-blue-400 text-slate-950 font-semibold text-xs transition"
-                      >
-                        {t.ctaText}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          // ✅ FIX CLAVE: si el CTA manda a journey, forzamos entry_mode=journey
-                          if (t.ctaHref === SIM_JOURNEY || String(t.ctaHref || "").startsWith(`${baseJourneyPath}?mode=journey`)) {
-                            goAfinar(t.ctaHref);
-                            return;
-                          }
-                          nav(t.ctaHref);
-                        }}
-                        className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-blue-500 hover:bg-blue-400 text-slate-950 font-semibold text-xs transition"
-                      >
-                        {t.ctaText}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="mt-4 flex items-center justify-between">
-            <p className="text-[11px] text-slate-500">
-              {source === "backend" ? "Tu progreso está sincronizado con tu cuenta." : "Mostrando guardado local (fallback)."}
-            </p>
-
-            <button
-              type="button"
-              className="text-[11px] text-slate-400 hover:text-slate-200 underline"
-              onClick={() => {
-                clearJourneyLocal?.();
-                localStorage.removeItem(LS_TASKS);
-                try {
-                  localStorage.removeItem(LS_JOURNEY_OWNER_EMAIL);
-                  localStorage.removeItem(LS_JOURNEY_TS);
-                } catch {}
-                window.location.reload();
-              }}
-            >
-              Borrar progreso local
-            </button>
-          </div>
-        </section>
-
-        <div className="mt-5 space-y-3">
-          <details className="rounded-3xl border border-slate-800/70 bg-slate-900/50 p-6">
-            <summary className="cursor-pointer list-none">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-base font-semibold text-slate-100">Producto recomendado</h2>
-                  <p className="mt-1 text-[12px] text-slate-400">Solo si quieres ver el detalle del “por qué”.</p>
-                </div>
-                <span className={`rounded-full px-3 py-1 text-[11px] ${chipClass(data.probGrade.type)}`}>
-                  {data.suggestedCredit} • {data.probAprobacion}% estimado
-                </span>
-              </div>
-            </summary>
-
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
-              <div className="rounded-2xl border border-slate-800/70 bg-slate-950/20 p-4">
-                <p className="text-[11px] tracking-[0.2em] uppercase text-slate-400">Por qué sí</p>
-                <ul className="mt-2 space-y-2 text-[12px] text-slate-300">
-                  <li className="flex items-start gap-2">
-                    <span className="text-emerald-300">•</span> Entrada: {fmtPct(data.entradaPct)} (meta ref: {fmtPct(data.entradaObjetivoPct)})
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-emerald-300">•</span> Ingreso considerado: {fmtMoney(data.ingresoTotal)}
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-emerald-300">•</span> Estabilidad: {data.tipoIngreso || "—"}
-                  </li>
-                </ul>
-              </div>
-
-              <div className="rounded-2xl border border-slate-800/70 bg-slate-950/20 p-4">
-                <p className="text-[11px] tracking-[0.2em] uppercase text-slate-400">Riesgos típicos</p>
-                <ul className="mt-2 space-y-2 text-[12px] text-slate-300">
-                  <li className="flex items-start gap-2">
-                    <span className="text-amber-300">•</span> Deudas mensuales: {fmtMoney(data.deudas || 0)} (si aplica)
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-amber-300">•</span> Documentación incompleta o inconsistencias
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-amber-300">•</span> Antigüedad laboral baja en algunos bancos
-                  </li>
-                </ul>
-              </div>
-
-              <div className="rounded-2xl border border-slate-800/70 bg-slate-950/20 p-4">
-                <p className="text-[11px] tracking-[0.2em] uppercase text-slate-400">Siguiente paso</p>
-                <p className="mt-2 text-[12px] text-slate-300">
-                  Afinar tu simulación para elegir el mejor escenario (entrada/plazo/deudas) y preparar carpeta.
-                </p>
-                <div className="mt-3 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => goAfinar(SIM_JOURNEY)}
-                    className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-blue-500 hover:bg-blue-400 text-slate-950 font-semibold text-xs transition"
-                  >
-                    Afinar ahora →
-                  </button>
-                  <a
-                    href={waHref}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center justify-center px-4 py-2 rounded-full border border-slate-700 text-slate-100 font-semibold text-xs hover:border-slate-500 transition"
-                  >
-                    Asesor
-                  </a>
-                </div>
-              </div>
-            </div>
-          </details>
-
-          <details id="docs" className="rounded-3xl border border-slate-800/70 bg-slate-900/50 p-6">
-            <summary className="cursor-pointer list-none">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-base font-semibold text-slate-100">Checklist de documentos</h2>
-                  <p className="mt-1 text-[12px] text-slate-400">Ábrelo cuando estés listo para armar carpeta.</p>
-                </div>
-                <span className="rounded-full bg-slate-900/70 px-3 py-1 text-[11px] text-slate-300 ring-1 ring-slate-700/70">
-                  Tip: carpeta completa = menos fricción
-                </span>
-              </div>
-            </summary>
-
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {docChecklist.map((it) => {
-                const pill = statusPill(it.status);
-                return (
-                  <div key={it.id} className="rounded-2xl border border-slate-800/70 bg-slate-950/20 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-semibold text-slate-100">{it.title}</p>
-                        <p className="mt-1 text-[12px] text-slate-400">{it.desc}</p>
-                      </div>
-                      <span className={`rounded-full px-2.5 py-1 text-[11px] ${chipClass(pill.type)}`}>{pill.label}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </details>
-        </div>
+            </AccordionSection>
+          ) : null}
+        </Card>
       </div>
 
-      <AdvisorPanel
-        open={advisorOpen}
-        onClose={() => setAdvisorOpen(false)}
-        data={data}
-        userEmail={user?.email}
-        onNavigate={(href) => {
-          if (!href) return;
-          if (href.startsWith("http")) {
-            window.open(href, "_blank", "noreferrer");
-            return;
-          }
-          // ✅ si el panel manda a journey, fuerza entry_mode=journey
-          if (href === SIM_JOURNEY || String(href || "").startsWith(`${baseJourneyPath}?mode=journey`)) {
-            goAfinar(href);
-            setAdvisorOpen(false);
-            return;
-          }
-          nav(href);
-          setAdvisorOpen(false);
-        }}
-        onAnchor={(href) => {
-          if (!href) return;
-          const id = String(href).replace("#", "");
-          const el = document.getElementById(id);
-          if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-          setAdvisorOpen(false);
-        }}
-      />
+      {shouldShowCreditValidation ? (
+        <div style={visibleInViewStyle}>
+          <CreditValidationCard
+            creditAssessment={effectiveCreditAssessment}
+            readinessStatus={readinessStatus}
+            onReview={() => go("/journey/full")}
+          />
+        </div>
+      ) : null}
 
-      <AmortModal
-        open={amortOpen}
-        onClose={() => setAmortOpen(false)}
-        data={snap}
-        onGoSimular={() => goAfinar(SIM_JOURNEY_AMORT)}
-      />
+      <div style={visibleInViewStyle}>
+        <Card style={{ marginTop: 18 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 12,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 12,
+                color: "rgba(148,163,184,0.95)",
+                fontWeight: 950,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Compass
+                size={13}
+                strokeWidth={2.3}
+                style={{ opacity: 0.95, flexShrink: 0 }}
+              />
+              {COPY.guideTag}
+            </div>
 
-      {/* ✅ Sticky CTA solo mobile */}
-      <MobileStickyCTA waHref={waHref} onAfinar={() => goAfinar(SIM_JOURNEY)} onPlan={() => setAdvisorOpen(true)} />
-    </PremiumBg>
-  );
+            <Chip tone="neutral">{COPY.guideResultTag}</Chip>
+          </div>
+
+          <div
+            style={{
+              marginTop: 10,
+              fontWeight: 980,
+              fontSize: 18,
+              lineHeight: 1.2,
+            }}
+          >
+            {bestNext.title}
+          </div>
+
+          <div
+            style={{
+              marginTop: 8,
+              color: "rgba(226,232,240,0.90)",
+              lineHeight: 1.35,
+              fontSize: 13,
+            }}
+          >
+            {bestNext.subtitle}
+          </div>
+
+          <div style={{ marginTop: 12 }}>
+            <PrimaryButton onClick={() => go(bestNext.to)}>
+              {bestNext.cta}
+            </PrimaryButton>
+          </div>
+        </Card>
+      </div>
+
+      <div style={visibleInViewStyle}>
+        <Card style={{ marginTop: 18 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: 12,
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 13, color: "rgba(148,163,184,0.95)" }}>
+                {primaryHeadlineLabel}
+              </div>
+
+              <div
+                style={{
+                  marginTop: 6,
+                  fontSize: 24,
+                  fontWeight: 980,
+                  lineHeight: 1.1,
+                }}
+              >
+                {primaryHeadlineValue}
+              </div>
+
+              <div
+                style={{
+                  marginTop: 6,
+                  fontSize: 13,
+                  color: "rgba(148,163,184,0.95)",
+                  lineHeight: 1.35,
+                }}
+              >
+                {primaryHeadlineHelp}
+              </div>
+            </div>
+
+            <Chip
+              tone={
+                hasCreditBlocker
+                  ? "neutral"
+                  : hasImmediateViableMortgage
+                  ? "good"
+                  : "neutral"
+              }
+            >
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                {hasCreditBlocker ? (
+                  <>
+                    <ShieldCheck size={13} strokeWidth={2.4} />
+                    Historial por revisar
+                  </>
+                ) : hasImmediateViableMortgage ? (
+                  <>
+                    <CheckCircle2 size={13} strokeWidth={2.4} />
+                    Hoy viable
+                  </>
+                ) : isGoalAboveCapacity ? (
+                  <>
+                    <Target size={13} strokeWidth={2.4} />
+                    Aterrizar meta
+                  </>
+                ) : (
+                  <>
+                    <MapPin size={13} strokeWidth={2.4} />
+                    Ruta estimada
+                  </>
+                )}
+              </span>
+            </Chip>
+          </div>
+
+          {blockerExplanationTitle && blockerExplanationBody ? (
+            <AccordionSection
+              title={blockerExplanationTitle}
+              subtitle="Esto te ayuda a entender qué variable pesa más hoy."
+              open={expandedSections.blocker}
+              onToggle={() => toggleSection("blocker")}
+            >
+              <div
+                style={{
+                  fontSize: 13,
+                  lineHeight: 1.4,
+                  color: "rgba(226,232,240,0.90)",
+                }}
+              >
+                {blockerExplanationBody}
+              </div>
+
+              {homePrimaryBlocker === "entrada" ? (
+                <div
+                  style={{
+                    marginTop: 8,
+                    fontSize: 12,
+                    lineHeight: 1.35,
+                    color: "rgba(148,163,184,0.88)",
+                  }}
+                >
+                  La buena noticia: si aumentas tu entrada, tu capacidad puede
+                  subir mucho más rápido.
+                </div>
+              ) : null}
+
+              {homePrimaryBlocker === "historial_crediticio" ? (
+                <div
+                  style={{
+                    marginTop: 8,
+                    fontSize: 12,
+                    lineHeight: 1.35,
+                    color: "rgba(148,163,184,0.88)",
+                  }}
+                >
+                  Esto no borra tu capacidad financiera. Solo indica que antes
+                  de aplicar conviene revisar el historial crediticio.
+                </div>
+              ) : null}
+            </AccordionSection>
+          ) : null}
+
+          {isGoalAboveCapacity && toNum(goalSummary?.targetPropertyValue) > 0 ? (
+            <InnerCard
+              style={{
+                marginTop: 12,
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(148,163,184,0.16)",
+              }}
+            >
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 10,
+                }}
+              >
+                <SoftMetric
+                  label="Tu objetivo de vivienda"
+                  value={moneySafe(goalSummary?.targetPropertyValue)}
+                />
+                <SoftMetric
+                  label="Lo más realista hoy"
+                  value={primaryHeadlineValue}
+                />
+              </div>
+            </InnerCard>
+          ) : null}
+
+          {entryTrajectory ? (
+            <AccordionSection
+              title="Si mantienes este ritmo"
+              subtitle="Una proyección simple para visualizar cómo se podría mover tu entrada."
+              open={expandedSections.rhythm}
+              onToggle={() => toggleSection("rhythm")}
+            >
+              <div
+                style={{
+                  fontSize: 13,
+                  lineHeight: 1.4,
+                  color: "rgba(226,232,240,0.90)",
+                }}
+              >
+                Hoy tienes {moneySafe(entryTrajectory.entradaActual)} de entrada
+                y podrías destinar {moneySafe(entryTrajectory.capacidadMensual)}{" "}
+                al mes para seguir construyéndola.
+              </div>
+
+              {entryTrajectory.mejorRutaActual ? (
+                <div
+                  style={{
+                    marginTop: 10,
+                    padding: "10px 12px",
+                    borderRadius: 12,
+                    background: "rgba(2,6,23,0.18)",
+                    border: "1px solid rgba(148,163,184,0.12)",
+                    fontSize: 13,
+                    lineHeight: 1.35,
+                    color: "rgba(226,232,240,0.88)",
+                  }}
+                >
+                  Para tu rango más realista de hoy, la forma más rápida de
+                  fortalecer tu entrada sería con{" "}
+                  <strong>{entryTrajectory.mejorRutaActual.producto}</strong>.
+                  Manteniendo este ritmo, podrías completar una entrada
+                  referencial en{" "}
+                  <strong>
+                    {entryTrajectory.mejorRutaActual.mesesActual}{" "}
+                    {entryTrajectory.mejorRutaActual.mesesActual === 1
+                      ? "mes"
+                      : "meses"}
+                  </strong>
+                  .
+                </div>
+              ) : null}
+
+              {isGoalAboveCapacity && entryTrajectory.mejorRutaMeta ? (
+                <div
+                  style={{
+                    marginTop: 10,
+                    padding: "10px 12px",
+                    borderRadius: 12,
+                    background: "rgba(2,6,23,0.18)",
+                    border: "1px solid rgba(148,163,184,0.12)",
+                    fontSize: 13,
+                    lineHeight: 1.35,
+                    color: "rgba(226,232,240,0.88)",
+                  }}
+                >
+                  Para acercarte a tu meta de vivienda, la ruta más rápida
+                  estimada sería con{" "}
+                  <strong>{entryTrajectory.mejorRutaMeta.producto}</strong>, y
+                  tomaría alrededor de{" "}
+                  <strong>
+                    {entryTrajectory.mejorRutaMeta.mesesMeta}{" "}
+                    {entryTrajectory.mejorRutaMeta.mesesMeta === 1
+                      ? "mes"
+                      : "meses"}
+                  </strong>{" "}
+                  solo para fortalecer la entrada.
+                </div>
+              ) : null}
+
+              <div
+                style={{
+                  marginTop: 8,
+                  fontSize: 12,
+                  lineHeight: 1.35,
+                  color: "rgba(148,163,184,0.85)",
+                }}
+              >
+                Esto mejora tu capacidad de entrada. La aprobación final también
+                dependerá del programa y de tu perfil crediticio al momento de
+                aplicar.
+              </div>
+            </AccordionSection>
+          ) : null}
+
+          <InsightGrid items={mainInsightItems} />
+
+          {!hasCreditBlocker ? (
+            <div style={{ marginTop: 12 }}>
+              <PrimaryButton onClick={() => go("/marketplace")}>
+                {isGoalAboveCapacity
+                  ? "Ver propiedades en mi rango"
+                  : "Ver propiedades compatibles"}
+              </PrimaryButton>
+            </div>
+          ) : null}
+        </Card>
+      </div>
+
+      <div
+        style={{
+          marginTop: 16,
+          fontSize: 11,
+          color: "rgba(148,163,184,0.78)",
+          lineHeight: 1.4,
+          textAlign: "center",
+        }}
+      >
+        Los resultados de HabitaLibre son referenciales y pueden variar según la
+        evaluación final de cada entidad financiera.
+      </div>
+     </div>
+  </HabitaShell>
+);
 }

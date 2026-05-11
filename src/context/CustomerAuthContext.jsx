@@ -4,7 +4,8 @@ import { API_BASE } from "../lib/api"; // ✅ usa tu API_BASE real (VITE_API_URL
 
 const CustomerAuthContext = createContext(null);
 
-const LS_CUSTOMER = "hl_customer";
+const LS_CUSTOMER = "hl_customer_data";
+const LS_CUSTOMER_LEGACY = "hl_customer";
 const LS_TOKEN = "hl_customer_token";
 const LS_AUTH_ERROR = "hl_customer_last_auth_error";
 
@@ -79,13 +80,19 @@ export function CustomerAuthProvider({ children }) {
   // evita doble “init validate” en React StrictMode (dev)
   const didInitRef = useRef(false);
 
-  const persistCustomer = (c) => {
-    setCustomer(c || null);
-    try {
-      if (c) localStorage.setItem(LS_CUSTOMER, JSON.stringify(c));
-      else localStorage.removeItem(LS_CUSTOMER);
-    } catch {}
-  };
+const persistCustomer = (c) => {
+  setCustomer(c || null);
+
+  try {
+    if (c) {
+      localStorage.setItem(LS_CUSTOMER, JSON.stringify(c));
+      localStorage.removeItem(LS_CUSTOMER_LEGACY);
+    } else {
+      localStorage.removeItem(LS_CUSTOMER);
+      localStorage.removeItem(LS_CUSTOMER_LEGACY);
+    }
+  } catch {}
+};
 
   const persistToken = (t) => {
     const v = normalizeToken(t);
@@ -105,11 +112,15 @@ export function CustomerAuthProvider({ children }) {
     } catch {}
   };
 
-  const clearAuth = (reason = "") => {
-    persistCustomer(null);
-    persistToken(null);
-    persistAuthError(reason);
-  };
+const clearAuth = (reason = "") => {
+  persistCustomer(null);
+  persistToken(null);
+  persistAuthError(reason);
+
+  try {
+    localStorage.removeItem(LS_CUSTOMER_LEGACY);
+  } catch {}
+};
 
   /**
    * ✅ Refresca el customer desde /me
@@ -208,7 +219,9 @@ export function CustomerAuthProvider({ children }) {
 
     (async () => {
       try {
-        const raw = localStorage.getItem(LS_CUSTOMER);
+       const raw =
+  localStorage.getItem(LS_CUSTOMER) ||
+  localStorage.getItem(LS_CUSTOMER_LEGACY);
         const tkn = localStorage.getItem(LS_TOKEN);
         const err = localStorage.getItem(LS_AUTH_ERROR);
 

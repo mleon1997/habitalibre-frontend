@@ -2,35 +2,44 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
-import { meCustomer } from "../lib/api"; // ✅ usa api.js (token routing + auto-dispatch unauthorized)
+import { meCustomer } from "../lib/api"; // usa api.js si ahí tienes token routing + unauthorized dispatch
 
 /**
- * Protege rutas del Journey (Customer).
- * - Si no hay token => /login
- * - Si hay token => valida con /api/customer-auth/me (vía meCustomer)
- * - Si 401/403 => NO hace dispatch aquí (apiFetch ya dispara "hl:customer-unauthorized")
- *                y CustomerAuthListener se encarga de limpiar + redirigir.
+ * Protege rutas del Journey / Customer.
+ *
+ * Reglas:
+ * - Mientras CustomerAuthContext carga localStorage => espera.
+ * - Si no hay token => /login.
+ * - Si hay token => valida con /api/customer-auth/me.
+ * - Si el token es válido => renderiza children.
+ * - Si el token es inválido o falla validación => /login.
  */
 export default function CustomerProtectedRoute({ children }) {
   const location = useLocation();
-  const { token, isAuthed } = useCustomerAuth();
+
+  const {
+    token,
+    isAuthed,
+    loading: authLoading,
+  } = useCustomerAuth();
 
   const [checking, setChecking] = useState(true);
   const [ok, setOk] = useState(false);
 
   const returnTo = useMemo(() => {
-    return (
-      location.pathname +
-      (location.search || "") +
-      (location.hash || "")
-    );
-  }, [location]);
+    return location.pathname + (location.search || "");
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     let alive = true;
 
     async function run() {
-      // 1) si no hay token, no hay nada que validar
+      // 1) Esperar a que CustomerAuthContext termine de leer localStorage
+      if (authLoading) {
+        return;
+      }
+
+      // 2) Si no hay token, no hay nada que validar
       if (!token) {
         if (!alive) return;
         setOk(false);
@@ -40,47 +49,53 @@ export default function CustomerProtectedRoute({ children }) {
 
       setChecking(true);
 
-      // 2) validar token contra backend
-      const r = await meCustomer(token);
+      try {
+        // 3) Validar token contra backend
+        const r = await meCustomer(token);
 
-      if (!alive) return;
+        if (!alive) return;
 
-      if (r?.ok) {
-        setOk(true);
-        setChecking(false);
-        return;
-      }
+        // Soporta respuestas tipo:
+        // { ok: true, user: ... }
+        // { user: ... }
+        // { customer: ... }
+        // o cualquier respuesta válida del backend
+        const valid =
+          r?.ok === true ||
+          Boolean(r?.user) ||
+          Boolean(r?.customer) ||
+          Boolean(r?.data?.user) ||
+          Boolean(r?.data?.customer);
 
-      const status = r?.status;
+        if (valid) {
+          setOk(true);
+          setChecking(false);
+          return;
+        }
 
-      /**
-       * ✅ 401/403:
-       * NO hagas dispatch ni limpies auth aquí.
-       * apiFetch() ya dispara el evento "hl:customer-unauthorized"
-       * y CustomerAuthListener limpia + redirige.
-       */
-      if (status === 401 || status === 403) {
         setOk(false);
         setChecking(false);
-        return;
-      }
+      } catch (err) {
+        if (!alive) return;
 
-      // 3) otros errores: bloquea la ruta por seguridad
-      setOk(false);
-      setChecking(false);
+        // Si api.js ya dispara hl:customer-unauthorized, el listener limpiará sesión.
+        // Aquí solo bloqueamos la ruta.
+        setOk(false);
+        setChecking(false);
+      }
     }
 
     run();
+
     return () => {
       alive = false;
     };
-  }, [token]);
+  }, [authLoading, token]);
 
-  // Loading UI mínimo
-  if (checking) {
+  if (authLoading || checking) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
-        <div className="rounded-2xl border border-slate-800/70 bg-slate-900/40 px-5 py-4">
+        <div className="rounded-2xl border border-slate-800/70 bg-slate-900/40 px-5 py-4 shadow-[0_20px_70px_rgba(0,0,0,0.35)]">
           <div className="text-sm font-semibold">Verificando sesión…</div>
           <div className="mt-1 text-xs text-slate-400">Un momento</div>
         </div>
@@ -88,7 +103,6 @@ export default function CustomerProtectedRoute({ children }) {
     );
   }
 
-  // Si no hay token o no ok => login
   if (!token || !ok || !isAuthed) {
     return (
       <Navigate
