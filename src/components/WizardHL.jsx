@@ -377,144 +377,145 @@ export default function WizardHL({ mode = "quick", onboarding = false, afinando 
     return { ...safe, perfil };
   }
 
-  async function handleCalcular() {
-    if (loading) return;
+async function handleCalcular() {
+  if (loading) return;
 
-    const e = validate(4);
-    if (e) return setErr(e);
+  const e = validate(4);
+  if (e) return setErr(e);
 
-    setLoading(true);
-    setErr("");
+  setLoading(true);
+  setErr("");
 
-    const entradaPayload = buildEntrada();
+  const entradaPayload = buildEntrada();
 
-    // ✅ QUICK: SOLO abre modal si NO hay sesión
-    const shouldShowLeadModal = !isJourneyMode && !isAuthed;
+  try {
+    const resultRaw = await precalificar(entradaPayload);
+    const result = attachPerfilToResult(resultRaw, entradaPayload);
 
-    if (shouldShowLeadModal) {
-      const initial = {
-        __loading: true,
+    // Siempre guardamos último resultado local para recuperación básica
+    persistLastResult(result);
+
+    // =========================================================
+    // ✅ QUICK WEB: flujo totalmente independiente del login/app
+    // =========================================================
+    if (!isJourneyMode) {
+      persistQuickLastResult(result);
+
+      try {
+        localStorage.setItem(
+          LS_PENDING_PRECALIF_SNAPSHOT,
+          JSON.stringify({
+            entrada: entradaPayload,
+            resultado: result,
+            ts: Date.now(),
+            mode: "quick",
+          })
+        );
+
+        localStorage.setItem(
+          "hl_web_quick_input_v1",
+          JSON.stringify({
+            entrada: entradaPayload,
+            ts: Date.now(),
+          })
+        );
+
+        localStorage.setItem(
+          "hl_web_quick_result_v1",
+          JSON.stringify({
+            resultado: result,
+            entrada: entradaPayload,
+            ts: Date.now(),
+          })
+        );
+      } catch {}
+
+      const merged = {
+        ...result,
+        __loading: false,
         __entrada: entradaPayload,
         perfilInput: entradaPayload,
       };
 
-      if (typeof openLeadNow === "function") openLeadNow(initial, entradaPayload);
-      else openLead(initial, entradaPayload);
+      /**
+       * En quick web mostramos el resultado vía LeadCapture,
+       * pero SOLO después de calcular.
+       * No mandamos a /login.
+       * No mandamos a /progreso.
+       * No guardamos como journey.
+       */
+      if (typeof openLeadNow === "function") {
+  openLeadNow(merged, entradaPayload);
+} else {
+  openLead(merged, entradaPayload);
+}
+
+      return;
     }
 
-    try {
-      const resultRaw = await precalificar(entradaPayload);
-      const result = attachPerfilToResult(resultRaw, entradaPayload);
+    // =========================================================
+    // ✅ JOURNEY / APP: aquí sí aplica login + progreso
+    // =========================================================
 
-      persistLastResult(result);
+    saveJourneyLocal({
+      entrada: entradaPayload,
+      input: entradaPayload,
+      resultado: result,
+      userEmail: user && user.email ? user.email : "",
+      ts: Date.now(),
+    });
 
-      // ✅ Si no está logueado: snapshot para replay post-login
-      if (!isAuthed) {
-        try {
-          localStorage.setItem(
-            LS_PENDING_PRECALIF_SNAPSHOT,
-            JSON.stringify({
-              entrada: entradaPayload,
-              resultado: result,
-              ts: Date.now(),
-              mode: isJourneyMode ? "journey" : "quick",
-            })
-          );
-        } catch {}
-      }
-
-      // ✅ QUICK
-      if (!isJourneyMode) {
-        persistQuickLastResult(result);
-
-        if (!isAuthed) {
-          const merged = {
-            ...result,
-            __loading: false,
-            __entrada: entradaPayload,
-            perfilInput: entradaPayload,
-          };
-
-          if (typeof setLeadResult === "function") setLeadResult(merged, entradaPayload);
-          else openLead(merged, entradaPayload);
-
-          return;
-        }
-
-        // ✅ Authed en QUICK: lo tratamos como journey
-        saveJourneyLocal({
-          entrada: entradaPayload,
-          input: entradaPayload,
-          resultado: result,
-          userEmail: user && user.email ? user.email : "",
-          ts: Date.now(),
-        });
-
-        customerApi
-          .saveJourney({
+    if (!isAuthed) {
+      try {
+        localStorage.setItem(
+          LS_PENDING_JOURNEY,
+          JSON.stringify({
             entrada: entradaPayload,
-            input: entradaPayload,
-            metadata: { input: entradaPayload },
             resultado: result,
             status: "precalificado",
+            ts: Date.now(),
           })
-          .catch(() => {});
+        );
+      } catch {}
 
-        navigate("/progreso", { replace: true });
-        return;
-      }
-
-      // ✅ JOURNEY
-      saveJourneyLocal({
-        entrada: entradaPayload,
-        input: entradaPayload,
-        resultado: result,
-        userEmail: user && user.email ? user.email : "",
-        ts: Date.now(),
+      navigate("/login", {
+        state: { returnTo: "/progreso", from: "simular_journey" },
       });
 
-      if (!isAuthed) {
-        try {
-          localStorage.setItem(
-            LS_PENDING_JOURNEY,
-            JSON.stringify({
-              entrada: entradaPayload,
-              resultado: result,
-              status: "precalificado",
-              ts: Date.now(),
-            })
-          );
-        } catch {}
-
-        navigate("/login", { state: { returnTo: "/progreso", from: "simular_journey" } });
-        return;
-      }
-
-      customerApi
-        .saveJourney({
-          entrada: entradaPayload,
-          input: entradaPayload,
-          metadata: { input: entradaPayload },
-          resultado: result,
-          status: "precalificado",
-        })
-        .catch(() => {});
-
-      navigate("/progreso");
-    } catch (ex) {
-      console.error(ex);
-
-      if (isJourneyMode && String(ex?.message || "").includes("NO_TOKEN")) {
-        setErr("Inicia sesión para guardar tu progreso.");
-        navigate("/login", { state: { returnTo: "/progreso", from: "simular_journey" } });
-        return;
-      }
-
-      setErr(isJourneyMode ? "No se pudo guardar tu progreso." : "No se pudo calcular tu resultado ahora.");
-    } finally {
-      setLoading(false);
+      return;
     }
+
+    customerApi
+      .saveJourney({
+        entrada: entradaPayload,
+        input: entradaPayload,
+        metadata: { input: entradaPayload },
+        resultado: result,
+        status: "precalificado",
+      })
+      .catch(() => {});
+
+    navigate("/progreso");
+  } catch (ex) {
+    console.error(ex);
+
+    if (isJourneyMode && String(ex?.message || "").includes("NO_TOKEN")) {
+      setErr("Inicia sesión para guardar tu progreso.");
+      navigate("/login", {
+        state: { returnTo: "/progreso", from: "simular_journey" },
+      });
+      return;
+    }
+
+    setErr(
+      isJourneyMode
+        ? "No se pudo guardar tu progreso."
+        : "No se pudo calcular tu resultado ahora."
+    );
+  } finally {
+    setLoading(false);
   }
+}
 
   const progress = (step / TOTAL_STEPS) * 100;
 

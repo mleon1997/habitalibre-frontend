@@ -48,7 +48,7 @@ export default function Landing({ onStart }) {
     if (typeof onStart === "function") {
       onStart();
     } else {
-      window.location.hash = "#/precalificar";
+     navigate("/precalificar");
 
     }
   };

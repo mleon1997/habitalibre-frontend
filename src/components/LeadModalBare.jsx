@@ -43,19 +43,45 @@ export default function LeadModalBare() {
   const { token } = useCustomerAuth();
 
   const isInApp = location.pathname.startsWith("/app");
-  const progresoHref = isInApp ? "/app/progreso" : "/progreso";
+
+  /**
+   * Nota:
+   * En tu App.jsx actual, /progreso existe como ruta web/app shell,
+   * no como /app/progreso. Por eso usamos /progreso.
+   */
+  const progresoHref = "/progreso";
   const graciasHref = "/gracias";
 
-  // ✅ Si ya hay sesión, NO pedir datos otra vez
+  /**
+   * ✅ Regla corregida:
+   *
+   * - Web pública /precalificar:
+   *   Aunque exista token, NO cerramos el modal.
+   *   El funnel web debe seguir:
+   *   formulario financiero → form de contacto → correo → gracias.
+   *
+   * - Experiencia interna /app:
+   *   Si alguna vez se abre este modal con sesión activa, ahí sí podemos
+   *   cerrarlo y mandar a progreso.
+   */
   useEffect(() => {
     if (!isOpen) return;
     if (!token) return;
+    if (!isInApp) return;
 
     closeLead?.();
     resetLeadCapture?.();
 
     navigate(progresoHref, { replace: true });
-  }, [isOpen, token, closeLead, resetLeadCapture, navigate, progresoHref]);
+  }, [
+    isOpen,
+    token,
+    isInApp,
+    closeLead,
+    resetLeadCapture,
+    navigate,
+    progresoHref,
+  ]);
 
   const handleLeadSaved = () => {
     closeLead?.();
@@ -77,6 +103,7 @@ export default function LeadModalBare() {
       const afiliadoIess = toBool(
         inputs?.afiliadoIess ?? inputs?.afiliado_iess
       );
+
       const aniosEstabilidad = toNum(
         inputs?.aniosEstabilidad ?? inputs?.anios_estabilidad
       );
@@ -132,9 +159,8 @@ export default function LeadModalBare() {
       const edad = toNum(inputs?.edad);
 
       const tipoIngreso =
-        String(
-          inputs?.tipoIngreso ?? inputs?.tipo_ingreso ?? ""
-        ).trim() || null;
+        String(inputs?.tipoIngreso ?? inputs?.tipo_ingreso ?? "").trim() ||
+        null;
 
       const resp = await crearLeadDesdeSimulador({
         contacto: { ...payloadContacto },
@@ -165,8 +191,14 @@ export default function LeadModalBare() {
     }
   };
 
-  // ✅ Doble seguro: si ya hay token, nunca muestres el modal
-  if (token) return null;
+  /**
+   * ✅ Importante:
+   * Antes tenías: if (token) return null;
+   * Eso rompía el quick win web cuando había sesión activa.
+   *
+   * Ahora solo ocultamos el modal si estamos dentro de /app.
+   */
+  if (token && isInApp) return null;
 
   return (
     <ModalLead
