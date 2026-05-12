@@ -1,8 +1,44 @@
 // src/pages/Gracias.jsx
-import React from "react";
+import React, { useEffect } from "react";
 
 export default function Gracias() {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const isGraciasPage = window.location.href.includes("gracias");
+    if (!isGraciasPage) return;
+
+    const key = "hl_meta_lead_gracias_sent";
+
+    if (sessionStorage.getItem(key) === "true") {
+      console.log("ℹ️ HL Meta Lead ya fue enviado en esta sesión");
+      return;
+    }
+
+    const sendLead = () => {
+      if (typeof window.fbq === "function") {
+        window.fbq("track", "Lead", {
+          content_name: "precalificacion_habitalibre",
+          content_category: "mortgage_prequalification",
+          source: "gracias_page",
+        });
+
+        sessionStorage.setItem(key, "true");
+        console.log("✅ HL Meta Lead enviado desde React /gracias");
+        return;
+      }
+
+      console.log("⏳ Esperando fbq para enviar Lead...");
+      setTimeout(sendLead, 500);
+    };
+
+    setTimeout(sendLead, 1200);
+  }, []);
+
   const irAlSimulador = () => {
+    // Permite contar una nueva simulación si el usuario vuelve a completar el flujo.
+    sessionStorage.removeItem("hl_meta_lead_gracias_sent");
+
     // Mantiene compatibilidad con tu routing por hash
     window.location.hash = "#/simular";
   };
