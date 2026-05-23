@@ -388,16 +388,46 @@ async function handleCalcular() {
 
   const entradaPayload = buildEntrada();
 
+  /**
+   * ✅ QUICK WEB:
+   * Siempre abrimos el modal de lead/contacto, sin importar si hay sesión.
+   * Esto mantiene el funnel:
+   * formulario financiero → form de contacto → correo con precalificación.
+   */
+  const shouldShowLeadModal = !isJourneyMode;
+
+  if (shouldShowLeadModal) {
+    const initial = {
+      __loading: true,
+      __entrada: entradaPayload,
+      perfilInput: entradaPayload,
+    };
+
+    if (typeof openLeadNow === "function") {
+      openLeadNow(initial, entradaPayload);
+    } else {
+      openLead(initial, entradaPayload);
+    }
+  }
+
   try {
     const resultRaw = await precalificar(entradaPayload);
     const result = attachPerfilToResult(resultRaw, entradaPayload);
 
-    // Siempre guardamos último resultado local para recuperación básica
     persistLastResult(result);
 
-    // =========================================================
-    // ✅ QUICK WEB: flujo totalmente independiente del login/app
-    // =========================================================
+    /**
+     * =========================================================
+     * ✅ QUICK WEB: flujo totalmente separado de login/app
+     * =========================================================
+     *
+     * En quick mode:
+     * - NO mandamos a /login
+     * - NO mandamos a /progreso
+     * - NO guardamos automáticamente como journey
+     * - SÍ abrimos/actualizamos el modal de lead
+     * - SÍ permitimos que el backend envíe el correo al guardar el lead
+     */
     if (!isJourneyMode) {
       persistQuickLastResult(result);
 
@@ -438,25 +468,23 @@ async function handleCalcular() {
       };
 
       /**
-       * En quick web mostramos el resultado vía LeadCapture,
-       * pero SOLO después de calcular.
-       * No mandamos a /login.
-       * No mandamos a /progreso.
-       * No guardamos como journey.
+       * Si el modal ya estaba abierto en loading, solo actualizamos resultado.
+       * Así no se borra lo que el usuario pudo haber empezado a escribir.
        */
-      if (typeof openLeadNow === "function") {
-  openLeadNow(merged, entradaPayload);
-} else {
-  openLead(merged, entradaPayload);
-}
+      if (typeof setLeadResult === "function") {
+        setLeadResult(merged, entradaPayload);
+      } else {
+        openLead(merged, entradaPayload);
+      }
 
       return;
     }
 
-    // =========================================================
-    // ✅ JOURNEY / APP: aquí sí aplica login + progreso
-    // =========================================================
-
+    /**
+     * =========================================================
+     * ✅ JOURNEY / APP: aquí sí aplica login + progreso guardado
+     * =========================================================
+     */
     saveJourneyLocal({
       entrada: entradaPayload,
       input: entradaPayload,

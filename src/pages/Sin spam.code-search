@@ -1,0 +1,10 @@
+# Query: Sin spam
+# Flags: CaseSensitive
+# ContextLines: 1
+
+1 result - 1 file
+
+src/pages/Login.jsx:
+  631                    />
+  632:                   <span>Acepto términos y política de privacidad.</span>
+  633                  </label>
