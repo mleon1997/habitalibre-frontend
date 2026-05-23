@@ -1,11 +1,5 @@
 // src/lib/propertiesAdminApi.js
-
-const RAW_API_BASE =
-  import.meta.env.VITE_API_BASE || "https://habitalibre-backend.onrender.com";
-
-export const API_BASE = RAW_API_BASE.endsWith("/api")
-  ? RAW_API_BASE
-  : `${RAW_API_BASE}/api`;
+import { API_BASE } from "./api";
 
 const ADMIN_KEY_STORAGE = "hl_property_admin_key_v1";
 
