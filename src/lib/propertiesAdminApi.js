@@ -1,6 +1,10 @@
 // src/lib/propertiesAdminApi.js
 import { API_BASE } from "./api";
 
+const ADMIN_API_BASE = String(API_BASE || "").endsWith("/api")
+  ? String(API_BASE || "")
+  : `${String(API_BASE || "").replace(/\/$/, "")}/api`;
+
 const ADMIN_KEY_STORAGE = "hl_property_admin_key_v1";
 
 export function getPropertyAdminKey() {
@@ -46,7 +50,10 @@ async function parseResponse(res) {
 }
 
 export async function listAdminProperties() {
-  const res = await fetch(`${API_BASE}/properties?publicado=all`, {
+  const url = `${ADMIN_API_BASE}/properties?publicado=all`;
+  console.log("[propertiesAdminApi] GET", url);
+
+  const res = await fetch(url, {
     method: "GET",
     headers: { Accept: "application/json" },
   });
@@ -55,7 +62,7 @@ export async function listAdminProperties() {
 }
 
 export async function createAdminProperty(payload) {
-  const res = await fetch(`${API_BASE}/properties`, {
+  const res = await fetch(`${ADMIN_API_BASE}/properties`, {
     method: "POST",
     headers: getAdminHeaders(),
     body: JSON.stringify(payload),
@@ -65,18 +72,21 @@ export async function createAdminProperty(payload) {
 }
 
 export async function updateAdminProperty(id, payload) {
-  const res = await fetch(`${API_BASE}/properties/${encodeURIComponent(id)}`, {
-    method: "PUT",
-    headers: getAdminHeaders(),
-    body: JSON.stringify(payload),
-  });
+  const res = await fetch(
+    `${ADMIN_API_BASE}/properties/${encodeURIComponent(id)}`,
+    {
+      method: "PUT",
+      headers: getAdminHeaders(),
+      body: JSON.stringify(payload),
+    }
+  );
 
   return parseResponse(res);
 }
 
 export async function updateAdminPropertyStatus(id, payload) {
   const res = await fetch(
-    `${API_BASE}/properties/${encodeURIComponent(id)}/status`,
+    `${ADMIN_API_BASE}/properties/${encodeURIComponent(id)}/status`,
     {
       method: "PATCH",
       headers: getAdminHeaders(),
@@ -88,10 +98,13 @@ export async function updateAdminPropertyStatus(id, payload) {
 }
 
 export async function deleteAdminProperty(id) {
-  const res = await fetch(`${API_BASE}/properties/${encodeURIComponent(id)}`, {
-    method: "DELETE",
-    headers: getAdminHeaders(),
-  });
+  const res = await fetch(
+    `${ADMIN_API_BASE}/properties/${encodeURIComponent(id)}`,
+    {
+      method: "DELETE",
+      headers: getAdminHeaders(),
+    }
+  );
 
   return parseResponse(res);
 }
