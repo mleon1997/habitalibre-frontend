@@ -50,6 +50,7 @@ import DeleteAccountWeb from "./pages/DeleteAccountWeb.jsx";
 import Admin from "./pages/Admin.jsx";
 import AdminLeads from "./pages/AdminLeads.jsx";
 import AdminUsers from "./pages/AdminUsers.jsx";
+import AdminProperties from "./pages/AdminProperties.jsx";
 
 import PoliticaPrivacidad from "./pages/PoliticaPrivacidad.jsx";
 import TerminosUso from "./pages/TerminosUso.jsx";
@@ -298,6 +299,15 @@ export default function App() {
             </AdminProtectedRoute>
           }
         />
+
+        <Route
+  path="/admin/propiedades"
+  element={
+    <AdminProtectedRoute>
+      <AdminProperties />
+    </AdminProtectedRoute>
+  }
+/>
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
