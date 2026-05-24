@@ -569,7 +569,7 @@ const [bulkStatusSaving, setBulkStatusSaving] = useState(false);
     [properties]
   );
 
-  const proyectoOptions = useMemo(() => {
+const proyectoOptions = useMemo(() => {
   return Array.from(
     new Set(properties.map((p) => p?.proyecto).filter(Boolean))
   ).sort();
@@ -577,24 +577,6 @@ const [bulkStatusSaving, setBulkStatusSaving] = useState(false);
 
 const filteredProperties = useMemo(() => {
   const q = filterSearch.trim().toLowerCase();
-const hasActiveBulkFilter = useMemo(() => {
-  return (
-    filterSearch.trim() ||
-    filterProyecto ||
-    filterEstado !== "all" ||
-    filterTipo !== "all" ||
-    filterPublicado !== "all"
-  );
-}, [
-  filterSearch,
-  filterProyecto,
-  filterEstado,
-  filterTipo,
-  filterPublicado,
-]);
-
-
-
 
   return properties.filter((p) => {
     const searchable = [
@@ -633,6 +615,22 @@ const hasActiveBulkFilter = useMemo(() => {
   });
 }, [
   properties,
+  filterSearch,
+  filterProyecto,
+  filterEstado,
+  filterTipo,
+  filterPublicado,
+]);
+
+const hasActiveBulkFilter = useMemo(() => {
+  return Boolean(
+    filterSearch.trim() ||
+      filterProyecto ||
+      filterEstado !== "all" ||
+      filterTipo !== "all" ||
+      filterPublicado !== "all"
+  );
+}, [
   filterSearch,
   filterProyecto,
   filterEstado,
