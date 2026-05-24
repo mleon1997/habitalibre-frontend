@@ -551,7 +551,11 @@ export default function AdminProperties() {
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-
+const [filterSearch, setFilterSearch] = useState("");
+const [filterProyecto, setFilterProyecto] = useState("");
+const [filterEstado, setFilterEstado] = useState("all");
+const [filterTipo, setFilterTipo] = useState("all");
+const [filterPublicado, setFilterPublicado] = useState("all");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [bulkFile, setBulkFile] = useState(null);
@@ -564,6 +568,59 @@ const [bulkConfirming, setBulkConfirming] = useState(false);
     () => properties.filter((p) => p?.publicado === true).length,
     [properties]
   );
+
+  const proyectoOptions = useMemo(() => {
+  return Array.from(
+    new Set(properties.map((p) => p?.proyecto).filter(Boolean))
+  ).sort();
+}, [properties]);
+
+const filteredProperties = useMemo(() => {
+  const q = filterSearch.trim().toLowerCase();
+
+  return properties.filter((p) => {
+    const searchable = [
+      p?.id,
+      p?.titulo,
+      p?.unidad,
+      p?.proyecto,
+      p?.sector,
+      p?.tipoInmueble,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    if (q && !searchable.includes(q)) return false;
+
+    if (filterProyecto && p?.proyecto !== filterProyecto) return false;
+
+    if (filterEstado !== "all" && p?.estadoComercial !== filterEstado) {
+      return false;
+    }
+
+    if (filterTipo !== "all" && p?.tipoInmueble !== filterTipo) {
+      return false;
+    }
+
+    if (filterPublicado === "publicado" && p?.publicado !== true) {
+      return false;
+    }
+
+    if (filterPublicado === "oculto" && p?.publicado === true) {
+      return false;
+    }
+
+    return true;
+  });
+}, [
+  properties,
+  filterSearch,
+  filterProyecto,
+  filterEstado,
+  filterTipo,
+  filterPublicado,
+]);
 
   async function loadProperties() {
     try {
@@ -1041,14 +1098,89 @@ function handleClearBulk() {
             }}
           >
             <h2 style={{ marginTop: 0 }}>Inventario</h2>
+            <div
+  style={{
+    display: "grid",
+    gap: 10,
+    marginBottom: 14,
+    padding: 12,
+    borderRadius: 18,
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(255,255,255,0.08)",
+  }}
+>
+  <TextField
+    label="Buscar"
+    value={filterSearch}
+    onChange={setFilterSearch}
+    placeholder="ID, unidad, título, proyecto..."
+  />
+
+  <div style={grid2Style()}>
+    <SelectField
+      label="Proyecto"
+      value={filterProyecto}
+      onChange={setFilterProyecto}
+    >
+      <option value="">Todos</option>
+      {proyectoOptions.map((proyecto) => (
+        <option key={proyecto} value={proyecto}>
+          {proyecto}
+        </option>
+      ))}
+    </SelectField>
+
+    <SelectField
+      label="Estado"
+      value={filterEstado}
+      onChange={setFilterEstado}
+    >
+      <option value="all">Todos</option>
+      <option value="disponible">Disponible</option>
+      <option value="pausado">Pausado</option>
+      <option value="reservado">Reservado</option>
+      <option value="vendido">Vendido</option>
+      <option value="oculto">Oculto</option>
+    </SelectField>
+
+    <SelectField
+      label="Tipo inmueble"
+      value={filterTipo}
+      onChange={setFilterTipo}
+    >
+      <option value="all">Todos</option>
+      <option value="departamento">Departamento</option>
+      <option value="suite">Suite</option>
+      <option value="estudio">Estudio</option>
+      <option value="casa">Casa</option>
+      <option value="terreno">Terreno</option>
+    </SelectField>
+
+    <SelectField
+      label="Publicación"
+      value={filterPublicado}
+      onChange={setFilterPublicado}
+    >
+      <option value="all">Todos</option>
+      <option value="publicado">Publicado</option>
+      <option value="oculto">Oculto</option>
+    </SelectField>
+  </div>
+
+  <div style={{ color: "rgba(203,213,225,0.78)", fontSize: 13 }}>
+    Mostrando <strong>{filteredProperties.length}</strong> de{" "}
+    <strong>{properties.length}</strong> propiedades.
+  </div>
+</div>
+
 
             {loading ? (
               <div style={{ color: "rgba(203,213,225,0.85)" }}>
                 Cargando propiedades...
               </div>
-            ) : properties.length ? (
-              <div style={{ display: "grid", gap: 12 }}>
-                {properties.map((p) => {
+) : filteredProperties.length ? (
+<div style={{ display: "grid", gap: 12 }}>
+{filteredProperties.map((p) => {
                   const id = p?.id || p?._id;
                   const status = p?.estadoComercial || "—";
                   const isPublished = p?.publicado === true;
