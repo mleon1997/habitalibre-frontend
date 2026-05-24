@@ -44,8 +44,7 @@ export default function Admin() {
   const loc = useLocation();
 
   const params = new URLSearchParams(loc.search || "");
-  const returnTo = params.get("returnTo") || "/admin/leads";
-
+const returnTo = params.get("returnTo") || "/admin/home";
   const token = useMemo(() => {
     try {
       return localStorage.getItem(LS_ADMIN_TOKEN) || "";
