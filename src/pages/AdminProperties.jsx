@@ -974,16 +974,17 @@ export default function AdminProperties() {
 
               <Section title="2. Tipo de inmueble">
                 <div style={grid2Style()}>
-                  <SelectField
-                    label="Tipo inmueble"
-                    value={form.tipoInmueble}
-                    onChange={(v) => updateForm("tipoInmueble", v)}
-                  >
-                    <option value="departamento">Departamento</option>
-                    <option value="suite">Suite</option>
-                    <option value="casa">Casa</option>
-                    <option value="terreno">Terreno</option>
-                  </SelectField>
+<SelectField
+  label="Tipo inmueble"
+  value={form.tipoInmueble}
+  onChange={(v) => updateForm("tipoInmueble", v)}
+>
+  <option value="departamento">Departamento</option>
+  <option value="suite">Suite</option>
+  <option value="estudio">Estudio</option>
+  <option value="casa">Casa</option>
+  <option value="terreno">Terreno</option>
+</SelectField>
 
                   <SelectField
                     label="Tipo proyecto"

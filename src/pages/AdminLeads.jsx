@@ -1,6 +1,5 @@
 // src/pages/AdminLeads.jsx
 import React, { useEffect, useState, useCallback } from "react";
-import AdminLogin from "../components/AdminLogin.jsx";
 import AdminTopNav from "../components/AdminTopNav.jsx";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { API_BASE } from "../lib/api";
@@ -95,12 +94,13 @@ const AdminLeads = () => {
   const [selectedLead, setSelectedLead] = useState(null);
 
   // Auth admin
-  const [token, setToken] = useState(
-    () => localStorage.getItem("hl_admin_token") || ""
-  );
-  const [adminEmail, setAdminEmail] = useState(
-    () => localStorage.getItem("hl_admin_email") || ""
-  );
+const adminEmail = (() => {
+  try {
+    return localStorage.getItem("hl_admin_email") || "";
+  } catch {
+    return "";
+  }
+})();
 
   // KPIs
   const [stats, setStats] = useState({
@@ -379,23 +379,20 @@ const AdminLeads = () => {
     return <span className="text-xs text-slate-400">-</span>;
   };
 
+
   const forceAdminRelogin = (reason = "expired") => {
-    try {
-      localStorage.removeItem("hl_admin_token");
-      localStorage.removeItem("adminToken");
-      localStorage.removeItem("HL_TOKEN");
-      localStorage.removeItem("hl_admin_email");
-    } catch {}
+  try {
+    localStorage.removeItem("hl_admin_token");
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("HL_TOKEN");
+    localStorage.removeItem("hl_admin_email");
+  } catch {}
 
-    setToken("");
-    setAdminEmail("");
-
-    const returnTo = "/admin/leads";
-
-    window.location.href = `#/admin?returnTo=${encodeURIComponent(
-      returnTo
-    )}&reason=${encodeURIComponent(reason)}`;
-  };
+  const returnTo = encodeURIComponent("/admin/leads");
+  window.location.href = `/#/admin?returnTo=${returnTo}&reason=${encodeURIComponent(
+    reason
+  )}`;
+};
 
   const descargarFichaPDF = useCallback(
     async (lead) => {
@@ -593,24 +590,13 @@ const AdminLeads = () => {
     return () => window.removeEventListener("keydown", onKey);
   }, [drawerOpen, closeDrawer]);
 
-  useEffect(() => {
-    if (!token) return;
+useEffect(() => {
+  fetchLeads(1);
+  fetchStats();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
 
-    fetchLeads(1);
-    fetchStats();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
 
-  if (!token) {
-    return (
-      <AdminLogin
-        onSuccess={(newToken, emailFromLogin) => {
-          setToken(newToken);
-          setAdminEmail(emailFromLogin);
-        }}
-      />
-    );
-  }
 
   return (
     <div className="min-h-screen bg-slate-950 px-4 py-6 md:px-8">
