@@ -1,6 +1,7 @@
- // src/pages/AdminLeads.jsx
+// src/pages/AdminLeads.jsx
 import React, { useEffect, useState, useCallback } from "react";
 import AdminLogin from "../components/AdminLogin.jsx";
+import AdminTopNav from "../components/AdminTopNav.jsx";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { API_BASE } from "../lib/api";
 
@@ -39,14 +40,12 @@ const formatDate = (d) => {
   }
 };
 
-// ✅ Helper: number or null
 const toNumOrNull = (v) => {
   if (v == null) return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 };
 
-// ✅ Helper: bool-ish → "Sí/No/-"
 const formatBoolSiNo = (v) => {
   if (v === true) return "Sí";
   if (v === false) return "No";
@@ -56,7 +55,6 @@ const formatBoolSiNo = (v) => {
   return "-";
 };
 
-// ✅ Score HL: soporta TODOS los formatos (plano / decision / resultado)
 const getScoreHL = (lead) => {
   const s1 = toNumOrNull(lead?.scoreHL);
   if (s1 != null) return s1;
@@ -64,7 +62,6 @@ const getScoreHL = (lead) => {
   const s2 = toNumOrNull(lead?.decision?.scoreHL);
   if (s2 != null) return s2;
 
-  // formatos típicos del scoring
   const s3 = toNumOrNull(lead?.resultado?.puntajeHabitaLibre?.score);
   if (s3 != null) return s3;
 
@@ -79,7 +76,7 @@ const getScoreHL = (lead) => {
 
 const AdminLeads = () => {
   // -----------------------------
-  // Filtros (SIMPLIFICADOS)
+  // Filtros
   // -----------------------------
   const [email, setEmail] = useState("");
   const [telefono, setTelefono] = useState("");
@@ -97,7 +94,7 @@ const AdminLeads = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState(null);
 
-  // 🔐 Auth admin
+  // Auth admin
   const [token, setToken] = useState(
     () => localStorage.getItem("hl_admin_token") || ""
   );
@@ -125,6 +122,7 @@ const AdminLeads = () => {
 
   const chipScore = (score) => {
     if (score == null) return <span className="text-xs text-slate-400">-</span>;
+
     let color = "bg-slate-100 text-slate-800";
     if (score >= 80) color = "bg-emerald-50 text-emerald-700";
     else if (score >= 60) color = "bg-sky-50 text-sky-700";
@@ -140,7 +138,6 @@ const AdminLeads = () => {
     );
   };
 
-  // ✅ Canal canónico (fallback a metadata.canal)
   const getCanal = (lead) => {
     const c = String(lead?.canal || "").trim().toLowerCase();
     if (c === "web" || c === "whatsapp" || c === "instagram") return c;
@@ -157,13 +154,13 @@ const AdminLeads = () => {
     return "web";
   };
 
-  // ✅ Fuente canónica (fallback: si origen Manychat)
   const getFuente = (lead) => {
     const f = String(lead?.fuente || "").trim().toLowerCase();
     if (f === "form" || f === "manychat") return f;
 
     const o = String(lead?.origen || "").toLowerCase();
     if (o.includes("manychat")) return "manychat";
+
     return "form";
   };
 
@@ -198,6 +195,7 @@ const AdminLeads = () => {
 
   const chipFuente = (lead) => {
     const fuente = getFuente(lead);
+
     if (fuente === "manychat") {
       return (
         <span className="inline-flex items-center px-2 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-medium">
@@ -205,6 +203,7 @@ const AdminLeads = () => {
         </span>
       );
     }
+
     return (
       <span className="inline-flex items-center px-2 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-medium">
         Form
@@ -212,14 +211,13 @@ const AdminLeads = () => {
     );
   };
 
-  // Código único “bonito” para el lead
   const obtenerCodigoLead = (lead) => {
     if (!lead) return "-";
-    if (lead.codigo) return lead.codigo; // ✅ tu campo real
+    if (lead.codigo) return lead.codigo;
     if (lead.codigoHL) return lead.codigoHL;
     if (lead.codigoUnico) return lead.codigoUnico;
     if (lead.codigoLead) return lead.codigoLead;
-    if (lead._id) return `HL-${lead._id.slice(-6).toUpperCase()}`; // 👈 solo visual
+    if (lead._id) return `HL-${lead._id.slice(-6).toUpperCase()}`;
     return "-";
   };
 
@@ -247,7 +245,9 @@ const AdminLeads = () => {
     const p = sanitizePhoneForWa(lead?.telefono);
     if (!p) return "";
     const nombre = String(lead?.nombre || "").trim();
-    const msg = `Hola ${nombre ? nombre : ""}, soy HabitaLibre. Vimos tu interés y quiero ayudarte a avanzar con tu casa.`;
+    const msg = `Hola ${
+      nombre ? nombre : ""
+    }, soy HabitaLibre. Vimos tu interés y quiero ayudarte a avanzar con tu casa.`;
     return `https://wa.me/${p}?text=${encodeURIComponent(msg)}`;
   };
 
@@ -257,12 +257,8 @@ const AdminLeads = () => {
     return `https://www.instagram.com/${u}/`;
   };
 
-  // -------------------------------------------------
-  // ✅ Decision UI (desde backend lead.decision)
-  // -------------------------------------------------
   const getDecision = (lead) => lead?.decision || null;
 
-  // ✅ Helpers: ingreso/deuda “plano” con fallback a perfil del scoring
   const getIngresoMensual = (lead) => {
     const r = lead?.resultado || null;
     const perfil = r?.perfil || null;
@@ -294,11 +290,14 @@ const AdminLeads = () => {
 
   const chipHeat = (heat) => {
     const h = Number(heat ?? -1);
-    if (!Number.isFinite(h) || h < 0)
+
+    if (!Number.isFinite(h) || h < 0) {
       return <span className="text-xs text-slate-400">-</span>;
+    }
 
     const label =
       h === 0 ? "Frío" : h === 1 ? "Tibio" : h === 2 ? "Caliente" : "🔥 Hot";
+
     const cls =
       h <= 1
         ? "bg-slate-100 text-slate-700"
@@ -317,6 +316,7 @@ const AdminLeads = () => {
 
   const chipEstado = (estado) => {
     const e = String(estado || "").toLowerCase();
+
     if (!e) return <span className="text-xs text-slate-400">-</span>;
 
     if (e === "bancable") {
@@ -326,6 +326,7 @@ const AdminLeads = () => {
         </span>
       );
     }
+
     if (e === "rescatable") {
       return (
         <span className="inline-flex items-center px-2 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold">
@@ -333,6 +334,7 @@ const AdminLeads = () => {
         </span>
       );
     }
+
     if (e === "descartable") {
       return (
         <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
@@ -340,6 +342,7 @@ const AdminLeads = () => {
         </span>
       );
     }
+
     if (e === "por_calificar") {
       return (
         <span className="inline-flex items-center px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold">
@@ -364,6 +367,7 @@ const AdminLeads = () => {
         </span>
       );
     }
+
     if (llamarHoy === false) {
       return (
         <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
@@ -371,53 +375,48 @@ const AdminLeads = () => {
         </span>
       );
     }
+
     return <span className="text-xs text-slate-400">-</span>;
   };
 
-  // ✅ PATCH: helper para forzar relogin admin con retorno a la ruta actual
   const forceAdminRelogin = (reason = "expired") => {
     try {
       localStorage.removeItem("hl_admin_token");
+      localStorage.removeItem("adminToken");
+      localStorage.removeItem("HL_TOKEN");
       localStorage.removeItem("hl_admin_email");
     } catch {}
+
     setToken("");
     setAdminEmail("");
 
-    const returnTo =
-      window.location?.pathname +
-      (window.location?.search || "") +
-      (window.location?.hash || "");
+    const returnTo = "/admin/leads";
 
     window.location.href = `#/admin?returnTo=${encodeURIComponent(
       returnTo
     )}&reason=${encodeURIComponent(reason)}`;
   };
 
-  // =====================================================
-  // ✅ PDF bajo pedido (Ficha Comercial) - FIX REAL (usa _id)
-  // Endpoint correcto: /api/leads/:id/ficha-comercial.pdf
-  // =====================================================
   const descargarFichaPDF = useCallback(
     async (lead) => {
       try {
         const currentToken = localStorage.getItem("hl_admin_token");
+
         if (!currentToken) {
           forceAdminRelogin("missing_token");
           return;
         }
 
         const id = String(lead?._id || "").trim();
+
         if (!id) {
           alert("Este lead no tiene _id válido para generar PDF.");
           return;
         }
 
-        // ✅ endpoint correcto (ya soportado por tu controller)
         const url = `${API_BASE_URL}/api/leads/${encodeURIComponent(
           id
         )}/ficha-comercial.pdf`;
-
-        console.log("🧾 PDF -> URL:", url);
 
         const res = await fetch(url, {
           method: "GET",
@@ -435,7 +434,7 @@ const AdminLeads = () => {
 
         if (!res.ok) {
           const txt = await res.text().catch(() => "");
-          console.error("🧾 PDF -> error body:", txt);
+          console.error("PDF error body:", txt);
           alert(`No se pudo generar el PDF (status ${res.status}).`);
           return;
         }
@@ -456,7 +455,7 @@ const AdminLeads = () => {
 
         setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
       } catch (err) {
-        console.error("🧾 descargarFichaPDF error:", err);
+        console.error("descargarFichaPDF error:", err);
         alert("Error generando el PDF.");
       }
     },
@@ -464,15 +463,13 @@ const AdminLeads = () => {
     [API_BASE_URL]
   );
 
-  // =====================================================
-  // Fetch Leads
-  // =====================================================
   const fetchLeads = async (paginaNueva = 1) => {
     try {
       setLoading(true);
       setError("");
 
       const currentToken = localStorage.getItem("hl_admin_token");
+
       if (!currentToken) {
         setError("No autorizado: inicia sesión nuevamente.");
         setLeads([]);
@@ -492,7 +489,6 @@ const AdminLeads = () => {
       params.append("limit", pageSize);
 
       const url = `${API_BASE_URL}/api/leads?${params.toString()}`;
-      console.log("🌐 Fetch leads a:", url);
 
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${currentToken}` },
@@ -503,10 +499,9 @@ const AdminLeads = () => {
         throw new Error("No autorizado: tu sesión ha expirado.");
       }
 
-      if (!res.ok)
-        throw new Error(
-          `No se pudo cargar los leads (status ${res.status})`
-        );
+      if (!res.ok) {
+        throw new Error(`No se pudo cargar los leads (status ${res.status})`);
+      }
 
       const data = await res.json();
 
@@ -515,7 +510,7 @@ const AdminLeads = () => {
       setTotalPaginas(data.totalPaginas || 1);
       setPagina(data.pagina || paginaNueva);
     } catch (err) {
-      console.error("❌ Error en fetchLeads:", err);
+      console.error("Error en fetchLeads:", err);
       setError(err.message || "Error al cargar leads");
       setLeads([]);
       setTotalLeads(0);
@@ -525,12 +520,10 @@ const AdminLeads = () => {
     }
   };
 
-  // =====================================================
-  // Fetch Stats (KPIs)
-  // =====================================================
   const fetchStats = async () => {
     try {
       setLoadingStats(true);
+
       const currentToken = localStorage.getItem("hl_admin_token");
       if (!currentToken) return;
 
@@ -560,9 +553,6 @@ const AdminLeads = () => {
     }
   };
 
-  // =====================================================
-  // Handlers UI
-  // =====================================================
   const handleBuscar = () => {
     fetchLeads(1);
     fetchStats();
@@ -584,13 +574,6 @@ const AdminLeads = () => {
     if (pagina < totalPaginas) fetchLeads(pagina + 1);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("hl_admin_token");
-    localStorage.removeItem("hl_admin_email");
-    setToken("");
-    setAdminEmail("");
-  };
-
   const openDrawerFor = useCallback((lead) => {
     setSelectedLead(lead);
     setDrawerOpen(true);
@@ -600,28 +583,24 @@ const AdminLeads = () => {
     setDrawerOpen(false);
   }, []);
 
-  // Esc para cerrar
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape") closeDrawer();
     };
+
     if (drawerOpen) window.addEventListener("keydown", onKey);
+
     return () => window.removeEventListener("keydown", onKey);
   }, [drawerOpen, closeDrawer]);
 
-  // =====================================================
-  // Efectos
-  // =====================================================
   useEffect(() => {
     if (!token) return;
+
     fetchLeads(1);
     fetchStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  // =====================================================
-  // Gate: si no hay token → login admin
-  // =====================================================
   if (!token) {
     return (
       <AdminLogin
@@ -633,49 +612,53 @@ const AdminLeads = () => {
     );
   }
 
-  // =====================================================
-  // UI
-  // =====================================================
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-6 md:px-8">
+    <div className="min-h-screen bg-slate-950 px-4 py-6 md:px-8">
       <div className="max-w-6xl mx-auto space-y-5">
-        {/* HEADER PRINCIPAL */}
-        <header className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-900">
-              Dashboard de Leads
-            </h1>
-            <p className="text-sm text-slate-500">
-              Vista interna. Leads (Web/WhatsApp/Instagram/Manychat).
-            </p>
+        <AdminTopNav
+          title="Leads Quick Win"
+          subtitle="Revisa y gestiona los leads que llegan desde el landing, campañas y formularios de precalificación rápida."
+        />
 
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
-              <span>
-                Total leads:{" "}
-                <span className="font-semibold text-slate-900">
-                  {totalLeads}
-                </span>
-              </span>
-              <span className="text-slate-300">•</span>
-              <span>
-                Página {pagina} de {totalPaginas}
-              </span>
-              {loading && (
-                <>
-                  <span className="text-slate-300">•</span>
-                  <span className="flex items-center gap-1 text-sky-600">
-                    <span className="inline-block h-2 w-2 rounded-full bg-sky-500 animate-pulse" />
-                    Actualizando…
+        <section className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">
+                Dashboard de Leads
+              </h2>
+
+              <p className="text-sm text-slate-500">
+                Vista interna. Leads Web, WhatsApp, Instagram y Manychat.
+              </p>
+
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+                <span>
+                  Total leads:{" "}
+                  <span className="font-semibold text-slate-900">
+                    {totalLeads}
                   </span>
-                </>
-              )}
-            </div>
-          </div>
+                </span>
 
-          {/* SESIÓN + LOGOUT */}
-          <div className="flex items-center gap-3 self-start">
+                <span className="text-slate-300">•</span>
+
+                <span>
+                  Página {pagina} de {totalPaginas}
+                </span>
+
+                {loading && (
+                  <>
+                    <span className="text-slate-300">•</span>
+                    <span className="flex items-center gap-1 text-sky-600">
+                      <span className="inline-block h-2 w-2 rounded-full bg-sky-500 animate-pulse" />
+                      Actualizando…
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
             {adminEmail && (
-              <div className="hidden sm:flex items-center gap-2 rounded-full bg-slate-100 border border-slate-200 px-3 py-1">
+              <div className="flex items-center gap-2 rounded-full bg-slate-100 border border-slate-200 px-3 py-1">
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
                 <span className="text-xs text-slate-600">
                   Sesión iniciada como{" "}
@@ -685,17 +668,9 @@ const AdminLeads = () => {
                 </span>
               </div>
             )}
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="h-9 px-4 rounded-full border border-slate-300 bg-white text-xs font-medium text-slate-700 hover:bg-slate-100 shadow-sm"
-            >
-              Cerrar sesión
-            </button>
           </div>
-        </header>
+        </section>
 
-        {/* KPIs RÁPIDOS */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <KpiCard
             label="Leads hoy"
@@ -719,7 +694,6 @@ const AdminLeads = () => {
           />
         </section>
 
-        {/* FILTROS (SIMPLIFICADOS) */}
         <section className="bg-white rounded-2xl shadow-sm border border-slate-200 px-5 py-4 md:px-6 md:py-5">
           <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
             <div className="flex flex-col md:col-span-2">
@@ -773,6 +747,7 @@ const AdminLeads = () => {
             >
               Limpiar
             </button>
+
             <button
               type="button"
               onClick={handleBuscar}
@@ -786,7 +761,6 @@ const AdminLeads = () => {
           {error && <div className="mt-3 text-sm text-red-500">{error}</div>}
         </section>
 
-        {/* TABLA (SIMPLIFICADA) */}
         <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="overflow-x-auto max-h-[65vh]">
             <table className="min-w-full text-sm">
@@ -856,12 +830,15 @@ const AdminLeads = () => {
                       <td className="px-4 py-3 text-xs text-slate-500">
                         {formatDate(lead.createdAt)}
                       </td>
+
                       <td className="px-4 py-3 text-xs font-semibold text-slate-700">
                         {obtenerCodigoLead(lead)}
                       </td>
+
                       <td className="px-4 py-3 text-sm text-slate-900">
                         {lead.nombre || lead.nombreCompleto || "-"}
                       </td>
+
                       <td className="px-4 py-3 text-sm text-slate-700">
                         {lead.ciudad || "-"}
                       </td>
@@ -890,7 +867,7 @@ const AdminLeads = () => {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            descargarFichaPDF(lead); // ✅ FIX: se pasa el lead completo
+                            descargarFichaPDF(lead);
                           }}
                           className="h-8 px-3 rounded-full border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50"
                           title="Descargar Ficha Comercial (PDF)"
@@ -916,7 +893,6 @@ const AdminLeads = () => {
             </table>
           </div>
 
-          {/* FOOTER TABLA */}
           <div className="flex flex-col md:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-100 text-xs text-slate-500">
             <div>
               Mostrando{" "}
@@ -941,6 +917,7 @@ const AdminLeads = () => {
               >
                 Anterior
               </button>
+
               <button
                 type="button"
                 onClick={handleSiguiente}
@@ -954,7 +931,6 @@ const AdminLeads = () => {
         </section>
       </div>
 
-      {/* DRAWER (se mantiene completo para operaciones) */}
       <LeadDrawer
         open={drawerOpen}
         lead={selectedLead}
@@ -980,7 +956,7 @@ const AdminLeads = () => {
 };
 
 // =====================================================
-// Drawer (panel lateral, no navegación)
+// Drawer
 // =====================================================
 function LeadDrawer({
   open,
@@ -1024,7 +1000,6 @@ function LeadDrawer({
     ? decision.nextActions
     : [];
 
-  // ✅ perfil financiero (plano → fallback perfil scoring)
   const ingresoMensual = getIngresoMensual ? getIngresoMensual(lead) : null;
   const deudaMensual = getDeudaMensual ? getDeudaMensual(lead) : null;
   const dtiBase =
@@ -1038,7 +1013,9 @@ function LeadDrawer({
     null;
 
   const afiliadoIess =
-    lead?.afiliado_iess != null ? lead.afiliado_iess : perfil?.afiliadoIess ?? null;
+    lead?.afiliado_iess != null
+      ? lead.afiliado_iess
+      : perfil?.afiliadoIess ?? null;
 
   return (
     <div className="fixed inset-0 z-[60]">
@@ -1051,7 +1028,9 @@ function LeadDrawer({
               <p className="text-sm font-semibold text-slate-900 truncate">
                 {lead?.nombre || lead?.nombreCompleto || "Lead"}
               </p>
+
               <span className="text-xs text-slate-400">•</span>
+
               <span className="text-xs font-semibold text-slate-700">
                 {obtenerCodigoLead(lead)}
               </span>
@@ -1086,10 +1065,11 @@ function LeadDrawer({
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold text-slate-700">Acción rápida</p>
+
             <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => descargarFichaPDF?.(lead)} // ✅ FIX
+                onClick={() => descargarFichaPDF?.(lead)}
                 className="h-9 px-4 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800"
               >
                 Ficha PDF
@@ -1194,6 +1174,7 @@ function LeadDrawer({
           <Card title="Bancabilidad (scoring)">
             <div className="grid grid-cols-2 gap-3">
               <Stat label="Score HL" value={chipScore(getScoreHL(lead))} />
+
               <Stat
                 label="Etapa"
                 value={
@@ -1202,6 +1183,7 @@ function LeadDrawer({
                   </span>
                 }
               />
+
               <Stat
                 label="Producto"
                 value={
@@ -1210,6 +1192,7 @@ function LeadDrawer({
                   </span>
                 }
               />
+
               <Stat
                 label="Canal / Fuente"
                 value={
@@ -1229,6 +1212,7 @@ function LeadDrawer({
                   </span>
                 }
               />
+
               <Stat
                 label="LTV estimado"
                 value={
@@ -1250,6 +1234,7 @@ function LeadDrawer({
                   </span>
                 }
               />
+
               <Stat
                 label="Deudas mensuales"
                 value={
@@ -1258,6 +1243,7 @@ function LeadDrawer({
                   </span>
                 }
               />
+
               <Stat
                 label="DTI sin hipoteca"
                 value={
@@ -1266,6 +1252,7 @@ function LeadDrawer({
                   </span>
                 }
               />
+
               <Stat
                 label="Estabilidad / IESS"
                 value={
@@ -1281,11 +1268,13 @@ function LeadDrawer({
               <p className="text-xs font-semibold text-slate-700">
                 Ruta recomendada
               </p>
+
               <div className="mt-2 rounded-xl border border-slate-200 bg-white p-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-slate-900">
                     {safe(ruta?.tipo, safe(resultado?.rutaRecomendada?.tipo, "-"))}
                   </span>
+
                   <span className="text-xs text-slate-500">
                     Cuota:{" "}
                     <span className="font-semibold text-slate-800">
@@ -1293,6 +1282,7 @@ function LeadDrawer({
                     </span>
                   </span>
                 </div>
+
                 <div className="mt-1 text-xs text-slate-500">
                   Tasa anual:{" "}
                   <span className="font-semibold text-slate-700">
@@ -1312,7 +1302,10 @@ function LeadDrawer({
 
             {bancosTop3.length > 0 && (
               <div className="mt-4">
-                <p className="text-xs font-semibold text-slate-700">Top 3 bancos</p>
+                <p className="text-xs font-semibold text-slate-700">
+                  Top 3 bancos
+                </p>
+
                 <div className="mt-2 space-y-2">
                   {bancosTop3.map((b, idx) => (
                     <div
@@ -1323,11 +1316,13 @@ function LeadDrawer({
                         <span className="text-sm font-semibold text-slate-900">
                           {b.banco || b.nombre || "-"}
                         </span>
+
                         <span className="text-xs font-semibold text-slate-700">
                           {b.probLabel || "-"}{" "}
                           {b.probScore != null ? `(${b.probScore}/100)` : ""}
                         </span>
                       </div>
+
                       <div className="mt-1 text-xs text-slate-500">
                         Tipo:{" "}
                         <span className="font-semibold text-slate-700">
@@ -1335,7 +1330,9 @@ function LeadDrawer({
                         </span>{" "}
                         • DTI banco:{" "}
                         <span className="font-semibold text-slate-700">
-                          {b.dtiBanco != null ? `${Math.round(b.dtiBanco * 100)}%` : "-"}
+                          {b.dtiBanco != null
+                            ? `${Math.round(b.dtiBanco * 100)}%`
+                            : "-"}
                         </span>
                       </div>
                     </div>
@@ -1358,10 +1355,12 @@ function LeadDrawer({
             {perfil && (
               <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3">
                 <p className="text-xs font-semibold text-slate-700">
-                  Perfil (del scoring)
+                  Perfil del scoring
                 </p>
+
                 <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                   <Row label="Tipo ingreso" value={perfil?.tipoIngreso || "-"} />
+
                   <Row
                     label="Ingreso total"
                     value={
@@ -1370,6 +1369,7 @@ function LeadDrawer({
                         : "-"
                     }
                   />
+
                   <Row
                     label="Años estabilidad"
                     value={
@@ -1378,6 +1378,7 @@ function LeadDrawer({
                         : "-"
                     }
                   />
+
                   <Row label="IESS" value={formatBoolSiNo(perfil?.afiliadoIess)} />
                 </div>
               </div>
@@ -1386,8 +1387,9 @@ function LeadDrawer({
 
           <details className="rounded-2xl border border-slate-200 bg-white p-4">
             <summary className="cursor-pointer text-sm font-semibold text-slate-900">
-              Ver datos completos (debug)
+              Ver datos completos debug
             </summary>
+
             <pre className="mt-3 text-xs whitespace-pre-wrap text-slate-700 bg-slate-50 border border-slate-200 rounded-xl p-3 overflow-x-auto">
               {JSON.stringify(lead, null, 2)}
             </pre>
@@ -1413,6 +1415,7 @@ function Card({ title, subtitle, children }) {
           {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
         </div>
       </div>
+
       <div className="mt-3">{children}</div>
     </div>
   );
@@ -1424,6 +1427,7 @@ function Stat({ label, value }) {
       <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
         {label}
       </p>
+
       <div className="mt-1">{value}</div>
     </div>
   );
@@ -1444,9 +1448,11 @@ function KpiCard({ label, value, subtitle }) {
       <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
         {label}
       </p>
+
       <p className="mt-1 text-xl font-semibold text-slate-900">
         {Number(value || 0).toLocaleString("es-EC")}
       </p>
+
       {subtitle && <p className="mt-1 text-[11px] text-slate-500">{subtitle}</p>}
     </div>
   );
