@@ -545,6 +545,53 @@ function miniBulkCardStyle() {
   };
 }
 
+function PropertyImage({ src, title }) {
+  const imageUrl = String(src || "").trim();
+
+  if (!imageUrl) {
+    return (
+      <div
+        style={{
+          width: "100%",
+          height: 150,
+          borderRadius: 18,
+          background:
+            "linear-gradient(135deg, rgba(37,211,166,0.10), rgba(59,130,246,0.08))",
+          border: "1px solid rgba(255,255,255,0.08)",
+          display: "grid",
+          placeItems: "center",
+          color: "rgba(203,213,225,0.72)",
+          fontSize: 13,
+          fontWeight: 800,
+        }}
+      >
+        Sin imagen cargada
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={imageUrl}
+      alt={title || "Imagen de propiedad"}
+      loading="lazy"
+      onError={(e) => {
+        e.currentTarget.style.display = "none";
+      }}
+      style={{
+        width: "100%",
+        height: 150,
+        objectFit: "cover",
+        borderRadius: 18,
+        border: "1px solid rgba(255,255,255,0.10)",
+        background: "rgba(15,23,42,0.9)",
+      }}
+    />
+  );
+}
+
+
+
 export default function AdminProperties() {
   const [properties, setProperties] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -1336,27 +1383,29 @@ disabled={
                   const isPublished = p?.publicado === true;
 
                   return (
-                    <div
-                      key={id}
-                      style={{
-                        padding: 14,
-                        borderRadius: 20,
-                        border: "1px solid rgba(255,255,255,0.10)",
-                        background: isPublished
-                          ? "rgba(37,211,166,0.08)"
-                          : "rgba(255,255,255,0.04)",
-                        display: "grid",
-                        gap: 10,
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          gap: 12,
-                          alignItems: "flex-start",
-                        }}
-                      >
+  <div
+    key={id}
+    style={{
+      padding: 14,
+      borderRadius: 20,
+      border: "1px solid rgba(255,255,255,0.10)",
+      background: isPublished
+        ? "rgba(37,211,166,0.08)"
+        : "rgba(255,255,255,0.04)",
+      display: "grid",
+      gap: 10,
+    }}
+  >
+    <PropertyImage src={p?.imagen} title={p?.titulo} />
+
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        gap: 12,
+        alignItems: "flex-start",
+      }}
+    >
                         <div>
                           <div style={{ fontWeight: 950, fontSize: 16 }}>
                             {p?.titulo || "Sin título"}
@@ -1895,6 +1944,8 @@ disabled={
                   onChange={(v) => updateForm("imagen", v)}
                   placeholder="https://..."
                 />
+
+                <PropertyImage src={form.imagen} title={form.titulo} />
 
                 <TextAreaField
                   label="Galería URLs, una por línea"
