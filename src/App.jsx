@@ -1,6 +1,7 @@
 // src/App.jsx
 import React from "react";
 import "./App.css";
+import AdminHome from "./pages/AdminHome.jsx";
 import {
   HashRouter as Router,
   Routes,
@@ -299,6 +300,15 @@ export default function App() {
             </AdminProtectedRoute>
           }
         />
+
+        <Route
+  path="/admin/home"
+  element={
+    <AdminProtectedRoute>
+      <AdminHome />
+    </AdminProtectedRoute>
+  }
+/>
 
         <Route
   path="/admin/propiedades"
