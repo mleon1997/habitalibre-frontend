@@ -5,6 +5,9 @@ import {
   listAdminProperties,
   updateAdminProperty,
   updateAdminPropertyStatus,
+  downloadPropertiesTemplate,
+  previewPropertiesExcel,
+  confirmPropertiesBulk,
 } from "../lib/propertiesAdminApi.js";
 import { moneyUSD } from "../lib/money";
 import AdminTopNav from "../components/AdminTopNav.jsx";
@@ -529,6 +532,19 @@ function CheckboxField({ label, checked, onChange }) {
   );
 }
 
+function miniBulkCardStyle() {
+  return {
+    padding: 12,
+    borderRadius: 14,
+    background: "rgba(255,255,255,0.055)",
+    border: "1px solid rgba(255,255,255,0.10)",
+    display: "grid",
+    gap: 4,
+    color: "rgba(226,232,240,0.92)",
+    fontSize: 12,
+  };
+}
+
 export default function AdminProperties() {
   const [properties, setProperties] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -538,6 +554,11 @@ export default function AdminProperties() {
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [bulkFile, setBulkFile] = useState(null);
+const [bulkPreview, setBulkPreview] = useState(null);
+const [bulkLoading, setBulkLoading] = useState(false);
+const [bulkConfirming, setBulkConfirming] = useState(false);
+
 
   const activeCount = useMemo(
     () => properties.filter((p) => p?.publicado === true).length,
@@ -600,6 +621,80 @@ export default function AdminProperties() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  async function handleDownloadTemplate() {
+  try {
+    setError("");
+    setMessage("");
+
+    await downloadPropertiesTemplate();
+
+    setMessage("Plantilla Excel descargada correctamente.");
+  } catch (err) {
+    setError(err?.message || "No se pudo descargar la plantilla.");
+  }
+}
+
+async function handlePreviewBulk() {
+  try {
+    setBulkLoading(true);
+    setError("");
+    setMessage("");
+    setBulkPreview(null);
+
+    if (!bulkFile) {
+      throw new Error("Selecciona un archivo Excel primero.");
+    }
+
+    const data = await previewPropertiesExcel(bulkFile);
+
+    setBulkPreview(data);
+    setMessage("Archivo leído correctamente. Revisa el preview antes de confirmar.");
+  } catch (err) {
+    setError(err?.message || "No se pudo previsualizar el archivo.");
+  } finally {
+    setBulkLoading(false);
+  }
+}
+
+async function handleConfirmBulk() {
+  try {
+    setBulkConfirming(true);
+    setError("");
+    setMessage("");
+
+    const rows = Array.isArray(bulkPreview?.validRows)
+      ? bulkPreview.validRows
+      : [];
+
+    if (!rows.length) {
+      throw new Error("No hay filas válidas para confirmar.");
+    }
+
+    const result = await confirmPropertiesBulk(rows);
+
+    setMessage(
+      `Carga confirmada: ${result.created || 0} creadas, ${
+        result.updated || 0
+      } actualizadas, ${result.totalErrors || 0} errores.`
+    );
+
+    setBulkFile(null);
+    setBulkPreview(null);
+
+    await loadProperties();
+  } catch (err) {
+    setError(err?.message || "No se pudo confirmar la carga masiva.");
+  } finally {
+    setBulkConfirming(false);
+  }
+}
+
+function handleClearBulk() {
+  setBulkFile(null);
+  setBulkPreview(null);
+  setError("");
+  setMessage("");
+}
 
   async function handleSubmit() {
     try {
@@ -711,6 +806,208 @@ export default function AdminProperties() {
     Nueva propiedad
   </Button>
 </div>
+
+<div
+  style={{
+    marginTop: 8,
+    padding: 14,
+    borderRadius: 18,
+    background: "rgba(37,211,166,0.055)",
+    border: "1px solid rgba(37,211,166,0.14)",
+    display: "grid",
+    gap: 12,
+  }}
+>
+  <div>
+    <div style={{ fontWeight: 950, fontSize: 15 }}>
+      Carga masiva Excel
+    </div>
+
+    <div
+      style={{
+        marginTop: 4,
+        color: "rgba(203,213,225,0.78)",
+        fontSize: 13,
+        lineHeight: 1.4,
+      }}
+    >
+      Descarga la plantilla, carga propiedades en Excel, previsualiza errores y
+      confirma solo cuando todo esté correcto.
+    </div>
+  </div>
+
+  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+    <Button tone="secondary" onClick={handleDownloadTemplate}>
+      Descargar plantilla
+    </Button>
+
+    <label
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "11px 13px",
+        borderRadius: 14,
+        border: "1px solid rgba(255,255,255,0.16)",
+        background: "rgba(255,255,255,0.08)",
+        color: "white",
+        fontWeight: 900,
+        cursor: "pointer",
+      }}
+    >
+      Seleccionar Excel
+      <input
+        type="file"
+        accept=".xlsx,.xls"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const file = e.target.files?.[0] || null;
+          setBulkFile(file);
+          setBulkPreview(null);
+          setMessage(file ? `Archivo seleccionado: ${file.name}` : "");
+          setError("");
+        }}
+      />
+    </label>
+
+    <Button tone="secondary" onClick={handlePreviewBulk} disabled={bulkLoading || !bulkFile}>
+      {bulkLoading ? "Leyendo..." : "Previsualizar"}
+    </Button>
+
+    <Button
+      onClick={handleConfirmBulk}
+      disabled={
+        bulkConfirming ||
+        !bulkPreview ||
+        !Array.isArray(bulkPreview?.validRows) ||
+        bulkPreview.validRows.length === 0
+      }
+    >
+      {bulkConfirming ? "Confirmando..." : "Confirmar carga"}
+    </Button>
+
+    <Button tone="secondary" onClick={handleClearBulk}>
+      Limpiar carga
+    </Button>
+  </div>
+
+  {bulkFile ? (
+    <div style={{ color: "rgba(226,232,240,0.88)", fontSize: 13 }}>
+      Archivo: <strong>{bulkFile.name}</strong>
+    </div>
+  ) : null}
+
+  {bulkPreview?.summary ? (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+        gap: 10,
+      }}
+    >
+      <div style={miniBulkCardStyle()}>
+        <strong>{bulkPreview.summary.totalRows}</strong>
+        <span>Filas leídas</span>
+      </div>
+
+      <div style={miniBulkCardStyle()}>
+        <strong>{bulkPreview.summary.validRows}</strong>
+        <span>Válidas</span>
+      </div>
+
+      <div style={miniBulkCardStyle()}>
+        <strong>{bulkPreview.summary.toCreate}</strong>
+        <span>Nuevas</span>
+      </div>
+
+      <div style={miniBulkCardStyle()}>
+        <strong>{bulkPreview.summary.toUpdate}</strong>
+        <span>Actualizaciones</span>
+      </div>
+
+      <div style={miniBulkCardStyle()}>
+        <strong>{bulkPreview.summary.errorRows}</strong>
+        <span>Con errores</span>
+      </div>
+    </div>
+  ) : null}
+
+  {Array.isArray(bulkPreview?.errorRows) && bulkPreview.errorRows.length > 0 ? (
+    <div
+      style={{
+        padding: 12,
+        borderRadius: 14,
+        background: "rgba(248,113,113,0.10)",
+        border: "1px solid rgba(248,113,113,0.20)",
+        color: "#fecaca",
+        display: "grid",
+        gap: 8,
+      }}
+    >
+      <strong>Errores detectados</strong>
+
+      {bulkPreview.errorRows.slice(0, 6).map((row) => (
+        <div key={`error-${row.rowNumber}`} style={{ fontSize: 13 }}>
+          Fila {row.rowNumber}:{" "}
+          {Array.isArray(row.errors) ? row.errors.join(" · ") : "Error"}
+        </div>
+      ))}
+
+      {bulkPreview.errorRows.length > 6 ? (
+        <div style={{ fontSize: 12, color: "rgba(254,202,202,0.78)" }}>
+          Hay más errores. Corrige el Excel y vuelve a previsualizar.
+        </div>
+      ) : null}
+    </div>
+  ) : null}
+
+  {Array.isArray(bulkPreview?.validRows) && bulkPreview.validRows.length > 0 ? (
+    <div
+      style={{
+        padding: 12,
+        borderRadius: 14,
+        background: "rgba(255,255,255,0.045)",
+        border: "1px solid rgba(255,255,255,0.09)",
+        display: "grid",
+        gap: 8,
+      }}
+    >
+      <strong>Preview de filas válidas</strong>
+
+      <div style={{ display: "grid", gap: 7 }}>
+        {bulkPreview.validRows.slice(0, 8).map((row) => (
+          <div
+            key={`valid-${row.rowNumber}-${row.payload?.id}`}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 12,
+              color: "rgba(226,232,240,0.88)",
+              fontSize: 13,
+              borderBottom: "1px solid rgba(255,255,255,0.06)",
+              paddingBottom: 6,
+            }}
+          >
+            <span>
+              Fila {row.rowNumber} · {row.payload?.id} · {row.payload?.titulo}
+            </span>
+
+            <strong style={{ color: row.action === "create" ? "#7fffd4" : "#facc15" }}>
+              {row.action === "create" ? "Crear" : "Actualizar"}
+            </strong>
+          </div>
+        ))}
+
+        {bulkPreview.validRows.length > 8 ? (
+          <div style={{ color: "rgba(148,163,184,0.85)", fontSize: 12 }}>
+            Mostrando 8 de {bulkPreview.validRows.length} filas válidas.
+          </div>
+        ) : null}
+      </div>
+    </div>
+  ) : null}
+</div>
+
 
           <div style={{ color: "rgba(148,163,184,0.95)", fontSize: 13 }}>
             Sesión admin activa · Activas publicadas:{" "}
