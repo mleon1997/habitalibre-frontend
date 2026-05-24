@@ -7,7 +7,6 @@ import {
   updateAdminPropertyStatus,
 } from "../lib/propertiesAdminApi.js";
 import { moneyUSD } from "../lib/money";
-import { useNavigate } from "react-router-dom";
 import AdminTopNav from "../components/AdminTopNav.jsx";
 
 const EMPTY_FORM = {
@@ -534,7 +533,6 @@ export default function AdminProperties() {
   const [properties, setProperties] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
-const nav = useNavigate();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -602,15 +600,6 @@ const nav = useNavigate();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
- function handleLogout() {
-  try {
-    localStorage.removeItem("hl_admin_token");
-    localStorage.removeItem("hl_admin_email");
-  } catch {}
-
-  const returnTo = encodeURIComponent("/admin/propiedades");
-  window.location.href = `/#/admin?returnTo=${returnTo}`;
-}
 
   async function handleSubmit() {
     try {
@@ -713,28 +702,15 @@ const nav = useNavigate();
             gap: 12,
           }}
         >
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-<Button tone="secondary" onClick={() => nav("/admin/home")}>
-  Panel interno
-</Button>
+<div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+  <Button tone="secondary" onClick={loadProperties}>
+    Recargar inventario
+  </Button>
 
-<Button tone="secondary" onClick={() => nav("/admin/leads")}>
-  Leads
-</Button>
-
-<Button tone="secondary" onClick={() => nav("/admin/users")}>
-  Usuarios
-</Button>
-
-<Button tone="secondary" onClick={loadProperties}>
-  Recargar inventario
-</Button>
-
-<Button tone="secondary" onClick={startCreate}>
-  Nueva propiedad
-</Button>
-
-          </div>
+  <Button tone="secondary" onClick={startCreate}>
+    Nueva propiedad
+  </Button>
+</div>
 
           <div style={{ color: "rgba(148,163,184,0.95)", fontSize: 13 }}>
             Sesión admin activa · Activas publicadas:{" "}
