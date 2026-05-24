@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE } from "../lib/api";
+import AdminTopNav from "../components/AdminTopNav.jsx";
 
 const LS_ADMIN_TOKEN = "hl_admin_token";
 
@@ -756,53 +757,30 @@ export default function AdminUsers() {
   return (
     <main className="min-h-screen bg-[#050816] text-slate-50">
       <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <div className="inline-flex rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-bold text-emerald-100">
-              Control Tower · HabitaLibre
-            </div>
+       <AdminTopNav
+  title="Usuarios registrados"
+  subtitle="Consulta usuarios registrados, simulaciones, actividad y datos clave de la experiencia HabitaLibre."
+  rightContent={
+    <div className="flex flex-wrap gap-2">
+      <button
+        onClick={onExportCSV}
+        className="px-4 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 font-semibold text-slate-100"
+      >
+        Exportar CSV
+      </button>
 
-            <h1 className="mt-3 text-3xl font-black tracking-[-0.04em]">
-              Dashboard de Usuarios
-            </h1>
-
-            <p className="text-slate-300 mt-2 max-w-3xl leading-6">
-              Vista interna para medir base, contactabilidad, calidad de datos y
-              oportunidades reales de conversión hipotecaria.
-            </p>
-
-            <div className="text-xs text-slate-500 mt-2">
-              Endpoints: /api/admin/users · /api/admin/users/kpis ·
-              /api/admin/users/export/csv
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={onExportCSV}
-              className="px-4 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 font-semibold"
-            >
-              Exportar CSV
-            </button>
-
-            <button
-              onClick={() => {
-                loadList();
-                loadKpis();
-              }}
-              className="px-4 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 font-semibold"
-            >
-              Refrescar
-            </button>
-
-            <button
-              onClick={() => logoutHard(nav)}
-              className="px-4 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 font-semibold"
-            >
-              Cerrar sesión
-            </button>
-          </div>
-        </div>
+      <button
+        onClick={() => {
+          loadList();
+          loadKpis();
+        }}
+        className="px-4 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 font-semibold text-slate-100"
+      >
+        Refrescar
+      </button>
+    </div>
+  }
+/>
 
         {/* KPIs */}
         <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
