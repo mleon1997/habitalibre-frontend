@@ -594,6 +594,8 @@ const hasActiveBulkFilter = useMemo(() => {
 ]);
 
 
+
+
   return properties.filter((p) => {
     const searchable = [
       p?.id,
