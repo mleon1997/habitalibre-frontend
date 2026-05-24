@@ -7,6 +7,8 @@ import {
   updateAdminPropertyStatus,
 } from "../lib/propertiesAdminApi.js";
 import { moneyUSD } from "../lib/money";
+import { useNavigate } from "react-router-dom";
+import AdminTopNav from "../components/AdminTopNav.jsx";
 
 const EMPTY_FORM = {
   id: "",
@@ -532,7 +534,7 @@ export default function AdminProperties() {
   const [properties, setProperties] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
-
+const nav = useNavigate();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -696,27 +698,11 @@ export default function AdminProperties() {
       }}
     >
       <div style={{ maxWidth: 1260, margin: "0 auto", display: "grid", gap: 18 }}>
-        <div>
-          <div style={{ color: "rgba(148,163,184,0.95)", fontWeight: 900 }}>
-            HabitaLibre Admin
-          </div>
-
-          <h1 style={{ margin: "8px 0 0", fontSize: 34, lineHeight: 1 }}>
-            Propiedades
-          </h1>
-
-          <p
-            style={{
-              margin: "10px 0 0",
-              color: "rgba(203,213,225,0.88)",
-              lineHeight: 1.45,
-            }}
-          >
-            Carga datos objetivos de cada propiedad. HabitaLibre calcula la
-            ruta hipotecaria con base en precio, entrega, entrada y perfil del usuario.
-          </p>
-        </div>
-
+        
+<AdminTopNav
+  title="Propiedades"
+  subtitle="Carga datos objetivos de cada propiedad. HabitaLibre calcula la ruta hipotecaria con base en precio, entrega, entrada y perfil del usuario."
+/>
         <div
           style={{
             padding: 16,
@@ -728,17 +714,26 @@ export default function AdminProperties() {
           }}
         >
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Button tone="secondary" onClick={loadProperties}>
-              Recargar inventario
-            </Button>
+<Button tone="secondary" onClick={() => nav("/admin/home")}>
+  Panel interno
+</Button>
 
-            <Button tone="secondary" onClick={startCreate}>
-              Nueva propiedad
-            </Button>
+<Button tone="secondary" onClick={() => nav("/admin/leads")}>
+  Leads
+</Button>
 
-            <Button tone="secondary" onClick={handleLogout}>
-              Cerrar sesión
-            </Button>
+<Button tone="secondary" onClick={() => nav("/admin/users")}>
+  Usuarios
+</Button>
+
+<Button tone="secondary" onClick={loadProperties}>
+  Recargar inventario
+</Button>
+
+<Button tone="secondary" onClick={startCreate}>
+  Nueva propiedad
+</Button>
+
           </div>
 
           <div style={{ color: "rgba(148,163,184,0.95)", fontSize: 13 }}>

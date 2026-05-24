@@ -1,6 +1,7 @@
 // src/pages/AdminHome.jsx
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import AdminTopNav from "../components/AdminTopNav.jsx";
 
 function Card({ title, description, badge, onClick }) {
   return (
