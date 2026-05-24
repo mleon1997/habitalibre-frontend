@@ -29,7 +29,9 @@ function Card({ title, description, badge, onClick }) {
         }}
       >
         <div>
-          <h2 style={{ margin: 0, fontSize: 22, lineHeight: 1.1 }}>{title}</h2>
+          <h2 style={{ margin: 0, fontSize: 22, lineHeight: 1.1 }}>
+            {title}
+          </h2>
 
           <p
             style={{
@@ -78,17 +80,6 @@ function Card({ title, description, badge, onClick }) {
 export default function AdminHome() {
   const nav = useNavigate();
 
-  function handleLogout() {
-    try {
-      localStorage.removeItem("hl_admin_token");
-      localStorage.removeItem("adminToken");
-      localStorage.removeItem("HL_TOKEN");
-      localStorage.removeItem("hl_admin_email");
-    } catch {}
-
-    nav("/admin", { replace: true });
-  }
-
   return (
     <div
       style={{
@@ -101,66 +92,18 @@ export default function AdminHome() {
         boxSizing: "border-box",
       }}
     >
-      <div style={{ maxWidth: 1120, margin: "0 auto", display: "grid", gap: 24 }}>
-        <header
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 18,
-            alignItems: "flex-start",
-            flexWrap: "wrap",
-          }}
-        >
-          <div>
-            <div
-              style={{
-                color: "rgba(148,163,184,0.95)",
-                fontWeight: 950,
-                fontSize: 16,
-              }}
-            >
-              HabitaLibre Admin
-            </div>
-
-            <h1
-              style={{
-                margin: "8px 0 0",
-                fontSize: 42,
-                lineHeight: 1,
-                letterSpacing: "-0.04em",
-              }}
-            >
-              Panel interno
-            </h1>
-
-            <p
-              style={{
-                margin: "12px 0 0",
-                color: "rgba(203,213,225,0.88)",
-                fontSize: 16,
-                lineHeight: 1.45,
-                maxWidth: 760,
-              }}
-            >
-              Administra leads, usuarios registrados y propiedades desde un solo lugar.
-            </p>
-          </div>
-
-          <button
-            onClick={handleLogout}
-            style={{
-              border: "1px solid rgba(255,255,255,0.16)",
-              background: "rgba(255,255,255,0.08)",
-              color: "white",
-              padding: "12px 16px",
-              borderRadius: 14,
-              fontWeight: 900,
-              cursor: "pointer",
-            }}
-          >
-            Cerrar sesión
-          </button>
-        </header>
+      <div
+        style={{
+          maxWidth: 1120,
+          margin: "0 auto",
+          display: "grid",
+          gap: 24,
+        }}
+      >
+        <AdminTopNav
+          title="Panel interno"
+          subtitle="Administra leads, usuarios registrados, propiedades y módulos internos de HabitaLibre desde un solo lugar."
+        />
 
         <section
           style={{
@@ -210,8 +153,9 @@ export default function AdminHome() {
             lineHeight: 1.5,
           }}
         >
-          <strong style={{ color: "#7fffd4" }}>Estado:</strong> sesión admin activa.
-          Desde aquí puedes moverte entre módulos sin volver a iniciar sesión.
+          <strong style={{ color: "#7fffd4" }}>Estado:</strong> sesión admin
+          activa. Desde aquí puedes moverte entre módulos sin volver a iniciar
+          sesión.
         </section>
       </div>
     </div>
