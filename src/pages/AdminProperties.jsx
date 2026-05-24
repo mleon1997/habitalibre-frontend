@@ -1,11 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  clearPropertyAdminKey,
   createAdminProperty,
   deleteAdminProperty,
-  getPropertyAdminKey,
   listAdminProperties,
-  savePropertyAdminKey,
   updateAdminProperty,
   updateAdminPropertyStatus,
 } from "../lib/propertiesAdminApi.js";
@@ -79,8 +76,8 @@ const EMPTY_FORM = {
   brochureUrl: "",
   videoUrl: "",
 
-  estadoComercial: "disponible",
-  publicado: true,
+  estadoComercial: "pausado",
+  publicado: false,
   orden: 1,
 };
 
@@ -311,7 +308,9 @@ function formFromProperty(property) {
 
     permiteEntradaEnCuotas: property?.permiteEntradaEnCuotas !== false,
     mesesConstruccionRestantes:
-      property?.mesesConstruccionRestantes ?? financing?.monthsConstruction ?? "",
+      property?.mesesConstruccionRestantes ??
+      financing?.monthsConstruction ??
+      "",
     porcentajeEntradaRequerida:
       property?.porcentajeEntradaRequerida ??
       financing?.downPaymentPct ??
@@ -530,7 +529,6 @@ function CheckboxField({ label, checked, onChange }) {
 }
 
 export default function AdminProperties() {
-  const [adminKey, setAdminKey] = useState(() => getPropertyAdminKey());
   const [properties, setProperties] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
@@ -568,19 +566,6 @@ export default function AdminProperties() {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  function handleSaveKey() {
-    savePropertyAdminKey(adminKey);
-    setMessage("Clave admin guardada en este navegador.");
-    setError("");
-  }
-
-  function handleClearKey() {
-    clearPropertyAdminKey();
-    setAdminKey("");
-    setMessage("Clave admin eliminada de este navegador.");
-    setError("");
-  }
-
   function startCreate() {
     setEditingId(null);
     setForm(EMPTY_FORM);
@@ -615,13 +600,20 @@ export default function AdminProperties() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function handleLogout() {
+    try {
+      localStorage.removeItem("hl_admin_token");
+      localStorage.removeItem("hl_admin_email");
+    } catch {}
+
+    window.location.href = "/#/admin";
+  }
+
   async function handleSubmit() {
     try {
       setSaving(true);
       setError("");
       setMessage("");
-
-      savePropertyAdminKey(adminKey);
 
       const payload = buildPayload(form);
 
@@ -654,8 +646,6 @@ export default function AdminProperties() {
       setError("");
       setMessage("");
 
-      savePropertyAdminKey(adminKey);
-
       await updateAdminPropertyStatus(id, {
         estadoComercial: status.estadoComercial,
         publicado: status.publicado,
@@ -683,8 +673,6 @@ export default function AdminProperties() {
     try {
       setError("");
       setMessage("");
-
-      savePropertyAdminKey(adminKey);
 
       await deleteAdminProperty(id);
       setMessage("Propiedad eliminada.");
@@ -738,26 +726,7 @@ export default function AdminProperties() {
             gap: 12,
           }}
         >
-          <label style={labelStyle()}>
-            PROPERTY_ADMIN_KEY
-            <input
-              value={adminKey}
-              onChange={(e) => setAdminKey(e.target.value)}
-              placeholder="Pega tu clave admin"
-              type="password"
-              style={inputStyle()}
-              autoComplete="new-password"
-              name="property_admin_key"
-            />
-          </label>
-
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Button onClick={handleSaveKey}>Guardar clave</Button>
-
-            <Button tone="secondary" onClick={handleClearKey}>
-              Borrar clave
-            </Button>
-
             <Button tone="secondary" onClick={loadProperties}>
               Recargar inventario
             </Button>
@@ -765,10 +734,15 @@ export default function AdminProperties() {
             <Button tone="secondary" onClick={startCreate}>
               Nueva propiedad
             </Button>
+
+            <Button tone="secondary" onClick={handleLogout}>
+              Cerrar sesión
+            </Button>
           </div>
 
           <div style={{ color: "rgba(148,163,184,0.95)", fontSize: 13 }}>
-            Activas publicadas: <strong>{activeCount}</strong> · Total cargadas:{" "}
+            Sesión admin activa · Activas publicadas:{" "}
+            <strong>{activeCount}</strong> · Total cargadas:{" "}
             <strong>{properties.length}</strong>
           </div>
 

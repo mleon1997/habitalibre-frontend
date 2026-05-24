@@ -5,33 +5,23 @@ const ADMIN_API_BASE = String(API_BASE || "").endsWith("/api")
   ? String(API_BASE || "")
   : `${String(API_BASE || "").replace(/\/$/, "")}/api`;
 
-const ADMIN_KEY_STORAGE = "hl_property_admin_key_v1";
+const ADMIN_TOKEN_KEY = "hl_admin_token";
 
-export function getPropertyAdminKey() {
+function getAdminToken() {
   try {
-    return localStorage.getItem(ADMIN_KEY_STORAGE) || "";
+    return localStorage.getItem(ADMIN_TOKEN_KEY) || "";
   } catch {
     return "";
   }
 }
 
-export function savePropertyAdminKey(key) {
-  try {
-    localStorage.setItem(ADMIN_KEY_STORAGE, String(key || "").trim());
-  } catch {}
-}
-
-export function clearPropertyAdminKey() {
-  try {
-    localStorage.removeItem(ADMIN_KEY_STORAGE);
-  } catch {}
-}
-
 function getAdminHeaders() {
+  const token = getAdminToken();
+
   return {
     "Content-Type": "application/json",
     Accept: "application/json",
-    "x-admin-key": getPropertyAdminKey(),
+    Authorization: token ? `Bearer ${token}` : "",
   };
 }
 
@@ -50,12 +40,9 @@ async function parseResponse(res) {
 }
 
 export async function listAdminProperties() {
-  const url = `${ADMIN_API_BASE}/properties?publicado=all`;
-  console.log("[propertiesAdminApi] GET", url);
-
-  const res = await fetch(url, {
+  const res = await fetch(`${ADMIN_API_BASE}/properties/admin/all`, {
     method: "GET",
-    headers: { Accept: "application/json" },
+    headers: getAdminHeaders(),
   });
 
   return parseResponse(res);
