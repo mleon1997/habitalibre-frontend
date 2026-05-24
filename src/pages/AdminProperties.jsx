@@ -562,7 +562,7 @@ const [filterPublicado, setFilterPublicado] = useState("all");
 const [bulkPreview, setBulkPreview] = useState(null);
 const [bulkLoading, setBulkLoading] = useState(false);
 const [bulkConfirming, setBulkConfirming] = useState(false);
-
+const [bulkStatusSaving, setBulkStatusSaving] = useState(false);
 
   const activeCount = useMemo(
     () => properties.filter((p) => p?.publicado === true).length,
@@ -801,6 +801,74 @@ function handleClearBulk() {
       setError(err?.message || "No se pudo actualizar el estado.");
     }
   }
+
+async function handleBulkStatus(status) {
+  try {
+    setError("");
+    setMessage("");
+
+    const targetProperties = Array.isArray(filteredProperties)
+      ? filteredProperties
+      : [];
+
+    if (!targetProperties.length) {
+      throw new Error("No hay propiedades filtradas para actualizar.");
+    }
+
+    const actionLabel = `${status.label} (${status.publicado ? "publicado" : "oculto"})`;
+
+    const ok = window.confirm(
+      `Vas a actualizar ${targetProperties.length} propiedades filtradas a "${actionLabel}".\n\n¿Seguro que quieres continuar?`
+    );
+
+    if (!ok) return;
+
+    // Segundo candado si estás aplicando algo muy amplio
+    if (!filterProyecto && targetProperties.length > 25) {
+      const okGlobal = window.confirm(
+        `Ojo: no tienes un proyecto filtrado y vas a afectar ${targetProperties.length} propiedades.\n\n¿Confirmas nuevamente?`
+      );
+
+      if (!okGlobal) return;
+    }
+
+    setBulkStatusSaving(true);
+
+    let updated = 0;
+    let failed = 0;
+
+    for (const property of targetProperties) {
+      const id = property?.id || property?._id;
+
+      if (!id) {
+        failed += 1;
+        continue;
+      }
+
+      try {
+        await updateAdminPropertyStatus(id, {
+          estadoComercial: status.estadoComercial,
+          publicado: status.publicado,
+        });
+
+        updated += 1;
+      } catch (err) {
+        console.warn("Error actualizando propiedad", id, err);
+        failed += 1;
+      }
+    }
+
+    setMessage(
+      `Acción masiva completada: ${updated} actualizadas, ${failed} con error.`
+    );
+
+    await loadProperties();
+  } catch (err) {
+    setError(err?.message || "No se pudo ejecutar la acción masiva.");
+  } finally {
+    setBulkStatusSaving(false);
+  }
+}
 
   async function handleDelete(property) {
     const id = property?.id || property?._id;
@@ -1170,6 +1238,54 @@ function handleClearBulk() {
   <div style={{ color: "rgba(203,213,225,0.78)", fontSize: 13 }}>
     Mostrando <strong>{filteredProperties.length}</strong> de{" "}
     <strong>{properties.length}</strong> propiedades.
+  </div>
+</div>
+
+<div
+  style={{
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 18,
+    background: "rgba(37,211,166,0.055)",
+    border: "1px solid rgba(37,211,166,0.14)",
+    display: "grid",
+    gap: 10,
+  }}
+>
+  <div>
+    <div style={{ fontWeight: 950, fontSize: 14 }}>
+      Acciones masivas sobre filtro actual
+    </div>
+
+    <div
+      style={{
+        marginTop: 4,
+        color: "rgba(203,213,225,0.78)",
+        fontSize: 12,
+        lineHeight: 1.35,
+      }}
+    >
+      Aplica el cambio solo a las propiedades que estás viendo con los filtros
+      actuales. Antes de publicar, filtra bien por proyecto, estado, tipo o unidad.
+    </div>
+  </div>
+
+  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+    {STATUS_OPTIONS.map((status) => (
+      <Button
+        key={`bulk-${status.estadoComercial}`}
+        tone={status.estadoComercial === "vendido" ? "danger" : "secondary"}
+        disabled={bulkStatusSaving || filteredProperties.length === 0}
+        onClick={() => handleBulkStatus(status)}
+      >
+        {bulkStatusSaving ? "Actualizando..." : `Marcar ${status.label}`}
+      </Button>
+    ))}
+  </div>
+
+  <div style={{ color: "rgba(148,163,184,0.9)", fontSize: 12 }}>
+    Propiedades afectadas si ejecutas una acción:{" "}
+    <strong>{filteredProperties.length}</strong>
   </div>
 </div>
 
