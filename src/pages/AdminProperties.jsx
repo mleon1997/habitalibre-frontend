@@ -577,6 +577,22 @@ const [bulkStatusSaving, setBulkStatusSaving] = useState(false);
 
 const filteredProperties = useMemo(() => {
   const q = filterSearch.trim().toLowerCase();
+const hasActiveBulkFilter = useMemo(() => {
+  return (
+    filterSearch.trim() ||
+    filterProyecto ||
+    filterEstado !== "all" ||
+    filterTipo !== "all" ||
+    filterPublicado !== "all"
+  );
+}, [
+  filterSearch,
+  filterProyecto,
+  filterEstado,
+  filterTipo,
+  filterPublicado,
+]);
+
 
   return properties.filter((p) => {
     const searchable = [
@@ -810,6 +826,12 @@ async function handleBulkStatus(status) {
     const targetProperties = Array.isArray(filteredProperties)
       ? filteredProperties
       : [];
+
+if (!hasActiveBulkFilter) {
+  throw new Error(
+    "Por seguridad, aplica al menos un filtro antes de ejecutar una acción masiva."
+  );
+}
 
     if (!targetProperties.length) {
       throw new Error("No hay propiedades filtradas para actualizar.");
@@ -1275,7 +1297,11 @@ async function handleBulkStatus(status) {
       <Button
         key={`bulk-${status.estadoComercial}`}
         tone={status.estadoComercial === "vendido" ? "danger" : "secondary"}
-        disabled={bulkStatusSaving || filteredProperties.length === 0}
+disabled={
+  bulkStatusSaving ||
+  filteredProperties.length === 0 ||
+  !hasActiveBulkFilter
+}
         onClick={() => handleBulkStatus(status)}
       >
         {bulkStatusSaving ? "Actualizando..." : `Marcar ${status.label}`}
@@ -1284,8 +1310,16 @@ async function handleBulkStatus(status) {
   </div>
 
   <div style={{ color: "rgba(148,163,184,0.9)", fontSize: 12 }}>
+   {hasActiveBulkFilter ? (
+  <>
     Propiedades afectadas si ejecutas una acción:{" "}
     <strong>{filteredProperties.length}</strong>
+  </>
+) : (
+  <>
+    Aplica al menos un filtro antes de ejecutar una acción masiva.
+  </>
+)}
   </div>
 </div>
 
