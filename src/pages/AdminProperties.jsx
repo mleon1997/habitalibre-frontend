@@ -600,14 +600,15 @@ export default function AdminProperties() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function handleLogout() {
-    try {
-      localStorage.removeItem("hl_admin_token");
-      localStorage.removeItem("hl_admin_email");
-    } catch {}
+ function handleLogout() {
+  try {
+    localStorage.removeItem("hl_admin_token");
+    localStorage.removeItem("hl_admin_email");
+  } catch {}
 
-    window.location.href = "/#/admin";
-  }
+  const returnTo = encodeURIComponent("/admin/propiedades");
+  window.location.href = `/#/admin?returnTo=${returnTo}`;
+}
 
   async function handleSubmit() {
     try {
