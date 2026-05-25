@@ -79,6 +79,18 @@ function toPct(n) {
   return clamp(Math.round(pct), 0, 100);
 }
 
+
+function toNumValue(v) {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function moneySafe(v) {
+  const n = toNumValue(v);
+  return n == null ? "—" : moneyUSD(n);
+}
+
 function probMeta(probPct) {
   if (probPct == null) return { label: "—", tone: "neutral" };
   if (probPct >= 70) return { label: "Alta", tone: "good" };
@@ -581,6 +593,250 @@ function StepTimelineCard({
   );
 }
 
+
+function PreparationRouteCard({
+  currentMaxPropertyValue,
+  currentMonthlyPayment,
+  projectedEntryMaxPropertyValue,
+  projectedEntryMonths,
+  projectedFutureEntry,
+  debtReductionTargetPrice,
+  debtReductionNeeded,
+  targetDebtAfterReduction,
+  currentDebt,
+  onGoMatch,
+  onAdjust,
+}) {
+  const hasEntryProjection =
+    toNumValue(projectedEntryMaxPropertyValue) != null &&
+    toNumValue(projectedEntryMaxPropertyValue) > 0;
+
+  const hasDebtReductionRoute =
+    toNumValue(debtReductionTargetPrice) != null &&
+    toNumValue(debtReductionTargetPrice) > 0 &&
+    toNumValue(debtReductionNeeded) != null &&
+    toNumValue(debtReductionNeeded) > 0;
+
+  if (!hasEntryProjection && !hasDebtReductionRoute) return null;
+
+  return (
+    <Card
+      style={{
+        marginTop: 18,
+        padding: 18,
+        background:
+          "linear-gradient(135deg, rgba(37,211,166,0.10), rgba(59,130,246,0.08))",
+        border: "1px solid rgba(37,211,166,0.18)",
+        boxShadow: "0 18px 44px rgba(0,0,0,0.24)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontSize: 12,
+              color: "rgba(167,243,208,0.95)",
+              fontWeight: 950,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <MapPinned size={14} strokeWidth={2.4} />
+            Ruta de preparación
+          </div>
+
+          <div
+            style={{
+              marginTop: 8,
+              fontSize: 22,
+              fontWeight: 980,
+              lineHeight: 1.08,
+              color: "rgba(248,250,252,0.98)",
+              maxWidth: 430,
+            }}
+          >
+            Tu capacidad actual no es el techo
+          </div>
+
+          <div
+            style={{
+              marginTop: 8,
+              fontSize: 13.5,
+              lineHeight: 1.45,
+              color: "rgba(203,213,225,0.92)",
+              maxWidth: 520,
+            }}
+          >
+            Hoy vemos un rango prudente. Pero si usas tu horizonte para completar
+            entrada y bajar deudas, puedes acercarte a un rango más alto antes de
+            aplicar a una hipoteca.
+          </div>
+        </div>
+
+        <Chip tone="good">Plan accionable</Chip>
+      </div>
+
+      <div
+        style={{
+          marginTop: 16,
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+          gap: 10,
+        }}
+      >
+        <div
+          style={{
+            padding: 14,
+            borderRadius: 18,
+            background: "rgba(15,23,42,0.62)",
+            border: "1px solid rgba(255,255,255,0.10)",
+          }}
+        >
+          <div style={{ fontSize: 12, color: "rgba(148,163,184,0.95)" }}>
+            Rango prudente hoy
+          </div>
+          <div style={{ marginTop: 6, fontSize: 24, fontWeight: 980 }}>
+            {moneySafe(currentMaxPropertyValue)}
+          </div>
+          <div
+            style={{
+              marginTop: 6,
+              fontSize: 12,
+              lineHeight: 1.35,
+              color: "rgba(203,213,225,0.78)",
+            }}
+          >
+            Con tus deudas actuales y una cuota referencial de{" "}
+            {moneySafe(currentMonthlyPayment)}.
+          </div>
+        </div>
+
+        {hasEntryProjection ? (
+          <div
+            style={{
+              padding: 14,
+              borderRadius: 18,
+              background: "rgba(15,23,42,0.62)",
+              border: "1px solid rgba(255,255,255,0.10)",
+            }}
+          >
+            <div style={{ fontSize: 12, color: "rgba(148,163,184,0.95)" }}>
+              Completando entrada
+            </div>
+            <div style={{ marginTop: 6, fontSize: 24, fontWeight: 980 }}>
+              {moneySafe(projectedEntryMaxPropertyValue)}
+            </div>
+            <div
+              style={{
+                marginTop: 6,
+                fontSize: 12,
+                lineHeight: 1.35,
+                color: "rgba(203,213,225,0.78)",
+              }}
+            >
+              Ahorrando durante {Math.round(projectedEntryMonths || 0)} meses
+              hasta llegar a {moneySafe(projectedFutureEntry)} de entrada.
+            </div>
+          </div>
+        ) : null}
+
+        {hasDebtReductionRoute ? (
+          <div
+            style={{
+              padding: 14,
+              borderRadius: 18,
+              background: "rgba(37,211,166,0.14)",
+              border: "1px solid rgba(37,211,166,0.24)",
+            }}
+          >
+            <div style={{ fontSize: 12, color: "rgba(167,243,208,0.95)" }}>
+              Ruta potencial
+            </div>
+            <div style={{ marginTop: 6, fontSize: 24, fontWeight: 980 }}>
+              {moneySafe(debtReductionTargetPrice)}
+            </div>
+            <div
+              style={{
+                marginTop: 6,
+                fontSize: 12,
+                lineHeight: 1.35,
+                color: "rgba(209,250,229,0.84)",
+              }}
+            >
+              Si reduces cerca de {moneySafe(debtReductionNeeded)} de deudas
+              mensuales, podrías apuntar más alto.
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      <div
+        style={{
+          marginTop: 14,
+          padding: 14,
+          borderRadius: 18,
+          background: "rgba(2,6,23,0.26)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          display: "grid",
+          gap: 10,
+        }}
+      >
+        <div
+          style={{
+            fontSize: 13,
+            fontWeight: 950,
+            color: "rgba(248,250,252,0.95)",
+          }}
+        >
+          Qué deberías hacer ahora
+        </div>
+
+        <div style={{ display: "grid", gap: 8 }}>
+          <div style={{ fontSize: 13, lineHeight: 1.4, color: "rgba(226,232,240,0.88)" }}>
+            1. Mantén tu ahorro mensual para llevar tu entrada hacia{" "}
+            <strong>{moneySafe(projectedFutureEntry)}</strong>.
+          </div>
+
+          {hasDebtReductionRoute ? (
+            <div style={{ fontSize: 13, lineHeight: 1.4, color: "rgba(226,232,240,0.88)" }}>
+              2. Baja tus deudas mensuales desde aproximadamente{" "}
+              <strong>{moneySafe(currentDebt)}</strong> hacia{" "}
+              <strong>{moneySafe(targetDebtAfterReduction)}</strong> antes de la
+              aprobación hipotecaria.
+            </div>
+          ) : null}
+
+          <div style={{ fontSize: 13, lineHeight: 1.4, color: "rgba(226,232,240,0.88)" }}>
+            3. Busca proyectos que permitan completar entrada durante construcción
+            y que estén cerca del rango objetivo.
+          </div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          marginTop: 14,
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 10,
+        }}
+      >
+        <PrimaryButton onClick={onGoMatch}>Ver propiedades compatibles</PrimaryButton>
+        <SecondaryButton onClick={onAdjust}>Ajustar mi escenario</SecondaryButton>
+      </div>
+    </Card>
+  );
+}
+
 export default function Ruta() {
   const nav = useNavigate();
   const go = (path) => nav(mapMobilePathToWeb(path));
@@ -649,6 +905,72 @@ export default function Ruta() {
     : null;
 
   const prob = probMeta(probPct);
+
+
+  const financialCapacity =
+    snapshot?.financialCapacity ?? snapshot?.output?.financialCapacity ?? null;
+
+  const homeRecommendation =
+    snapshot?.homeRecommendation ?? snapshot?.output?.homeRecommendation ?? null;
+
+  const homeAlternatives = Array.isArray(homeRecommendation?.alternatives)
+    ? homeRecommendation.alternatives
+    : [];
+
+  const entryInstallmentsAlternative =
+    homeAlternatives.find((a) => a?.kind === "entry_installments") || null;
+
+  const debtReductionAlternative =
+    homeAlternatives.find((a) => a?.kind === "debt_reduction_route") || null;
+
+  const plannedEntry = financialCapacity?.plannedEntry || null;
+
+  const projectedEntryMaxPropertyValue =
+    toNumValue(plannedEntry?.estimatedMaxPropertyValue) ??
+    toNumValue(entryInstallmentsAlternative?.alternativePrice) ??
+    null;
+
+  const projectedEntryMonths =
+    toNumValue(plannedEntry?.months) ??
+    toNumValue(entryInstallmentsAlternative?.months) ??
+    null;
+
+  const projectedFutureEntry =
+    toNumValue(plannedEntry?.futureEntry) ??
+    toNumValue(entryInstallmentsAlternative?.futureEntry) ??
+    null;
+
+  const debtReductionTargetPrice =
+    toNumValue(debtReductionAlternative?.alternativePrice) ?? null;
+
+  const debtReductionNeeded =
+    toNumValue(debtReductionAlternative?.debtReductionNeeded) ?? null;
+
+  const targetDebtAfterReduction =
+    toNumValue(debtReductionAlternative?.targetDebtAfterReduction) ?? null;
+
+  const currentDebt =
+    toNumValue(debtReductionAlternative?.currentDebt) ??
+    toNumValue(snapshot?.input?.otrasDeudasMensuales) ??
+    toNumValue(snapshot?.perfilInput?.otrasDeudasMensuales) ??
+    toNumValue(snapshot?.inputNormalizado?.otrasDeudasMensuales) ??
+    toNumValue(snapshot?.otrasDeudasMensuales) ??
+    null;
+
+  const hasEntryProjection =
+    projectedEntryMaxPropertyValue != null &&
+    projectedEntryMaxPropertyValue > 0 &&
+    projectedEntryMaxPropertyValue > (toNumValue(maxCompra) || 0);
+
+  const hasDebtReductionRoute =
+    debtReductionTargetPrice != null &&
+    debtReductionTargetPrice > 0 &&
+    debtReductionNeeded != null &&
+    debtReductionNeeded > 0;
+
+  const showPreparationRoute =
+    hasEvaluation && (hasEntryProjection || hasDebtReductionRoute);
+
 
   const matchedPropsFromJourney =
     journey?.match?.propiedades?.length ??
@@ -930,6 +1252,22 @@ export default function Ruta() {
             </div>
           </div>
         </Card>
+
+        {showPreparationRoute ? (
+          <PreparationRouteCard
+            currentMaxPropertyValue={maxCompra}
+            currentMonthlyPayment={cuota}
+            projectedEntryMaxPropertyValue={projectedEntryMaxPropertyValue}
+            projectedEntryMonths={projectedEntryMonths}
+            projectedFutureEntry={projectedFutureEntry}
+            debtReductionTargetPrice={debtReductionTargetPrice}
+            debtReductionNeeded={debtReductionNeeded}
+            targetDebtAfterReduction={targetDebtAfterReduction}
+            currentDebt={currentDebt}
+            onGoMatch={() => go("/marketplace")}
+            onAdjust={() => go("/journey/full")}
+          />
+        ) : null}
 
         <div
           style={{
