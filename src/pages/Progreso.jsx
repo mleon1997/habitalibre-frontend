@@ -1485,15 +1485,16 @@ const hasDebtReductionRoute =
     }
 
     if (homeRecommendation && (hasEntryProjection || hasDebtReductionRoute)) {
-  return {
-    title: "Tu rango actual es el punto de partida, no el techo",
-    subtitle:
-      homeRecommendation?.subtitle ||
-      "Hoy tienes un rango prudente, pero también una ruta para subir tu capacidad si completas entrada y reduces deudas antes de la hipoteca.",
-    cta: "Ver mi ruta de preparación",
-    to: "/ruta",
-  };
-}
+      return {
+        title: "Tu rango actual es el punto de partida, no el techo",
+        subtitle: hasTargetPropertyValue
+          ? homeRecommendation?.subtitle ||
+            "Hoy tienes un rango prudente, pero también una ruta para subir tu capacidad si completas entrada y reduces deudas antes de la hipoteca."
+          : "Hoy tu capacidad bancaria prudente tiene un rango inicial. Pero como tienes entrada y tiempo para prepararte, HabitaLibre puede mostrarte una ruta para apuntar más alto.",
+        cta: "Ver mi ruta de preparación",
+        to: "/ruta",
+      };
+    }
 
     if (hasTargetPropertyValue && homeRecommendation) {
       return {
@@ -1542,6 +1543,8 @@ const hasDebtReductionRoute =
     hasImmediateViableMortgage,
     estimatedMaxPropertyValue,
     estimatedMonthlyPayment,
+    hasEntryProjection,
+    hasDebtReductionRoute,
   ]);
 
   const heroHint = hasCreditBlocker
@@ -1781,113 +1784,6 @@ return (
             hint={heroHint}
           />
 
-          {homeActionHints.length > 0 && !hasCreditBlocker ? (
-            <AccordionSection
-              title="Qué te conviene hacer ahora"
-              subtitle="Te mostramos solo el siguiente mejor movimiento para avanzar."
-              open={expandedSections.actionGuide}
-              onToggle={() => toggleSection("actionGuide")}
-              style={{
-                background: isImmediateRoute
-                  ? "rgba(16,185,129,0.10)"
-                  : "rgba(37,211,166,0.08)",
-                border: isImmediateRoute
-                  ? "1px solid rgba(16,185,129,0.22)"
-                  : "1px solid rgba(37,211,166,0.20)",
-              }}
-            >
-              <div style={{ display: "grid", gap: 8 }}>
-                {homeActionHints.slice(0, 3).map((hint, idx) => (
-                  <div
-                    key={`${hint}-${idx}`}
-                    style={{
-                      fontSize: 13,
-                      lineHeight: 1.35,
-                      color: "rgba(226,232,240,0.88)",
-                      padding: "10px 12px",
-                      borderRadius: 12,
-                      background: "rgba(2,6,23,0.18)",
-                      border: "1px solid rgba(148,163,184,0.12)",
-                    }}
-                  >
-                    {idx + 1}. {hint}
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ marginTop: 12 }}>
-                <SecondaryButton onClick={() => go(bestNext.to)}>
-                  {isGoalAboveCapacity ? "Ver propiedades en mi rango" : bestNext.cta}
-                </SecondaryButton>
-              </div>
-            </AccordionSection>
-          ) : null}
-        </Card>
-      </div>
-
-      {shouldShowCreditValidation ? (
-        <div style={visibleInViewStyle}>
-          <CreditValidationCard
-            creditAssessment={effectiveCreditAssessment}
-            readinessStatus={readinessStatus}
-            onReview={() => go("/journey/full")}
-          />
-        </div>
-      ) : null}
-
-      <div style={visibleInViewStyle}>
-        <Card style={{ marginTop: 18 }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 12,
-            }}
-          >
-            <div
-              style={{
-                fontSize: 12,
-                color: "rgba(148,163,184,0.95)",
-                fontWeight: 950,
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              <Compass
-                size={13}
-                strokeWidth={2.3}
-                style={{ opacity: 0.95, flexShrink: 0 }}
-              />
-              {COPY.guideTag}
-            </div>
-
-            <Chip tone="neutral">{COPY.guideResultTag}</Chip>
-          </div>
-
-          <div
-            style={{
-              marginTop: 10,
-              fontWeight: 980,
-              fontSize: 18,
-              lineHeight: 1.2,
-            }}
-          >
-            {bestNext.title}
-          </div>
-
-          <div
-            style={{
-              marginTop: 8,
-              color: "rgba(226,232,240,0.90)",
-              lineHeight: 1.35,
-              fontSize: 13,
-            }}
-          >
-            {bestNext.subtitle}
-          </div>
-
 {summary?.unlocked && (hasEntryProjection || hasDebtReductionRoute) ? (
   <div
     style={{
@@ -2017,6 +1913,114 @@ return (
     ) : null}
   </div>
 ) : null}
+
+
+          {homeActionHints.length > 0 && !hasCreditBlocker ? (
+            <AccordionSection
+              title="Qué te conviene hacer ahora"
+              subtitle="Te mostramos solo el siguiente mejor movimiento para avanzar."
+              open={expandedSections.actionGuide}
+              onToggle={() => toggleSection("actionGuide")}
+              style={{
+                background: isImmediateRoute
+                  ? "rgba(16,185,129,0.10)"
+                  : "rgba(37,211,166,0.08)",
+                border: isImmediateRoute
+                  ? "1px solid rgba(16,185,129,0.22)"
+                  : "1px solid rgba(37,211,166,0.20)",
+              }}
+            >
+              <div style={{ display: "grid", gap: 8 }}>
+                {homeActionHints.slice(0, 3).map((hint, idx) => (
+                  <div
+                    key={`${hint}-${idx}`}
+                    style={{
+                      fontSize: 13,
+                      lineHeight: 1.35,
+                      color: "rgba(226,232,240,0.88)",
+                      padding: "10px 12px",
+                      borderRadius: 12,
+                      background: "rgba(2,6,23,0.18)",
+                      border: "1px solid rgba(148,163,184,0.12)",
+                    }}
+                  >
+                    {idx + 1}. {hint}
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ marginTop: 12 }}>
+                <SecondaryButton onClick={() => go(bestNext.to)}>
+                  {isGoalAboveCapacity ? "Ver propiedades en mi rango" : bestNext.cta}
+                </SecondaryButton>
+              </div>
+            </AccordionSection>
+          ) : null}
+        </Card>
+      </div>
+
+      {shouldShowCreditValidation ? (
+        <div style={visibleInViewStyle}>
+          <CreditValidationCard
+            creditAssessment={effectiveCreditAssessment}
+            readinessStatus={readinessStatus}
+            onReview={() => go("/journey/full")}
+          />
+        </div>
+      ) : null}
+
+      <div style={visibleInViewStyle}>
+        <Card style={{ marginTop: 18 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 12,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 12,
+                color: "rgba(148,163,184,0.95)",
+                fontWeight: 950,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Compass
+                size={13}
+                strokeWidth={2.3}
+                style={{ opacity: 0.95, flexShrink: 0 }}
+              />
+              {COPY.guideTag}
+            </div>
+
+            <Chip tone="neutral">{COPY.guideResultTag}</Chip>
+          </div>
+
+          <div
+            style={{
+              marginTop: 10,
+              fontWeight: 980,
+              fontSize: 18,
+              lineHeight: 1.2,
+            }}
+          >
+            {bestNext.title}
+          </div>
+
+          <div
+            style={{
+              marginTop: 8,
+              color: "rgba(226,232,240,0.90)",
+              lineHeight: 1.35,
+              fontSize: 13,
+            }}
+          >
+            {bestNext.subtitle}
+          </div>
 
           <div style={{ marginTop: 12 }}>
             <PrimaryButton onClick={() => go(bestNext.to)}>
