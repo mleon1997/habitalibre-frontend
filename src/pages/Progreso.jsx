@@ -1083,6 +1083,53 @@ function go(path) {
     ? homeRecommendation.actionHints
     : [];
 
+    const homeAlternatives = Array.isArray(homeRecommendation?.alternatives)
+  ? homeRecommendation.alternatives
+  : [];
+
+const entryInstallmentsAlternative =
+  homeAlternatives.find((a) => a?.kind === "entry_installments") || null;
+
+const debtReductionAlternative =
+  homeAlternatives.find((a) => a?.kind === "debt_reduction_route") || null;
+
+const plannedEntry = financialCapacity?.plannedEntry || null;
+
+const projectedEntryMaxPropertyValue =
+  toNum(plannedEntry?.estimatedMaxPropertyValue) ??
+  toNum(entryInstallmentsAlternative?.alternativePrice) ??
+  null;
+
+const projectedEntryMonths =
+  toNum(plannedEntry?.months) ??
+  toNum(entryInstallmentsAlternative?.months) ??
+  null;
+
+const projectedFutureEntry =
+  toNum(plannedEntry?.futureEntry) ??
+  toNum(entryInstallmentsAlternative?.futureEntry) ??
+  null;
+
+const debtReductionTargetPrice =
+  toNum(debtReductionAlternative?.alternativePrice) ?? null;
+
+const debtReductionNeeded =
+  toNum(debtReductionAlternative?.debtReductionNeeded) ?? null;
+
+const targetDebtAfterReduction =
+  toNum(debtReductionAlternative?.targetDebtAfterReduction) ?? null;
+
+const hasEntryProjection =
+  projectedEntryMaxPropertyValue != null &&
+  projectedEntryMaxPropertyValue > 0 &&
+  projectedEntryMaxPropertyValue > (estimatedMaxPropertyValue || 0);
+
+const hasDebtReductionRoute =
+  debtReductionTargetPrice != null &&
+  debtReductionTargetPrice > 0 &&
+  debtReductionNeeded != null &&
+  debtReductionNeeded > 0;
+
   const creditAssessment =
     snapshot?.creditAssessment ??
     snapshot?.output?.creditAssessment ??
@@ -1436,6 +1483,17 @@ function go(path) {
         to: "/journey/full",
       };
     }
+
+    if (homeRecommendation && (hasEntryProjection || hasDebtReductionRoute)) {
+  return {
+    title: "Tu rango actual es el punto de partida, no el techo",
+    subtitle:
+      homeRecommendation?.subtitle ||
+      "Hoy tienes un rango prudente, pero también una ruta para subir tu capacidad si completas entrada y reduces deudas antes de la hipoteca.",
+    cta: "Ver mi ruta de preparación",
+    to: "/ruta",
+  };
+}
 
     if (hasTargetPropertyValue && homeRecommendation) {
       return {
@@ -1829,6 +1887,136 @@ return (
           >
             {bestNext.subtitle}
           </div>
+
+{summary?.unlocked && (hasEntryProjection || hasDebtReductionRoute) ? (
+  <div
+    style={{
+      marginTop: 18,
+      padding: 16,
+      borderRadius: 24,
+      background:
+        "linear-gradient(135deg, rgba(37,211,166,0.10), rgba(59,130,246,0.08))",
+      border: "1px solid rgba(255,255,255,0.10)",
+      display: "grid",
+      gap: 14,
+    }}
+  >
+    <div>
+      <div
+        style={{
+          fontSize: 14,
+          fontWeight: 950,
+          color: "rgba(226,232,240,0.96)",
+        }}
+      >
+        Tu ruta HabitaLibre
+      </div>
+
+      <div
+        style={{
+          marginTop: 4,
+          fontSize: 13,
+          lineHeight: 1.45,
+          color: "rgba(203,213,225,0.78)",
+        }}
+      >
+        No solo vemos cuánto podrías comprar hoy. También te mostramos qué puedes
+        hacer para subir tu rango antes de aplicar a una hipoteca.
+      </div>
+    </div>
+
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+        gap: 10,
+      }}
+    >
+      <div
+        style={{
+          padding: 14,
+          borderRadius: 18,
+          background: "rgba(15,23,42,0.60)",
+          border: "1px solid rgba(255,255,255,0.10)",
+        }}
+      >
+        <div style={{ color: "rgba(148,163,184,0.95)", fontSize: 12 }}>
+          Rango prudente hoy
+        </div>
+        <div style={{ marginTop: 6, fontSize: 24, fontWeight: 950 }}>
+          {moneySafe(estimatedMaxPropertyValue)}
+        </div>
+        <div style={{ marginTop: 6, color: "rgba(203,213,225,0.75)", fontSize: 12 }}>
+          Con tus deudas actuales y una cuota sana.
+        </div>
+      </div>
+
+      {hasEntryProjection ? (
+        <div
+          style={{
+            padding: 14,
+            borderRadius: 18,
+            background: "rgba(15,23,42,0.60)",
+            border: "1px solid rgba(255,255,255,0.10)",
+          }}
+        >
+          <div style={{ color: "rgba(148,163,184,0.95)", fontSize: 12 }}>
+            Completando entrada
+          </div>
+          <div style={{ marginTop: 6, fontSize: 24, fontWeight: 950 }}>
+            {moneySafe(projectedEntryMaxPropertyValue)}
+          </div>
+          <div style={{ marginTop: 6, color: "rgba(203,213,225,0.75)", fontSize: 12 }}>
+            Ahorrando durante {Math.round(projectedEntryMonths || 0)} meses hasta llegar a{" "}
+            {moneySafe(projectedFutureEntry)} de entrada.
+          </div>
+        </div>
+      ) : null}
+
+      {hasDebtReductionRoute ? (
+        <div
+          style={{
+            padding: 14,
+            borderRadius: 18,
+            background: "rgba(37,211,166,0.12)",
+            border: "1px solid rgba(37,211,166,0.22)",
+          }}
+        >
+          <div style={{ color: "rgba(167,243,208,0.95)", fontSize: 12 }}>
+            Ruta con preparación
+          </div>
+          <div style={{ marginTop: 6, fontSize: 24, fontWeight: 950 }}>
+            {moneySafe(debtReductionTargetPrice)}
+          </div>
+          <div style={{ marginTop: 6, color: "rgba(209,250,229,0.82)", fontSize: 12 }}>
+            Si reduces cerca de {moneySafe(debtReductionNeeded)} de deudas mensuales,
+            podrías apuntar más alto.
+          </div>
+        </div>
+      ) : null}
+    </div>
+
+    {hasDebtReductionRoute ? (
+      <div
+        style={{
+          padding: 12,
+          borderRadius: 16,
+          background: "rgba(255,255,255,0.055)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          color: "rgba(226,232,240,0.86)",
+          fontSize: 13,
+          lineHeight: 1.45,
+        }}
+      >
+        Tu cuello de botella no es solo la entrada: es la deuda mensual. Si bajas
+        tus deudas de forma gradual hacia aproximadamente{" "}
+        <strong>{moneySafe(targetDebtAfterReduction)}</strong> al mes antes de la
+        hipoteca, tu rango podría acercarse a{" "}
+        <strong>{moneySafe(debtReductionTargetPrice)}</strong>.
+      </div>
+    ) : null}
+  </div>
+) : null}
 
           <div style={{ marginTop: 12 }}>
             <PrimaryButton onClick={() => go(bestNext.to)}>
