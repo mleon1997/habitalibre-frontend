@@ -1391,7 +1391,12 @@ function SummaryCard({
   );
 }
 
-function SegmentedControl({ value, onChange }) {
+function SegmentedControl({
+  value,
+  onChange,
+  hasSelectedProperty = false,
+  onOpenPropertyFinancing,
+}) {
   return (
     <div
       style={{
@@ -1425,7 +1430,14 @@ function SegmentedControl({ value, onChange }) {
       </button>
 
       <button
-        onClick={() => onChange("banks")}
+        onClick={() => {
+          if (hasSelectedProperty && onOpenPropertyFinancing) {
+            onOpenPropertyFinancing();
+            return;
+          }
+
+          onChange("banks");
+        }}
         style={{
           padding: 13,
           borderRadius: 18,
@@ -1443,7 +1455,9 @@ function SegmentedControl({ value, onChange }) {
       >
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
           <Landmark size={15} />
-          Ruta hipotecaria
+          {hasSelectedProperty
+            ? "Financiamiento de esta propiedad"
+            : "Ruta hipotecaria"}
         </span>
       </button>
     </div>
@@ -2642,8 +2656,13 @@ const normalizedProperty = {
   />
 )}
 
-<SegmentedControl value={tab} onChange={setTab} />
 
+<SegmentedControl
+  value={tab}
+  onChange={setTab}
+  hasSelectedProperty={!!selectedPropertyId}
+  onOpenPropertyFinancing={() => navigate("/financiamiento-propiedad")}
+/>
           {tab === "props" ? (
             <>
               <FilterCard
