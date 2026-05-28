@@ -1408,6 +1408,54 @@ function SegmentedControl({
   hasSelectedProperty = false,
   onOpenPropertyFinancing,
 }) {
+  if (hasSelectedProperty) {
+    return (
+      <div
+        style={{
+          marginTop: 18,
+          padding: "14px 16px",
+          borderRadius: 22,
+          background: "rgba(255,255,255,0.045)",
+          border: `1px solid ${UI.borderSoft}`,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontSize: 12,
+              color: "rgba(148,163,184,0.95)",
+              fontWeight: 900,
+            }}
+          >
+            Siguiente
+          </div>
+
+          <div
+            style={{
+              marginTop: 4,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              fontSize: 17,
+              color: "rgba(226,232,240,0.98)",
+              fontWeight: 950,
+            }}
+          >
+            <Building2 size={16} />
+            Viviendas para ti
+          </div>
+        </div>
+
+        <Pill tone="green">Propiedad base elegida</Pill>
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
@@ -1441,14 +1489,7 @@ function SegmentedControl({
       </button>
 
       <button
-        onClick={() => {
-          if (hasSelectedProperty && onOpenPropertyFinancing) {
-            onOpenPropertyFinancing();
-            return;
-          }
-
-          onChange("banks");
-        }}
+        onClick={() => onChange("banks")}
         style={{
           padding: 13,
           borderRadius: 18,
@@ -1466,9 +1507,7 @@ function SegmentedControl({
       >
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
           <Landmark size={15} />
-          {hasSelectedProperty
-            ? "Financiamiento de esta propiedad"
-            : "Ruta hipotecaria"}
+          Ruta financiera
         </span>
       </button>
     </div>
