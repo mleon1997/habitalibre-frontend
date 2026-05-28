@@ -1,4 +1,5 @@
 // src/App.jsx
+import FinanciamientoPropiedad from "./pages/FinanciamientoPropiedad.jsx";
 import React from "react";
 import "./App.css";
 import AdminHome from "./pages/AdminHome.jsx";
@@ -215,6 +216,16 @@ export default function App() {
           <Route path="/ruta" element={<Ruta />} />
           <Route path="/property/:id" element={<PropertyDetail />} />
           <Route path="/hipoteca-detalle" element={<HipotecaDetail />} />
+<Route
+  path="/financiamiento-propiedad"
+  element={<FinanciamientoPropiedad />}
+/>
+
+<Route
+  path="/property-financing"
+  element={<Navigate to="/financiamiento-propiedad" replace />}
+/>
+
 
           <Route path="/ads" element={<LandingAds />} />
           <Route path="/leads" element={<Leads />} />

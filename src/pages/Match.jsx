@@ -1096,6 +1096,129 @@ function MatchHeader({ subtitle, tab }) {
   );
 }
 
+
+function SelectedPropertyHero({
+  selectedProperty,
+  onOpenFinancing,
+  onOpenProperty,
+}) {
+  if (!selectedProperty) return null;
+
+  const title =
+    selectedProperty?.titulo ||
+    selectedProperty?.nombre ||
+    selectedProperty?.title ||
+    selectedProperty?.name ||
+    selectedProperty?.proyecto ||
+    selectedProperty?.raw?.titulo ||
+    selectedProperty?.raw?.nombre ||
+    selectedProperty?.raw?.proyecto ||
+    "Propiedad elegida";
+
+  const city =
+    selectedProperty?.ciudad ||
+    selectedProperty?.zona ||
+    selectedProperty?.sector ||
+    selectedProperty?.ciudadZona ||
+    selectedProperty?.raw?.ciudad ||
+    selectedProperty?.raw?.zona ||
+    selectedProperty?.raw?.sector ||
+    "Ubicación pendiente";
+
+  const price =
+    selectedProperty?.precio ??
+    selectedProperty?.price ??
+    selectedProperty?.valor ??
+    selectedProperty?.listPrice ??
+    selectedProperty?.raw?.precio ??
+    selectedProperty?.raw?.price ??
+    null;
+
+  return (
+    <div
+      style={{
+        marginTop: 18,
+        padding: 22,
+        borderRadius: 28,
+        background:
+          "linear-gradient(135deg, rgba(37,211,166,0.12), rgba(6,18,35,0.94))",
+        border: "1px solid rgba(37,211,166,0.32)",
+        boxShadow: "0 18px 48px rgba(0,0,0,0.28)",
+      }}
+    >
+      <div
+        style={{
+          fontSize: 13,
+          fontWeight: 950,
+          color: "rgba(203,213,225,0.92)",
+        }}
+      >
+        Propiedad elegida
+      </div>
+
+      <div
+        style={{
+          marginTop: 12,
+          fontSize: 28,
+          lineHeight: 1.08,
+          fontWeight: 980,
+          letterSpacing: -0.8,
+          color: "rgba(248,250,252,0.98)",
+        }}
+      >
+        {title}
+      </div>
+
+      <div
+        style={{
+          marginTop: 10,
+          fontSize: 15,
+          lineHeight: 1.45,
+          color: "rgba(203,213,225,0.92)",
+          maxWidth: 680,
+        }}
+      >
+        Ahora la lectura de financiamiento debe hacerse sobre esta propiedad
+        específica, no como una hipoteca aislada.
+      </div>
+
+      <div
+        style={{
+          marginTop: 14,
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+        }}
+      >
+        <Pill tone="green">
+          {Number.isFinite(Number(price))
+            ? moneyUSD(Number(price))
+            : "Precio pendiente"}
+        </Pill>
+
+        <Pill>{city}</Pill>
+      </div>
+
+      <div
+        style={{
+          marginTop: 18,
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 12,
+        }}
+      >
+        <PrimaryButton onClick={onOpenFinancing}>
+          Ver financiamiento de esta propiedad
+        </PrimaryButton>
+
+        <SecondaryButton onClick={onOpenProperty}>
+          Ver detalle de la propiedad
+        </SecondaryButton>
+      </div>
+    </div>
+  );
+}
+
 function SummaryCard({
   recommendationType,
   productoElegido,
@@ -2502,16 +2625,24 @@ const normalizedProperty = {
         <LockedMarketplace onGoSimular={() => navigate(mapMobilePathToWeb("/journey/full"))} />
       ) : (
         <>
-    <SummaryCard
-  recommendationType={recommendationType}
-  productoElegido={productoElegido}
-  precioMaxVivienda={precioMaxVivienda}
-  cuotaEstimada={cuotaEstimada}
-  onOpenMortgageDetail={handleOpenMortgageDetail}
-  mortgageSummaryStatus={mortgageSummaryStatus}
-/>
+{selectedPropertyId ? (
+  <SelectedPropertyHero
+    selectedProperty={selectedProperty}
+    onOpenFinancing={() => navigate("/financiamiento-propiedad")}
+    onOpenProperty={() => navigate(`/property/${selectedPropertyId}`)}
+  />
+) : (
+  <SummaryCard
+    recommendationType={recommendationType}
+    productoElegido={productoElegido}
+    precioMaxVivienda={precioMaxVivienda}
+    cuotaEstimada={cuotaEstimada}
+    onOpenMortgageDetail={handleOpenMortgageDetail}
+    mortgageSummaryStatus={mortgageSummaryStatus}
+  />
+)}
 
-          <SegmentedControl value={tab} onChange={setTab} />
+<SegmentedControl value={tab} onChange={setTab} />
 
           {tab === "props" ? (
             <>
