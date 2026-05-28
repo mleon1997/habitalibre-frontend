@@ -1035,14 +1035,6 @@ function CompactChip({ active, onClick, children }) {
 function MatchHeader({ subtitle, tab }) {
   const isBanksTab = tab === "banks";
 
-  const eyebrow = isBanksTab ? "Hipotecas" : "Propiedades";
-
-  const title = isBanksTab
-    ? "Opciones hipotecarias según tu perfil"
-    : "Propiedades según tu perfil";
-
-  const pillLabel = isBanksTab ? "Hipotecas" : "Propiedades";
-
   return (
     <div style={{ marginBottom: 18 }}>
       <div
@@ -1057,45 +1049,46 @@ function MatchHeader({ subtitle, tab }) {
           <div
             style={{
               fontSize: 13,
-              fontWeight: 850,
-              color: "rgba(148,163,184,0.95)",
+              fontWeight: 900,
+              color: "#8FE3D4",
               marginBottom: 10,
             }}
           >
-            {eyebrow}
+            Match HabitaLibre
           </div>
 
           <h1
             style={{
               margin: 0,
-              fontSize: 32,
+              fontSize: 38,
               lineHeight: 1.02,
               fontWeight: 980,
-              letterSpacing: -1,
+              letterSpacing: -1.4,
               color: "rgba(226,232,240,0.98)",
-              maxWidth: 360,
+              maxWidth: 520,
             }}
           >
-            {title}
+            Tu match de vivienda
           </h1>
 
           <div
             style={{
               marginTop: 14,
-              maxWidth: 360,
+              maxWidth: 560,
               fontSize: 16,
-              lineHeight: 1.4,
+              lineHeight: 1.45,
               color: "rgba(148,163,184,0.95)",
             }}
           >
-            {subtitle}
+            Ordenamos viviendas e hipotecas según tu capacidad, entrada y ruta
+            más probable. Esto es una guía, no una aprobación final.
           </div>
         </div>
 
-        <Pill>
+        <Pill tone={isBanksTab ? "green" : "neutral"}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
             {isBanksTab ? <Landmark size={12} /> : <Building2 size={12} />}
-            {pillLabel}
+            {isBanksTab ? "Ruta hipotecaria" : "Viviendas para ti"}
           </span>
         </Pill>
       </div>
@@ -1115,58 +1108,54 @@ function SummaryCard({
   const isMortgageAdjusted = mortgageSummaryStatus === "adjusted";
 
   const summaryTitle = isMortgageCurrent
-    ? "Tu mejor ruta hoy"
+    ? "Hoy tienes una ruta hipotecaria clara"
     : isMortgageAdjusted
-    ? "Ruta hipotecaria cercana"
+    ? "Tienes una ruta cercana para trabajar"
     : recommendationType === "immediate"
-    ? "Tu mejor ruta hoy"
+    ? "Hoy puedes explorar opciones alineadas"
     : recommendationType === "future_route"
-    ? "Ruta estimada"
+    ? "Existe una ruta futura posible"
     : recommendationType === "inventory_fallback"
-    ? "Alternativa cercana"
-    : "Tu estado actual";
+    ? "Encontramos alternativas cercanas"
+    : "Aún estamos buscando tu mejor camino";
 
   const summaryBody = isMortgageCurrent
-    ? "Esta ruta encaja con tu perfil y con el valor de vivienda que estás buscando."
+    ? "Tu perfil muestra una ruta financiera que puede servir como punto de partida para comparar viviendas."
     : isMortgageAdjusted
-    ? "Todavía no cubre toda tu meta exacta, pero es la opción más cercana para trabajarla."
+    ? "Todavía no cubre toda tu meta exacta, pero sí encontramos una ruta concreta para acercarte."
     : recommendationType === "immediate"
-    ? "Ya vemos una ruta alineada con tu perfil actual."
+    ? "Primero te mostramos opciones que se alinean con tu capacidad actual."
     : recommendationType === "future_route"
-    ? "Hoy no es compra inmediata, pero sí vemos una ruta seria para acercarte."
+    ? "Hoy quizá no es compra inmediata, pero sí hay una estrategia seria para prepararte."
     : recommendationType === "inventory_fallback"
-    ? "Hoy no vemos una ruta ideal, pero sí alternativas concretas cercanas."
-    : "Aún no hay una ruta clara, pero puedes explorar referencias útiles.";
+    ? "No vemos una ruta ideal todavía, pero sí opciones concretas que podrían acercarse a tu escenario."
+    : "Puedes ajustar tu escenario o explorar referencias para entender mejor tu camino.";
 
   const pillText = isMortgageCurrent
-    ? "Viable hoy"
+    ? "Ruta clara"
     : isMortgageAdjusted
     ? "Ruta cercana"
-    : recommendationType === "immediate"
-    ? "Viable hoy"
     : recommendationType === "future_route"
-    ? "Ruta posible"
+    ? "Ruta futura"
     : recommendationType === "inventory_fallback"
-    ? "Cercana"
-    : "Explorando";
+    ? "Alternativas"
+    : "En análisis";
 
-  const pillTone = isMortgageAdjusted
-    ? "neutral"
-    : recommendationType === "inventory_fallback"
-    ? "amber"
-    : recommendationType === "future_route" ||
-      recommendationType === "immediate" ||
-      isMortgageCurrent
-    ? "green"
-    : "neutral";
+  const pillTone =
+    isMortgageCurrent || recommendationType === "future_route"
+      ? "green"
+      : isMortgageAdjusted || recommendationType === "inventory_fallback"
+      ? "amber"
+      : "neutral";
 
   return (
     <div
       style={{
-        padding: 16,
-        borderRadius: 22,
-        background: "rgba(255,255,255,0.06)",
-        border: `1px solid ${UI.border}`,
+        padding: 18,
+        borderRadius: 26,
+        background:
+          "linear-gradient(135deg, rgba(37,211,166,0.10), rgba(255,255,255,0.055))",
+        border: `1px solid ${UI.greenBorder}`,
         boxShadow: UI.shadowSoft,
       }}
     >
@@ -1179,19 +1168,27 @@ function SummaryCard({
         }}
       >
         <div>
-          <div style={{ fontSize: 12, opacity: 0.8, fontWeight: 900 }}>
-            Resumen
-          </div>
-          <div style={{ marginTop: 6, fontWeight: 900, fontSize: 16 }}>
-            {summaryTitle}
-          </div>
           <div
             style={{
-              marginTop: 6,
-              fontSize: 13,
-              opacity: 0.78,
-              lineHeight: 1.35,
-              maxWidth: 420,
+              fontSize: 12,
+              color: "rgba(167,243,208,0.95)",
+              fontWeight: 950,
+            }}
+          >
+            Tu mejor siguiente paso
+          </div>
+
+          <div style={{ marginTop: 8, fontWeight: 950, fontSize: 19 }}>
+            {summaryTitle}
+          </div>
+
+          <div
+            style={{
+              marginTop: 8,
+              fontSize: 13.5,
+              opacity: 0.86,
+              lineHeight: 1.42,
+              maxWidth: 560,
             }}
           >
             {summaryBody}
@@ -1203,40 +1200,40 @@ function SummaryCard({
 
       <div
         style={{
-          marginTop: 14,
+          marginTop: 16,
           display: "grid",
-          gridTemplateColumns: "1fr 1fr 1fr",
+          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
           gap: 10,
         }}
       >
         <div
           style={{
-            padding: 12,
-            borderRadius: 16,
+            padding: 13,
+            borderRadius: 18,
             background: "rgba(0,0,0,0.18)",
             border: `1px solid ${UI.borderSoft}`,
           }}
         >
-          <div style={{ fontSize: 11, opacity: 0.72, fontWeight: 800 }}>
-            Ruta
+          <div style={{ fontSize: 11, opacity: 0.72, fontWeight: 850 }}>
+            Ruta sugerida
           </div>
-          <div style={{ marginTop: 4, fontWeight: 900, fontSize: 14 }}>
+          <div style={{ marginTop: 5, fontWeight: 950, fontSize: 14 }}>
             {humanMortgageText(productoElegido)}
           </div>
         </div>
 
         <div
           style={{
-            padding: 12,
-            borderRadius: 16,
+            padding: 13,
+            borderRadius: 18,
             background: "rgba(0,0,0,0.18)",
             border: `1px solid ${UI.borderSoft}`,
           }}
         >
-          <div style={{ fontSize: 11, opacity: 0.72, fontWeight: 800 }}>
-            Valor vivienda
+          <div style={{ fontSize: 11, opacity: 0.72, fontWeight: 850 }}>
+            Valor de referencia
           </div>
-          <div style={{ marginTop: 4, fontWeight: 900, fontSize: 14 }}>
+          <div style={{ marginTop: 5, fontWeight: 950, fontSize: 14 }}>
             {typeof precioMaxVivienda === "number" && precioMaxVivienda > 0
               ? moneyUSD(precioMaxVivienda)
               : "—"}
@@ -1245,16 +1242,16 @@ function SummaryCard({
 
         <div
           style={{
-            padding: 12,
-            borderRadius: 16,
+            padding: 13,
+            borderRadius: 18,
             background: "rgba(0,0,0,0.18)",
             border: `1px solid ${UI.borderSoft}`,
           }}
         >
-          <div style={{ fontSize: 11, opacity: 0.72, fontWeight: 800 }}>
-            Cuota
+          <div style={{ fontSize: 11, opacity: 0.72, fontWeight: 850 }}>
+            Cuota aprox.
           </div>
-          <div style={{ marginTop: 4, fontWeight: 900, fontSize: 14 }}>
+          <div style={{ marginTop: 5, fontWeight: 950, fontSize: 14 }}>
             {typeof cuotaEstimada === "number" && cuotaEstimada > 0
               ? moneyUSD(cuotaEstimada)
               : "—"}
@@ -1264,7 +1261,7 @@ function SummaryCard({
 
       <div style={{ marginTop: 14 }}>
         <SecondaryButton onClick={onOpenMortgageDetail}>
-          Ver detalle hipotecario
+          Entender mi ruta hipotecaria
         </SecondaryButton>
       </div>
     </div>
@@ -1284,8 +1281,8 @@ function SegmentedControl({ value, onChange }) {
       <button
         onClick={() => onChange("props")}
         style={{
-          padding: 12,
-          borderRadius: 16,
+          padding: 13,
+          borderRadius: 18,
           border: `1px solid ${
             value === "props" ? UI.greenBorder : "rgba(255,255,255,0.14)"
           }`,
@@ -1294,21 +1291,21 @@ function SegmentedControl({ value, onChange }) {
               ? "rgba(37,211,166,0.14)"
               : "rgba(255,255,255,0.06)",
           color: "white",
-          fontWeight: 900,
+          fontWeight: 950,
           boxShadow: value === "props" ? UI.shadowSoft : "none",
         }}
       >
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
           <Building2 size={15} />
-          Propiedades
+          Viviendas para ti
         </span>
       </button>
 
       <button
         onClick={() => onChange("banks")}
         style={{
-          padding: 12,
-          borderRadius: 16,
+          padding: 13,
+          borderRadius: 18,
           border: `1px solid ${
             value === "banks" ? UI.greenBorder : "rgba(255,255,255,0.14)"
           }`,
@@ -1317,13 +1314,13 @@ function SegmentedControl({ value, onChange }) {
               ? "rgba(37,211,166,0.14)"
               : "rgba(255,255,255,0.06)",
           color: "white",
-          fontWeight: 900,
+          fontWeight: 950,
           boxShadow: value === "banks" ? UI.shadowSoft : "none",
         }}
       >
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
           <Landmark size={15} />
-          Hipotecas
+          Ruta hipotecaria
         </span>
       </button>
     </div>
@@ -1470,46 +1467,45 @@ function FilterCard({
 
   const filterSubtitle =
     recommendationType === "immediate"
-      ? "Primero te mostramos propiedades alineadas con tu compra viable hoy."
+      ? "Te mostramos primero viviendas alineadas con tu capacidad actual."
       : recommendationType === "future_route"
-      ? "Primero te mostramos propiedades que encajan mejor con tu ruta futura."
+      ? "Te mostramos primero viviendas que podrían funcionar dentro de una ruta futura."
       : recommendationType === "inventory_fallback"
-      ? "Primero te mostramos alternativas cercanas a tu escenario actual."
-      : "Explora por zona y compara opciones.";
+      ? "Te mostramos primero alternativas cercanas a tu escenario."
+      : "Puedes ajustar zona y amplitud de resultados.";
 
   return (
     <div
       style={{
         marginTop: 18,
-        padding: 16,
+        padding: 14,
         borderRadius: 22,
-        background: "rgba(255,255,255,0.06)",
-        border: `1px solid ${UI.border}`,
-        boxShadow: UI.shadowSoft,
+        background: "rgba(255,255,255,0.045)",
+        border: `1px solid ${UI.borderSoft}`,
+        boxShadow: "none",
       }}
     >
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "flex-start",
           gap: 12,
+          alignItems: "flex-start",
+          flexWrap: "wrap",
         }}
       >
         <div>
-          <div style={{ fontSize: 12, opacity: 0.8, fontWeight: 900 }}>
-            Filtros
+          <div style={{ fontSize: 12, opacity: 0.82, fontWeight: 950 }}>
+            Ajustar búsqueda
           </div>
-          <div style={{ marginTop: 6, fontWeight: 900, fontSize: 16 }}>
-            Ajusta lo que quieres ver
-          </div>
+
           <div
             style={{
-              marginTop: 6,
+              marginTop: 5,
               fontSize: 13,
               opacity: 0.78,
               lineHeight: 1.35,
-              maxWidth: 420,
+              maxWidth: 520,
             }}
           >
             {filterSubtitle}
@@ -1519,23 +1515,24 @@ function FilterCard({
         <Pill>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
             <SlidersHorizontal size={12} />
-            Match
+            Filtros
           </span>
         </Pill>
       </div>
 
-      <div style={{ marginTop: 14 }}>
+      <div style={{ marginTop: 13 }}>
         <div
           style={{
             fontSize: 12,
             opacity: 0.82,
             fontWeight: 900,
-            marginBottom: 10,
+            marginBottom: 9,
           }}
         >
           Zona
         </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {zones.map((z) => (
             <CompactChip key={z} active={z === zona} onClick={() => setZona(z)}>
               {z}
@@ -1544,32 +1541,31 @@ function FilterCard({
         </div>
       </div>
 
-      <div style={{ marginTop: 14 }}>
+      <div style={{ marginTop: 13 }}>
         <div
           style={{
             fontSize: 12,
             opacity: 0.82,
             fontWeight: 900,
-            marginBottom: 10,
+            marginBottom: 9,
           }}
         >
-          Qué mostrar
+          Tipo de resultado
         </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <CompactChip
             active={propertyMode === "strict"}
             onClick={() => setPropertyMode("strict")}
           >
-            {recommendationType === "inventory_fallback"
-              ? "Solo alternativas cercanas"
-              : "Solo mi mejor ruta"}
+            Mejores opciones para mí
           </CompactChip>
 
           <CompactChip
             active={propertyMode === "flex"}
             onClick={() => setPropertyMode("flex")}
           >
-            Ver opciones ampliadas
+            Ver más alternativas
           </CompactChip>
         </div>
       </div>
