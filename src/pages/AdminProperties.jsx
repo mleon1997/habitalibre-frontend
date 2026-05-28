@@ -15,6 +15,8 @@ import AdminTopNav from "../components/AdminTopNav.jsx";
 const EMPTY_FORM = {
   id: "",
   developer: "GLS Constructores",
+  constructora: "GLS Constructores",
+  promotor: "GLS Constructores",
   proyecto: "",
   titulo: "",
   descripcion: "",
@@ -27,6 +29,7 @@ const EMPTY_FORM = {
   lote: "",
 
   tipoInmueble: "departamento",
+  tipoPropiedad: "Departamento",
   tipoProyecto: "edificio",
   uso: "vivienda_principal",
 
@@ -46,21 +49,31 @@ const EMPTY_FORM = {
   sector: "",
   direccionReferencial: "",
   googleMapsUrl: "",
+  lat: "",
+  lng: "",
 
   proyectoNuevo: true,
   viviendaNueva: true,
   tipoEntrega: "construccion",
   etapaProyecto: "construccion",
+  estadoProyecto: "Proyecto nuevo",
+  fechaEntrega: "",
   fechaEntregaEstimada: "",
   fechaEscrituraEstimada: "",
 
   permiteEntradaEnCuotas: true,
   mesesConstruccionRestantes: "",
+  mesesConstruccion: "",
   porcentajeEntradaRequerida: 0.1,
+  entradaMinima: "",
   reservaMinima: 500,
   montoFirmaPromesa: "",
   numeroCuotasEntrada: "",
   fechaLimiteEntrada: "",
+
+  cuotaEstimada: "",
+  tasaReferencial: "",
+  plazoAnios: "",
 
   productIds: "VIP,PRIVATE",
   requiresFirstHome: true,
@@ -77,6 +90,9 @@ const EMPTY_FORM = {
 
   imagen: "",
   galeria: "",
+  planoUrl: "",
+  nearby: "",
+  amenities: "",
   brochureUrl: "",
   videoUrl: "",
 
@@ -104,7 +120,12 @@ function toNumberOrDefault(value, fallback) {
 }
 
 function toBoolean(value) {
-  return value === true || value === "true";
+  if (value === true) return true;
+  if (value === false) return false;
+
+  const raw = String(value ?? "").trim().toLowerCase();
+
+  return ["true", "si", "sí", "s", "yes", "y", "1", "x"].includes(raw);
 }
 
 function toDateInput(value) {
@@ -116,7 +137,7 @@ function toDateInput(value) {
 
 function cleanLines(value) {
   return String(value || "")
-    .split("\n")
+    .split(/[\n,;]/)
     .map((x) => x.trim())
     .filter(Boolean);
 }
@@ -128,34 +149,74 @@ function cleanCSV(value) {
     .filter(Boolean);
 }
 
+function inferTipoPropiedad(tipoInmueble) {
+  const map = {
+    departamento: "Departamento",
+    suite: "Suite",
+    estudio: "Estudio",
+    casa: "Casa",
+    terreno: "Terreno",
+  };
+
+  return map[tipoInmueble] || "Departamento";
+}
+
 function buildPayload(form) {
   const precio = toNumberOrDefault(form.precio, 0);
+
   const m2Construccion = toNumberOrDefault(
     form.m2Construccion || form.m2,
     0
   );
+
   const m2 = toNumberOrDefault(form.m2 || form.m2Construccion, 0);
 
-  const downPaymentPct = toNumberOrDefault(
+  const entradaMinima = toNumberOrNull(form.entradaMinima);
+
+  const downPaymentPctRaw = toNumberOrDefault(
     form.porcentajeEntradaRequerida,
     0.1
   );
 
-  const monthsConstruction = toNumberOrDefault(
-    form.mesesConstruccionRestantes,
-    0
-  );
+  const finalDownPaymentPct =
+    entradaMinima != null && precio > 0
+      ? Math.max(0, Math.min(1, entradaMinima / precio))
+      : downPaymentPctRaw;
+
+  const monthsConstruction =
+    toNumberOrNull(form.mesesConstruccion) ??
+    toNumberOrDefault(form.mesesConstruccionRestantes, 0);
 
   const reserveMin = toNumberOrDefault(form.reservaMinima, 0);
   const promesaAmount = toNumberOrDefault(form.montoFirmaPromesa, 0);
+
   const entryInstallmentsCount = toNumberOrDefault(
     form.numeroCuotasEntrada,
-    0
+    monthsConstruction || 0
   );
+
+  const cuotaEstimada = toNumberOrNull(form.cuotaEstimada);
+  const tasaReferencial = toNumberOrNull(form.tasaReferencial);
+  const plazoAnios = toNumberOrNull(form.plazoAnios);
+
+  const lat = toNumberOrNull(form.lat);
+  const lng = toNumberOrNull(form.lng);
+
+  const productIds = cleanCSV(form.productIds);
 
   return {
     id: String(form.id || "").trim(),
     developer: String(form.developer || "").trim(),
+    constructora: String(
+      form.constructora || form.developer || "GLS Constructores"
+    ).trim(),
+    promotor: String(
+      form.promotor ||
+        form.constructora ||
+        form.developer ||
+        "GLS Constructores"
+    ).trim(),
+
     proyecto: String(form.proyecto || "").trim(),
     titulo: String(form.titulo || "").trim(),
     descripcion: String(form.descripcion || "").trim(),
@@ -168,6 +229,9 @@ function buildPayload(form) {
     lote: String(form.lote || "").trim(),
 
     tipoInmueble: String(form.tipoInmueble || "departamento").trim(),
+    tipoPropiedad: String(
+      form.tipoPropiedad || inferTipoPropiedad(form.tipoInmueble)
+    ).trim(),
     tipoProyecto: String(form.tipoProyecto || "edificio").trim(),
     uso: String(form.uso || "vivienda_principal").trim(),
 
@@ -188,33 +252,56 @@ function buildPayload(form) {
     direccionReferencial: String(form.direccionReferencial || "").trim(),
     googleMapsUrl: String(form.googleMapsUrl || "").trim(),
 
+    lat,
+    lng,
+    ubicacion: { lat, lng },
+    location: { lat, lng },
+
     proyectoNuevo: toBoolean(form.proyectoNuevo),
     viviendaNueva: toBoolean(form.viviendaNueva),
     tipoEntrega: String(form.tipoEntrega || "construccion").trim(),
     etapaProyecto: String(form.etapaProyecto || "construccion").trim(),
+    estadoProyecto: String(form.estadoProyecto || "").trim(),
+    fechaEntrega: String(form.fechaEntrega || "").trim(),
     fechaEntregaEstimada: form.fechaEntregaEstimada || null,
     fechaEscrituraEstimada: form.fechaEscrituraEstimada || null,
 
     permiteEntradaEnCuotas: toBoolean(form.permiteEntradaEnCuotas),
     mesesConstruccionRestantes: monthsConstruction,
-    porcentajeEntradaRequerida: downPaymentPct,
+    mesesConstruccion: monthsConstruction,
+
+    porcentajeEntradaRequerida: finalDownPaymentPct,
+    entradaMinima,
+    entradaRequerida: entradaMinima,
+
     reservaMinima: reserveMin,
     montoFirmaPromesa: promesaAmount,
     numeroCuotasEntrada: entryInstallmentsCount,
     fechaLimiteEntrada: form.fechaLimiteEntrada || null,
 
+    cuotaEstimada,
+    cuota: cuotaEstimada,
+    tasaReferencial,
+    tasa: tasaReferencial,
+    plazoAnios,
+    plazo: plazoAnios,
+
     financing: {
-      downPaymentPct,
-      mortgagePct: Math.max(0, 1 - downPaymentPct),
+      downPaymentPct: finalDownPaymentPct,
+      mortgagePct: Math.max(0, 1 - finalDownPaymentPct),
       allowInstallments: toBoolean(form.permiteEntradaEnCuotas),
       reserveMin,
       monthsConstruction,
+      downPaymentAmount: entradaMinima,
+      monthlyPaymentEstimate: cuotaEstimada,
+      referenceRate: tasaReferencial,
+      termYears: plazoAnios,
       promesaAmount,
       entryInstallmentsCount,
       entryDeadlineDate: form.fechaLimiteEntrada || null,
     },
 
-    productIds: cleanCSV(form.productIds),
+    productIds,
 
     requiresFirstHome: toBoolean(form.requiresFirstHome),
     requiresNewConstruction: toBoolean(form.requiresNewConstruction),
@@ -233,7 +320,7 @@ function buildPayload(form) {
     ).trim(),
 
     mortgageProfile: {
-      productIds: cleanCSV(form.productIds),
+      productIds,
       requiresFirstHome: toBoolean(form.requiresFirstHome),
       requiresNewConstruction: toBoolean(form.requiresNewConstruction),
       requiresMiduviQualifiedProject: toBoolean(
@@ -251,7 +338,25 @@ function buildPayload(form) {
     },
 
     imagen: String(form.imagen || "").trim(),
+    image: String(form.imagen || "").trim(),
+    imageUrl: String(form.imagen || "").trim(),
+
     galeria: cleanLines(form.galeria),
+    gallery: cleanLines(form.galeria),
+    imagenes: cleanLines(form.galeria),
+
+    planoUrl: String(form.planoUrl || "").trim(),
+    plano: String(form.planoUrl || "").trim(),
+    floorPlan: String(form.planoUrl || "").trim(),
+    floorPlanUrl: String(form.planoUrl || "").trim(),
+
+    nearby: cleanLines(form.nearby),
+    cercaDe: cleanLines(form.nearby),
+    entorno: cleanLines(form.nearby),
+
+    amenities: cleanLines(form.amenities),
+    amenidades: cleanLines(form.amenities),
+
     brochureUrl: String(form.brochureUrl || "").trim(),
     videoUrl: String(form.videoUrl || "").trim(),
 
@@ -271,6 +376,14 @@ function formFromProperty(property) {
 
     id: property?.id || "",
     developer: property?.developer || "GLS Constructores",
+    constructora:
+      property?.constructora || property?.developer || "GLS Constructores",
+    promotor:
+      property?.promotor ||
+      property?.constructora ||
+      property?.developer ||
+      "GLS Constructores",
+
     proyecto: property?.proyecto || "",
     titulo: property?.titulo || "",
     descripcion: property?.descripcion || "",
@@ -283,6 +396,9 @@ function formFromProperty(property) {
     lote: property?.lote || "",
 
     tipoInmueble: property?.tipoInmueble || "departamento",
+    tipoPropiedad:
+      property?.tipoPropiedad ||
+      inferTipoPropiedad(property?.tipoInmueble || "departamento"),
     tipoProyecto: property?.tipoProyecto || "edificio",
     uso: property?.uso || "vivienda_principal",
 
@@ -302,16 +418,26 @@ function formFromProperty(property) {
     sector: property?.sector || "",
     direccionReferencial: property?.direccionReferencial || "",
     googleMapsUrl: property?.googleMapsUrl || "",
+    lat: property?.lat ?? property?.ubicacion?.lat ?? property?.location?.lat ?? "",
+    lng: property?.lng ?? property?.ubicacion?.lng ?? property?.location?.lng ?? "",
 
     proyectoNuevo: property?.proyectoNuevo !== false,
     viviendaNueva: property?.viviendaNueva !== false,
     tipoEntrega: property?.tipoEntrega || "construccion",
     etapaProyecto: property?.etapaProyecto || "construccion",
+    estadoProyecto: property?.estadoProyecto || "",
+    fechaEntrega: property?.fechaEntrega || "",
     fechaEntregaEstimada: toDateInput(property?.fechaEntregaEstimada),
     fechaEscrituraEstimada: toDateInput(property?.fechaEscrituraEstimada),
 
     permiteEntradaEnCuotas: property?.permiteEntradaEnCuotas !== false,
     mesesConstruccionRestantes:
+      property?.mesesConstruccionRestantes ??
+      property?.mesesConstruccion ??
+      financing?.monthsConstruction ??
+      "",
+    mesesConstruccion:
+      property?.mesesConstruccion ??
       property?.mesesConstruccionRestantes ??
       financing?.monthsConstruction ??
       "",
@@ -319,8 +445,12 @@ function formFromProperty(property) {
       property?.porcentajeEntradaRequerida ??
       financing?.downPaymentPct ??
       0.1,
-    reservaMinima:
-      property?.reservaMinima ?? financing?.reserveMin ?? 500,
+    entradaMinima:
+      property?.entradaMinima ??
+      property?.entradaRequerida ??
+      financing?.downPaymentAmount ??
+      "",
+    reservaMinima: property?.reservaMinima ?? financing?.reserveMin ?? 500,
     montoFirmaPromesa:
       property?.montoFirmaPromesa ?? financing?.promesaAmount ?? "",
     numeroCuotasEntrada:
@@ -329,8 +459,23 @@ function formFromProperty(property) {
       property?.fechaLimiteEntrada || financing?.entryDeadlineDate
     ),
 
+    cuotaEstimada:
+      property?.cuotaEstimada ??
+      property?.cuota ??
+      financing?.monthlyPaymentEstimate ??
+      "",
+    tasaReferencial:
+      property?.tasaReferencial ??
+      property?.tasa ??
+      financing?.referenceRate ??
+      "",
+    plazoAnios:
+      property?.plazoAnios ?? property?.plazo ?? financing?.termYears ?? "",
+
     productIds: Array.isArray(profile?.productIds)
       ? profile.productIds.join(",")
+      : Array.isArray(property?.productIds)
+      ? property.productIds.join(",")
       : "VIP,PRIVATE",
 
     requiresFirstHome: profile?.requiresFirstHome === true,
@@ -344,12 +489,31 @@ function formFromProperty(property) {
     aceptaCooperativas: profile?.acceptsCooperatives === true,
     aceptaContado: profile?.acceptsCash !== false,
     bancoAliado: profile?.alliedBank || "",
-    proyectoCalificadoMiduvi:
-      profile?.miduviQualificationStatus || "no_aplica",
+    proyectoCalificadoMiduvi: profile?.miduviQualificationStatus || "no_aplica",
 
-    imagen: property?.imagen || "",
+    imagen: property?.imagen || property?.image || property?.imageUrl || "",
     galeria: Array.isArray(property?.galeria)
       ? property.galeria.join("\n")
+      : Array.isArray(property?.gallery)
+      ? property.gallery.join("\n")
+      : "",
+    planoUrl:
+      property?.planoUrl ||
+      property?.plano ||
+      property?.floorPlan ||
+      property?.floorPlanUrl ||
+      "",
+    nearby: Array.isArray(property?.nearby)
+      ? property.nearby.join("\n")
+      : Array.isArray(property?.cercaDe)
+      ? property.cercaDe.join("\n")
+      : Array.isArray(property?.entorno)
+      ? property.entorno.join("\n")
+      : "",
+    amenities: Array.isArray(property?.amenities)
+      ? property.amenities.join("\n")
+      : Array.isArray(property?.amenidades)
+      ? property.amenidades.join("\n")
       : "",
     brochureUrl: property?.brochureUrl || "",
     videoUrl: property?.videoUrl || "",
@@ -590,100 +754,101 @@ function PropertyImage({ src, title }) {
   );
 }
 
-
-
 export default function AdminProperties() {
   const [properties, setProperties] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-const [filterSearch, setFilterSearch] = useState("");
-const [filterProyecto, setFilterProyecto] = useState("");
-const [filterEstado, setFilterEstado] = useState("all");
-const [filterTipo, setFilterTipo] = useState("all");
-const [filterPublicado, setFilterPublicado] = useState("all");
+  const [filterSearch, setFilterSearch] = useState("");
+  const [filterProyecto, setFilterProyecto] = useState("");
+  const [filterEstado, setFilterEstado] = useState("all");
+  const [filterTipo, setFilterTipo] = useState("all");
+  const [filterPublicado, setFilterPublicado] = useState("all");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [bulkFile, setBulkFile] = useState(null);
-const [bulkPreview, setBulkPreview] = useState(null);
-const [bulkLoading, setBulkLoading] = useState(false);
-const [bulkConfirming, setBulkConfirming] = useState(false);
-const [bulkStatusSaving, setBulkStatusSaving] = useState(false);
+  const [bulkPreview, setBulkPreview] = useState(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkConfirming, setBulkConfirming] = useState(false);
+  const [bulkStatusSaving, setBulkStatusSaving] = useState(false);
 
   const activeCount = useMemo(
     () => properties.filter((p) => p?.publicado === true).length,
     [properties]
   );
 
-const proyectoOptions = useMemo(() => {
-  return Array.from(
-    new Set(properties.map((p) => p?.proyecto).filter(Boolean))
-  ).sort();
-}, [properties]);
+  const proyectoOptions = useMemo(() => {
+    return Array.from(
+      new Set(properties.map((p) => p?.proyecto).filter(Boolean))
+    ).sort();
+  }, [properties]);
 
-const filteredProperties = useMemo(() => {
-  const q = filterSearch.trim().toLowerCase();
+  const filteredProperties = useMemo(() => {
+    const q = filterSearch.trim().toLowerCase();
 
-  return properties.filter((p) => {
-    const searchable = [
-      p?.id,
-      p?.titulo,
-      p?.unidad,
-      p?.proyecto,
-      p?.sector,
-      p?.tipoInmueble,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
+    return properties.filter((p) => {
+      const searchable = [
+        p?.id,
+        p?.titulo,
+        p?.unidad,
+        p?.proyecto,
+        p?.sector,
+        p?.tipoInmueble,
+        p?.tipoPropiedad,
+        p?.constructora,
+        p?.promotor,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
 
-    if (q && !searchable.includes(q)) return false;
+      if (q && !searchable.includes(q)) return false;
 
-    if (filterProyecto && p?.proyecto !== filterProyecto) return false;
+      if (filterProyecto && p?.proyecto !== filterProyecto) return false;
 
-    if (filterEstado !== "all" && p?.estadoComercial !== filterEstado) {
-      return false;
-    }
+      if (filterEstado !== "all" && p?.estadoComercial !== filterEstado) {
+        return false;
+      }
 
-    if (filterTipo !== "all" && p?.tipoInmueble !== filterTipo) {
-      return false;
-    }
+      if (filterTipo !== "all" && p?.tipoInmueble !== filterTipo) {
+        return false;
+      }
 
-    if (filterPublicado === "publicado" && p?.publicado !== true) {
-      return false;
-    }
+      if (filterPublicado === "publicado" && p?.publicado !== true) {
+        return false;
+      }
 
-    if (filterPublicado === "oculto" && p?.publicado === true) {
-      return false;
-    }
+      if (filterPublicado === "oculto" && p?.publicado === true) {
+        return false;
+      }
 
-    return true;
-  });
-}, [
-  properties,
-  filterSearch,
-  filterProyecto,
-  filterEstado,
-  filterTipo,
-  filterPublicado,
-]);
+      return true;
+    });
+  }, [
+    properties,
+    filterSearch,
+    filterProyecto,
+    filterEstado,
+    filterTipo,
+    filterPublicado,
+  ]);
 
-const hasActiveBulkFilter = useMemo(() => {
-  return Boolean(
-    filterSearch.trim() ||
-      filterProyecto ||
-      filterEstado !== "all" ||
-      filterTipo !== "all" ||
-      filterPublicado !== "all"
-  );
-}, [
-  filterSearch,
-  filterProyecto,
-  filterEstado,
-  filterTipo,
-  filterPublicado,
-]);
+  const hasActiveBulkFilter = useMemo(() => {
+    return Boolean(
+      filterSearch.trim() ||
+        filterProyecto ||
+        filterEstado !== "all" ||
+        filterTipo !== "all" ||
+        filterPublicado !== "all"
+    );
+  }, [
+    filterSearch,
+    filterProyecto,
+    filterEstado,
+    filterTipo,
+    filterPublicado,
+  ]);
 
   async function loadProperties() {
     try {
@@ -742,79 +907,79 @@ const hasActiveBulkFilter = useMemo(() => {
   }
 
   async function handleDownloadTemplate() {
-  try {
-    setError("");
-    setMessage("");
+    try {
+      setError("");
+      setMessage("");
 
-    await downloadPropertiesTemplate();
+      await downloadPropertiesTemplate();
 
-    setMessage("Plantilla Excel descargada correctamente.");
-  } catch (err) {
-    setError(err?.message || "No se pudo descargar la plantilla.");
-  }
-}
-
-async function handlePreviewBulk() {
-  try {
-    setBulkLoading(true);
-    setError("");
-    setMessage("");
-    setBulkPreview(null);
-
-    if (!bulkFile) {
-      throw new Error("Selecciona un archivo Excel primero.");
+      setMessage("Plantilla Excel descargada correctamente.");
+    } catch (err) {
+      setError(err?.message || "No se pudo descargar la plantilla.");
     }
-
-    const data = await previewPropertiesExcel(bulkFile);
-
-    setBulkPreview(data);
-    setMessage("Archivo leído correctamente. Revisa el preview antes de confirmar.");
-  } catch (err) {
-    setError(err?.message || "No se pudo previsualizar el archivo.");
-  } finally {
-    setBulkLoading(false);
   }
-}
 
-async function handleConfirmBulk() {
-  try {
-    setBulkConfirming(true);
-    setError("");
-    setMessage("");
+  async function handlePreviewBulk() {
+    try {
+      setBulkLoading(true);
+      setError("");
+      setMessage("");
+      setBulkPreview(null);
 
-    const rows = Array.isArray(bulkPreview?.validRows)
-      ? bulkPreview.validRows
-      : [];
+      if (!bulkFile) {
+        throw new Error("Selecciona un archivo Excel primero.");
+      }
 
-    if (!rows.length) {
-      throw new Error("No hay filas válidas para confirmar.");
+      const data = await previewPropertiesExcel(bulkFile);
+
+      setBulkPreview(data);
+      setMessage("Archivo leído correctamente. Revisa el preview antes de confirmar.");
+    } catch (err) {
+      setError(err?.message || "No se pudo previsualizar el archivo.");
+    } finally {
+      setBulkLoading(false);
     }
+  }
 
-    const result = await confirmPropertiesBulk(rows);
+  async function handleConfirmBulk() {
+    try {
+      setBulkConfirming(true);
+      setError("");
+      setMessage("");
 
-    setMessage(
-      `Carga confirmada: ${result.created || 0} creadas, ${
-        result.updated || 0
-      } actualizadas, ${result.totalErrors || 0} errores.`
-    );
+      const rows = Array.isArray(bulkPreview?.validRows)
+        ? bulkPreview.validRows
+        : [];
 
+      if (!rows.length) {
+        throw new Error("No hay filas válidas para confirmar.");
+      }
+
+      const result = await confirmPropertiesBulk(rows);
+
+      setMessage(
+        `Carga confirmada: ${result.created || 0} creadas, ${
+          result.updated || 0
+        } actualizadas, ${result.totalErrors || 0} errores.`
+      );
+
+      setBulkFile(null);
+      setBulkPreview(null);
+
+      await loadProperties();
+    } catch (err) {
+      setError(err?.message || "No se pudo confirmar la carga masiva.");
+    } finally {
+      setBulkConfirming(false);
+    }
+  }
+
+  function handleClearBulk() {
     setBulkFile(null);
     setBulkPreview(null);
-
-    await loadProperties();
-  } catch (err) {
-    setError(err?.message || "No se pudo confirmar la carga masiva.");
-  } finally {
-    setBulkConfirming(false);
+    setError("");
+    setMessage("");
   }
-}
-
-function handleClearBulk() {
-  setBulkFile(null);
-  setBulkPreview(null);
-  setError("");
-  setMessage("");
-}
 
   async function handleSubmit() {
     try {
@@ -865,79 +1030,80 @@ function handleClearBulk() {
     }
   }
 
-async function handleBulkStatus(status) {
-  try {
-    setError("");
-    setMessage("");
+  async function handleBulkStatus(status) {
+    try {
+      setError("");
+      setMessage("");
 
-    const targetProperties = Array.isArray(filteredProperties)
-      ? filteredProperties
-      : [];
+      const targetProperties = Array.isArray(filteredProperties)
+        ? filteredProperties
+        : [];
 
-if (!hasActiveBulkFilter) {
-  throw new Error(
-    "Por seguridad, aplica al menos un filtro antes de ejecutar una acción masiva."
-  );
-}
+      if (!hasActiveBulkFilter) {
+        throw new Error(
+          "Por seguridad, aplica al menos un filtro antes de ejecutar una acción masiva."
+        );
+      }
 
-    if (!targetProperties.length) {
-      throw new Error("No hay propiedades filtradas para actualizar.");
-    }
+      if (!targetProperties.length) {
+        throw new Error("No hay propiedades filtradas para actualizar.");
+      }
 
-    const actionLabel = `${status.label} (${status.publicado ? "publicado" : "oculto"})`;
+      const actionLabel = `${status.label} (${
+        status.publicado ? "publicado" : "oculto"
+      })`;
 
-    const ok = window.confirm(
-      `Vas a actualizar ${targetProperties.length} propiedades filtradas a "${actionLabel}".\n\n¿Seguro que quieres continuar?`
-    );
-
-    if (!ok) return;
-
-    // Segundo candado si estás aplicando algo muy amplio
-    if (!filterProyecto && targetProperties.length > 25) {
-      const okGlobal = window.confirm(
-        `Ojo: no tienes un proyecto filtrado y vas a afectar ${targetProperties.length} propiedades.\n\n¿Confirmas nuevamente?`
+      const ok = window.confirm(
+        `Vas a actualizar ${targetProperties.length} propiedades filtradas a "${actionLabel}".\n\n¿Seguro que quieres continuar?`
       );
 
-      if (!okGlobal) return;
-    }
+      if (!ok) return;
 
-    setBulkStatusSaving(true);
+      if (!filterProyecto && targetProperties.length > 25) {
+        const okGlobal = window.confirm(
+          `Ojo: no tienes un proyecto filtrado y vas a afectar ${targetProperties.length} propiedades.\n\n¿Confirmas nuevamente?`
+        );
 
-    let updated = 0;
-    let failed = 0;
-
-    for (const property of targetProperties) {
-      const id = property?.id || property?._id;
-
-      if (!id) {
-        failed += 1;
-        continue;
+        if (!okGlobal) return;
       }
 
-      try {
-        await updateAdminPropertyStatus(id, {
-          estadoComercial: status.estadoComercial,
-          publicado: status.publicado,
-        });
+      setBulkStatusSaving(true);
 
-        updated += 1;
-      } catch (err) {
-        console.warn("Error actualizando propiedad", id, err);
-        failed += 1;
+      let updated = 0;
+      let failed = 0;
+
+      for (const property of targetProperties) {
+        const id = property?.id || property?._id;
+
+        if (!id) {
+          failed += 1;
+          continue;
+        }
+
+        try {
+          await updateAdminPropertyStatus(id, {
+            estadoComercial: status.estadoComercial,
+            publicado: status.publicado,
+          });
+
+          updated += 1;
+        } catch (err) {
+          console.warn("Error actualizando propiedad", id, err);
+          failed += 1;
+        }
       }
+
+      setMessage(
+        `Acción masiva completada: ${updated} actualizadas, ${failed} con error.`
+      );
+
+      await loadProperties();
+    } catch (err) {
+      setError(err?.message || "No se pudo ejecutar la acción masiva.");
+    } finally {
+      setBulkStatusSaving(false);
     }
-
-    setMessage(
-      `Acción masiva completada: ${updated} actualizadas, ${failed} con error.`
-    );
-
-    await loadProperties();
-  } catch (err) {
-    setError(err?.message || "No se pudo ejecutar la acción masiva.");
-  } finally {
-    setBulkStatusSaving(false);
   }
-}
 
   async function handleDelete(property) {
     const id = property?.id || property?._id;
@@ -976,11 +1142,11 @@ if (!hasActiveBulkFilter) {
       }}
     >
       <div style={{ maxWidth: 1260, margin: "0 auto", display: "grid", gap: 18 }}>
-        
-<AdminTopNav
-  title="Propiedades"
-  subtitle="Carga datos objetivos de cada propiedad. HabitaLibre calcula la ruta hipotecaria con base en precio, entrega, entrada y perfil del usuario."
-/>
+        <AdminTopNav
+          title="Propiedades"
+          subtitle="Carga datos objetivos de cada propiedad. HabitaLibre calcula la ruta hipotecaria con base en precio, entrega, entrada y perfil del usuario."
+        />
+
         <div
           style={{
             padding: 16,
@@ -991,217 +1157,234 @@ if (!hasActiveBulkFilter) {
             gap: 12,
           }}
         >
-<div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-  <Button tone="secondary" onClick={loadProperties}>
-    Recargar inventario
-  </Button>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <Button tone="secondary" onClick={loadProperties}>
+              Recargar inventario
+            </Button>
 
-  <Button tone="secondary" onClick={startCreate}>
-    Nueva propiedad
-  </Button>
-</div>
+            <Button tone="secondary" onClick={startCreate}>
+              Nueva propiedad
+            </Button>
+          </div>
 
-<div
-  style={{
-    marginTop: 8,
-    padding: 14,
-    borderRadius: 18,
-    background: "rgba(37,211,166,0.055)",
-    border: "1px solid rgba(37,211,166,0.14)",
-    display: "grid",
-    gap: 12,
-  }}
->
-  <div>
-    <div style={{ fontWeight: 950, fontSize: 15 }}>
-      Carga masiva Excel
-    </div>
-
-    <div
-      style={{
-        marginTop: 4,
-        color: "rgba(203,213,225,0.78)",
-        fontSize: 13,
-        lineHeight: 1.4,
-      }}
-    >
-      Descarga la plantilla, carga propiedades en Excel, previsualiza errores y
-      confirma solo cuando todo esté correcto.
-    </div>
-  </div>
-
-  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-    <Button tone="secondary" onClick={handleDownloadTemplate}>
-      Descargar plantilla
-    </Button>
-
-    <label
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "11px 13px",
-        borderRadius: 14,
-        border: "1px solid rgba(255,255,255,0.16)",
-        background: "rgba(255,255,255,0.08)",
-        color: "white",
-        fontWeight: 900,
-        cursor: "pointer",
-      }}
-    >
-      Seleccionar Excel
-      <input
-        type="file"
-        accept=".xlsx,.xls"
-        style={{ display: "none" }}
-        onChange={(e) => {
-          const file = e.target.files?.[0] || null;
-          setBulkFile(file);
-          setBulkPreview(null);
-          setMessage(file ? `Archivo seleccionado: ${file.name}` : "");
-          setError("");
-        }}
-      />
-    </label>
-
-    <Button tone="secondary" onClick={handlePreviewBulk} disabled={bulkLoading || !bulkFile}>
-      {bulkLoading ? "Leyendo..." : "Previsualizar"}
-    </Button>
-
-    <Button
-      onClick={handleConfirmBulk}
-      disabled={
-        bulkConfirming ||
-        !bulkPreview ||
-        !Array.isArray(bulkPreview?.validRows) ||
-        bulkPreview.validRows.length === 0
-      }
-    >
-      {bulkConfirming ? "Confirmando..." : "Confirmar carga"}
-    </Button>
-
-    <Button tone="secondary" onClick={handleClearBulk}>
-      Limpiar carga
-    </Button>
-  </div>
-
-  {bulkFile ? (
-    <div style={{ color: "rgba(226,232,240,0.88)", fontSize: 13 }}>
-      Archivo: <strong>{bulkFile.name}</strong>
-    </div>
-  ) : null}
-
-  {bulkPreview?.summary ? (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-        gap: 10,
-      }}
-    >
-      <div style={miniBulkCardStyle()}>
-        <strong>{bulkPreview.summary.totalRows}</strong>
-        <span>Filas leídas</span>
-      </div>
-
-      <div style={miniBulkCardStyle()}>
-        <strong>{bulkPreview.summary.validRows}</strong>
-        <span>Válidas</span>
-      </div>
-
-      <div style={miniBulkCardStyle()}>
-        <strong>{bulkPreview.summary.toCreate}</strong>
-        <span>Nuevas</span>
-      </div>
-
-      <div style={miniBulkCardStyle()}>
-        <strong>{bulkPreview.summary.toUpdate}</strong>
-        <span>Actualizaciones</span>
-      </div>
-
-      <div style={miniBulkCardStyle()}>
-        <strong>{bulkPreview.summary.errorRows}</strong>
-        <span>Con errores</span>
-      </div>
-    </div>
-  ) : null}
-
-  {Array.isArray(bulkPreview?.errorRows) && bulkPreview.errorRows.length > 0 ? (
-    <div
-      style={{
-        padding: 12,
-        borderRadius: 14,
-        background: "rgba(248,113,113,0.10)",
-        border: "1px solid rgba(248,113,113,0.20)",
-        color: "#fecaca",
-        display: "grid",
-        gap: 8,
-      }}
-    >
-      <strong>Errores detectados</strong>
-
-      {bulkPreview.errorRows.slice(0, 6).map((row) => (
-        <div key={`error-${row.rowNumber}`} style={{ fontSize: 13 }}>
-          Fila {row.rowNumber}:{" "}
-          {Array.isArray(row.errors) ? row.errors.join(" · ") : "Error"}
-        </div>
-      ))}
-
-      {bulkPreview.errorRows.length > 6 ? (
-        <div style={{ fontSize: 12, color: "rgba(254,202,202,0.78)" }}>
-          Hay más errores. Corrige el Excel y vuelve a previsualizar.
-        </div>
-      ) : null}
-    </div>
-  ) : null}
-
-  {Array.isArray(bulkPreview?.validRows) && bulkPreview.validRows.length > 0 ? (
-    <div
-      style={{
-        padding: 12,
-        borderRadius: 14,
-        background: "rgba(255,255,255,0.045)",
-        border: "1px solid rgba(255,255,255,0.09)",
-        display: "grid",
-        gap: 8,
-      }}
-    >
-      <strong>Preview de filas válidas</strong>
-
-      <div style={{ display: "grid", gap: 7 }}>
-        {bulkPreview.validRows.slice(0, 8).map((row) => (
           <div
-            key={`valid-${row.rowNumber}-${row.payload?.id}`}
             style={{
-              display: "flex",
-              justifyContent: "space-between",
+              marginTop: 8,
+              padding: 14,
+              borderRadius: 18,
+              background: "rgba(37,211,166,0.055)",
+              border: "1px solid rgba(37,211,166,0.14)",
+              display: "grid",
               gap: 12,
-              color: "rgba(226,232,240,0.88)",
-              fontSize: 13,
-              borderBottom: "1px solid rgba(255,255,255,0.06)",
-              paddingBottom: 6,
             }}
           >
-            <span>
-              Fila {row.rowNumber} · {row.payload?.id} · {row.payload?.titulo}
-            </span>
+            <div>
+              <div style={{ fontWeight: 950, fontSize: 15 }}>
+                Carga masiva Excel
+              </div>
 
-            <strong style={{ color: row.action === "create" ? "#7fffd4" : "#facc15" }}>
-              {row.action === "create" ? "Crear" : "Actualizar"}
-            </strong>
+              <div
+                style={{
+                  marginTop: 4,
+                  color: "rgba(203,213,225,0.78)",
+                  fontSize: 13,
+                  lineHeight: 1.4,
+                }}
+              >
+                Descarga la plantilla, carga propiedades en Excel, previsualiza
+                errores y confirma solo cuando todo esté correcto.
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                flexWrap: "wrap",
+                alignItems: "center",
+              }}
+            >
+              <Button tone="secondary" onClick={handleDownloadTemplate}>
+                Descargar plantilla
+              </Button>
+
+              <label
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "11px 13px",
+                  borderRadius: 14,
+                  border: "1px solid rgba(255,255,255,0.16)",
+                  background: "rgba(255,255,255,0.08)",
+                  color: "white",
+                  fontWeight: 900,
+                  cursor: "pointer",
+                }}
+              >
+                Seleccionar Excel
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setBulkFile(file);
+                    setBulkPreview(null);
+                    setMessage(file ? `Archivo seleccionado: ${file.name}` : "");
+                    setError("");
+                  }}
+                />
+              </label>
+
+              <Button
+                tone="secondary"
+                onClick={handlePreviewBulk}
+                disabled={bulkLoading || !bulkFile}
+              >
+                {bulkLoading ? "Leyendo..." : "Previsualizar"}
+              </Button>
+
+              <Button
+                onClick={handleConfirmBulk}
+                disabled={
+                  bulkConfirming ||
+                  !bulkPreview ||
+                  !Array.isArray(bulkPreview?.validRows) ||
+                  bulkPreview.validRows.length === 0
+                }
+              >
+                {bulkConfirming ? "Confirmando..." : "Confirmar carga"}
+              </Button>
+
+              <Button tone="secondary" onClick={handleClearBulk}>
+                Limpiar carga
+              </Button>
+            </div>
+
+            {bulkFile ? (
+              <div style={{ color: "rgba(226,232,240,0.88)", fontSize: 13 }}>
+                Archivo: <strong>{bulkFile.name}</strong>
+              </div>
+            ) : null}
+
+            {bulkPreview?.summary ? (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                  gap: 10,
+                }}
+              >
+                <div style={miniBulkCardStyle()}>
+                  <strong>{bulkPreview.summary.totalRows}</strong>
+                  <span>Filas leídas</span>
+                </div>
+
+                <div style={miniBulkCardStyle()}>
+                  <strong>{bulkPreview.summary.validRows}</strong>
+                  <span>Válidas</span>
+                </div>
+
+                <div style={miniBulkCardStyle()}>
+                  <strong>{bulkPreview.summary.toCreate}</strong>
+                  <span>Nuevas</span>
+                </div>
+
+                <div style={miniBulkCardStyle()}>
+                  <strong>{bulkPreview.summary.toUpdate}</strong>
+                  <span>Actualizaciones</span>
+                </div>
+
+                <div style={miniBulkCardStyle()}>
+                  <strong>{bulkPreview.summary.errorRows}</strong>
+                  <span>Con errores</span>
+                </div>
+              </div>
+            ) : null}
+
+            {Array.isArray(bulkPreview?.errorRows) &&
+            bulkPreview.errorRows.length > 0 ? (
+              <div
+                style={{
+                  padding: 12,
+                  borderRadius: 14,
+                  background: "rgba(248,113,113,0.10)",
+                  border: "1px solid rgba(248,113,113,0.20)",
+                  color: "#fecaca",
+                  display: "grid",
+                  gap: 8,
+                }}
+              >
+                <strong>Errores detectados</strong>
+
+                {bulkPreview.errorRows.slice(0, 6).map((row) => (
+                  <div key={`error-${row.rowNumber}`} style={{ fontSize: 13 }}>
+                    Fila {row.rowNumber}:{" "}
+                    {Array.isArray(row.errors) ? row.errors.join(" · ") : "Error"}
+                  </div>
+                ))}
+
+                {bulkPreview.errorRows.length > 6 ? (
+                  <div style={{ fontSize: 12, color: "rgba(254,202,202,0.78)" }}>
+                    Hay más errores. Corrige el Excel y vuelve a previsualizar.
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {Array.isArray(bulkPreview?.validRows) &&
+            bulkPreview.validRows.length > 0 ? (
+              <div
+                style={{
+                  padding: 12,
+                  borderRadius: 14,
+                  background: "rgba(255,255,255,0.045)",
+                  border: "1px solid rgba(255,255,255,0.09)",
+                  display: "grid",
+                  gap: 8,
+                }}
+              >
+                <strong>Preview de filas válidas</strong>
+
+                <div style={{ display: "grid", gap: 7 }}>
+                  {bulkPreview.validRows.slice(0, 8).map((row) => (
+                    <div
+                      key={`valid-${row.rowNumber}-${row.payload?.id}`}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        color: "rgba(226,232,240,0.88)",
+                        fontSize: 13,
+                        borderBottom: "1px solid rgba(255,255,255,0.06)",
+                        paddingBottom: 6,
+                      }}
+                    >
+                      <span>
+                        Fila {row.rowNumber} · {row.payload?.id} ·{" "}
+                        {row.payload?.titulo}
+                      </span>
+
+                      <strong
+                        style={{
+                          color: row.action === "create" ? "#7fffd4" : "#facc15",
+                        }}
+                      >
+                        {row.action === "create" ? "Crear" : "Actualizar"}
+                      </strong>
+                    </div>
+                  ))}
+
+                  {bulkPreview.validRows.length > 8 ? (
+                    <div style={{ color: "rgba(148,163,184,0.85)", fontSize: 12 }}>
+                      Mostrando 8 de {bulkPreview.validRows.length} filas válidas.
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
           </div>
-        ))}
-
-        {bulkPreview.validRows.length > 8 ? (
-          <div style={{ color: "rgba(148,163,184,0.85)", fontSize: 12 }}>
-            Mostrando 8 de {bulkPreview.validRows.length} filas válidas.
-          </div>
-        ) : null}
-      </div>
-    </div>
-  ) : null}
-</div>
-
 
           <div style={{ color: "rgba(148,163,184,0.95)", fontSize: 13 }}>
             Sesión admin activa · Activas publicadas:{" "}
@@ -1235,177 +1418,176 @@ if (!hasActiveBulkFilter) {
             }}
           >
             <h2 style={{ marginTop: 0 }}>Inventario</h2>
+
             <div
-  style={{
-    display: "grid",
-    gap: 10,
-    marginBottom: 14,
-    padding: 12,
-    borderRadius: 18,
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.08)",
-  }}
->
-  <TextField
-    label="Buscar"
-    value={filterSearch}
-    onChange={setFilterSearch}
-    placeholder="ID, unidad, título, proyecto..."
-  />
+              style={{
+                display: "grid",
+                gap: 10,
+                marginBottom: 14,
+                padding: 12,
+                borderRadius: 18,
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+              }}
+            >
+              <TextField
+                label="Buscar"
+                value={filterSearch}
+                onChange={setFilterSearch}
+                placeholder="ID, unidad, título, proyecto..."
+              />
 
-  <div style={grid2Style()}>
-    <SelectField
-      label="Proyecto"
-      value={filterProyecto}
-      onChange={setFilterProyecto}
-    >
-      <option value="">Todos</option>
-      {proyectoOptions.map((proyecto) => (
-        <option key={proyecto} value={proyecto}>
-          {proyecto}
-        </option>
-      ))}
-    </SelectField>
+              <div style={grid2Style()}>
+                <SelectField
+                  label="Proyecto"
+                  value={filterProyecto}
+                  onChange={setFilterProyecto}
+                >
+                  <option value="">Todos</option>
+                  {proyectoOptions.map((proyecto) => (
+                    <option key={proyecto} value={proyecto}>
+                      {proyecto}
+                    </option>
+                  ))}
+                </SelectField>
 
-    <SelectField
-      label="Estado"
-      value={filterEstado}
-      onChange={setFilterEstado}
-    >
-      <option value="all">Todos</option>
-      <option value="disponible">Disponible</option>
-      <option value="pausado">Pausado</option>
-      <option value="reservado">Reservado</option>
-      <option value="vendido">Vendido</option>
-      <option value="oculto">Oculto</option>
-    </SelectField>
+                <SelectField
+                  label="Estado"
+                  value={filterEstado}
+                  onChange={setFilterEstado}
+                >
+                  <option value="all">Todos</option>
+                  <option value="disponible">Disponible</option>
+                  <option value="pausado">Pausado</option>
+                  <option value="reservado">Reservado</option>
+                  <option value="vendido">Vendido</option>
+                  <option value="oculto">Oculto</option>
+                </SelectField>
 
-    <SelectField
-      label="Tipo inmueble"
-      value={filterTipo}
-      onChange={setFilterTipo}
-    >
-      <option value="all">Todos</option>
-      <option value="departamento">Departamento</option>
-      <option value="suite">Suite</option>
-      <option value="estudio">Estudio</option>
-      <option value="casa">Casa</option>
-      <option value="terreno">Terreno</option>
-    </SelectField>
+                <SelectField
+                  label="Tipo inmueble"
+                  value={filterTipo}
+                  onChange={setFilterTipo}
+                >
+                  <option value="all">Todos</option>
+                  <option value="departamento">Departamento</option>
+                  <option value="suite">Suite</option>
+                  <option value="estudio">Estudio</option>
+                  <option value="casa">Casa</option>
+                  <option value="terreno">Terreno</option>
+                </SelectField>
 
-    <SelectField
-      label="Publicación"
-      value={filterPublicado}
-      onChange={setFilterPublicado}
-    >
-      <option value="all">Todos</option>
-      <option value="publicado">Publicado</option>
-      <option value="oculto">Oculto</option>
-    </SelectField>
-  </div>
+                <SelectField
+                  label="Publicación"
+                  value={filterPublicado}
+                  onChange={setFilterPublicado}
+                >
+                  <option value="all">Todos</option>
+                  <option value="publicado">Publicado</option>
+                  <option value="oculto">Oculto</option>
+                </SelectField>
+              </div>
 
-  <div style={{ color: "rgba(203,213,225,0.78)", fontSize: 13 }}>
-    Mostrando <strong>{filteredProperties.length}</strong> de{" "}
-    <strong>{properties.length}</strong> propiedades.
-  </div>
-</div>
+              <div style={{ color: "rgba(203,213,225,0.78)", fontSize: 13 }}>
+                Mostrando <strong>{filteredProperties.length}</strong> de{" "}
+                <strong>{properties.length}</strong> propiedades.
+              </div>
+            </div>
 
-<div
-  style={{
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 18,
-    background: "rgba(37,211,166,0.055)",
-    border: "1px solid rgba(37,211,166,0.14)",
-    display: "grid",
-    gap: 10,
-  }}
->
-  <div>
-    <div style={{ fontWeight: 950, fontSize: 14 }}>
-      Acciones masivas sobre filtro actual
-    </div>
+            <div
+              style={{
+                marginTop: 12,
+                padding: 12,
+                borderRadius: 18,
+                background: "rgba(37,211,166,0.055)",
+                border: "1px solid rgba(37,211,166,0.14)",
+                display: "grid",
+                gap: 10,
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 950, fontSize: 14 }}>
+                  Acciones masivas sobre filtro actual
+                </div>
 
-    <div
-      style={{
-        marginTop: 4,
-        color: "rgba(203,213,225,0.78)",
-        fontSize: 12,
-        lineHeight: 1.35,
-      }}
-    >
-      Aplica el cambio solo a las propiedades que estás viendo con los filtros
-      actuales. Antes de publicar, filtra bien por proyecto, estado, tipo o unidad.
-    </div>
-  </div>
+                <div
+                  style={{
+                    marginTop: 4,
+                    color: "rgba(203,213,225,0.78)",
+                    fontSize: 12,
+                    lineHeight: 1.35,
+                  }}
+                >
+                  Aplica el cambio solo a las propiedades que estás viendo con
+                  los filtros actuales. Antes de publicar, filtra bien por
+                  proyecto, estado, tipo o unidad.
+                </div>
+              </div>
 
-  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-    {STATUS_OPTIONS.map((status) => (
-      <Button
-        key={`bulk-${status.estadoComercial}`}
-        tone={status.estadoComercial === "vendido" ? "danger" : "secondary"}
-disabled={
-  bulkStatusSaving ||
-  filteredProperties.length === 0 ||
-  !hasActiveBulkFilter
-}
-        onClick={() => handleBulkStatus(status)}
-      >
-        {bulkStatusSaving ? "Actualizando..." : `Marcar ${status.label}`}
-      </Button>
-    ))}
-  </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {STATUS_OPTIONS.map((status) => (
+                  <Button
+                    key={`bulk-${status.estadoComercial}`}
+                    tone={status.estadoComercial === "vendido" ? "danger" : "secondary"}
+                    disabled={
+                      bulkStatusSaving ||
+                      filteredProperties.length === 0 ||
+                      !hasActiveBulkFilter
+                    }
+                    onClick={() => handleBulkStatus(status)}
+                  >
+                    {bulkStatusSaving ? "Actualizando..." : `Marcar ${status.label}`}
+                  </Button>
+                ))}
+              </div>
 
-  <div style={{ color: "rgba(148,163,184,0.9)", fontSize: 12 }}>
-   {hasActiveBulkFilter ? (
-  <>
-    Propiedades afectadas si ejecutas una acción:{" "}
-    <strong>{filteredProperties.length}</strong>
-  </>
-) : (
-  <>
-    Aplica al menos un filtro antes de ejecutar una acción masiva.
-  </>
-)}
-  </div>
-</div>
-
+              <div style={{ color: "rgba(148,163,184,0.9)", fontSize: 12 }}>
+                {hasActiveBulkFilter ? (
+                  <>
+                    Propiedades afectadas si ejecutas una acción:{" "}
+                    <strong>{filteredProperties.length}</strong>
+                  </>
+                ) : (
+                  <>Aplica al menos un filtro antes de ejecutar una acción masiva.</>
+                )}
+              </div>
+            </div>
 
             {loading ? (
               <div style={{ color: "rgba(203,213,225,0.85)" }}>
                 Cargando propiedades...
               </div>
-) : filteredProperties.length ? (
-<div style={{ display: "grid", gap: 12 }}>
-{filteredProperties.map((p) => {
+            ) : filteredProperties.length ? (
+              <div style={{ display: "grid", gap: 12 }}>
+                {filteredProperties.map((p) => {
                   const id = p?.id || p?._id;
                   const status = p?.estadoComercial || "—";
                   const isPublished = p?.publicado === true;
 
                   return (
-  <div
-    key={id}
-    style={{
-      padding: 14,
-      borderRadius: 20,
-      border: "1px solid rgba(255,255,255,0.10)",
-      background: isPublished
-        ? "rgba(37,211,166,0.08)"
-        : "rgba(255,255,255,0.04)",
-      display: "grid",
-      gap: 10,
-    }}
-  >
-    <PropertyImage src={p?.imagen} title={p?.titulo} />
+                    <div
+                      key={id}
+                      style={{
+                        padding: 14,
+                        borderRadius: 20,
+                        border: "1px solid rgba(255,255,255,0.10)",
+                        background: isPublished
+                          ? "rgba(37,211,166,0.08)"
+                          : "rgba(255,255,255,0.04)",
+                        display: "grid",
+                        gap: 10,
+                      }}
+                    >
+                      <PropertyImage src={p?.imagen} title={p?.titulo} />
 
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        gap: 12,
-        alignItems: "flex-start",
-      }}
-    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 12,
+                          alignItems: "flex-start",
+                        }}
+                      >
                         <div>
                           <div style={{ fontWeight: 950, fontSize: 16 }}>
                             {p?.titulo || "Sin título"}
@@ -1431,7 +1613,8 @@ disabled={
                           >
                             {moneyUSD(p?.precio || 0)} ·{" "}
                             {p?.m2Construccion || p?.m2 || "—"} m² const. ·{" "}
-                            {p?.tipoInmueble || "—"} · {p?.dormitorios || "—"} dorm.
+                            {p?.tipoPropiedad || p?.tipoInmueble || "—"} ·{" "}
+                            {p?.dormitorios ?? "—"} dorm.
                           </div>
 
                           <div
@@ -1442,9 +1625,10 @@ disabled={
                             }}
                           >
                             Entrega:{" "}
-                            {p?.fechaEntregaEstimada
-                              ? toDateInput(p.fechaEntregaEstimada)
-                              : p?.tipoEntrega || "—"}{" "}
+                            {p?.fechaEntrega ||
+                              (p?.fechaEntregaEstimada
+                                ? toDateInput(p.fechaEntregaEstimada)
+                                : p?.tipoEntrega || "—")}{" "}
                             · BIESS:{" "}
                             {p?.mortgageProfile?.acceptsBIESS === false
                               ? "No"
@@ -1532,9 +1716,28 @@ disabled={
 
                 <div style={grid2Style()}>
                   <TextField
-                    label="Promotor / desarrollador"
+                    label="Developer"
                     value={form.developer}
-                    onChange={(v) => updateForm("developer", v)}
+                    onChange={(v) => {
+                      updateForm("developer", v);
+                      if (!form.constructora) updateForm("constructora", v);
+                      if (!form.promotor) updateForm("promotor", v);
+                    }}
+                    placeholder="GLS Constructores"
+                  />
+
+                  <TextField
+                    label="Constructora"
+                    value={form.constructora}
+                    onChange={(v) => updateForm("constructora", v)}
+                    placeholder="GLS Constructores"
+                  />
+
+                  <TextField
+                    label="Promotor"
+                    value={form.promotor}
+                    onChange={(v) => updateForm("promotor", v)}
+                    placeholder="GLS Constructores"
                   />
 
                   <TextField
@@ -1602,17 +1805,28 @@ disabled={
 
               <Section title="2. Tipo de inmueble">
                 <div style={grid2Style()}>
-<SelectField
-  label="Tipo inmueble"
-  value={form.tipoInmueble}
-  onChange={(v) => updateForm("tipoInmueble", v)}
->
-  <option value="departamento">Departamento</option>
-  <option value="suite">Suite</option>
-  <option value="estudio">Estudio</option>
-  <option value="casa">Casa</option>
-  <option value="terreno">Terreno</option>
-</SelectField>
+                  <SelectField
+                    label="Tipo inmueble"
+                    value={form.tipoInmueble}
+                    onChange={(v) => {
+                      updateForm("tipoInmueble", v);
+                      updateForm("tipoPropiedad", inferTipoPropiedad(v));
+                      if (v === "estudio") updateForm("dormitorios", 0);
+                    }}
+                  >
+                    <option value="departamento">Departamento</option>
+                    <option value="suite">Suite</option>
+                    <option value="estudio">Estudio</option>
+                    <option value="casa">Casa</option>
+                    <option value="terreno">Terreno</option>
+                  </SelectField>
+
+                  <TextField
+                    label="Tipo propiedad visible"
+                    value={form.tipoPropiedad}
+                    onChange={(v) => updateForm("tipoPropiedad", v)}
+                    placeholder="Estudio, Departamento, Casa..."
+                  />
 
                   <SelectField
                     label="Tipo proyecto"
@@ -1734,6 +1948,22 @@ disabled={
                     value={form.sector}
                     onChange={(v) => updateForm("sector", v)}
                   />
+
+                  <TextField
+                    label="Latitud"
+                    value={form.lat}
+                    onChange={(v) => updateForm("lat", v)}
+                    type="number"
+                    placeholder="-0.1807"
+                  />
+
+                  <TextField
+                    label="Longitud"
+                    value={form.lng}
+                    onChange={(v) => updateForm("lng", v)}
+                    type="number"
+                    placeholder="-78.4678"
+                  />
                 </div>
 
                 <TextField
@@ -1752,7 +1982,7 @@ disabled={
 
               <Section
                 title="5. Entrega del proyecto"
-                hint="No pedimos avance de obra exacto. La fecha estimada de entrega es suficiente para calcular meses disponibles."
+                hint="No pedimos avance de obra exacto. La fecha estimada de entrega ayuda a calcular meses disponibles."
               >
                 <div style={grid2Style()}>
                   <SelectField
@@ -1778,6 +2008,20 @@ disabled={
                   </SelectField>
 
                   <TextField
+                    label="Estado proyecto visible"
+                    value={form.estadoProyecto}
+                    onChange={(v) => updateForm("estadoProyecto", v)}
+                    placeholder="Proyecto nuevo"
+                  />
+
+                  <TextField
+                    label="Fecha entrega visible"
+                    value={form.fechaEntrega}
+                    onChange={(v) => updateForm("fechaEntrega", v)}
+                    placeholder="Diciembre 2026"
+                  />
+
+                  <TextField
                     label="Fecha estimada de entrega"
                     value={form.fechaEntregaEstimada}
                     onChange={(v) => updateForm("fechaEntregaEstimada", v)}
@@ -1792,9 +2036,12 @@ disabled={
                   />
 
                   <TextField
-                    label="Meses construcción restantes"
-                    value={form.mesesConstruccionRestantes}
-                    onChange={(v) => updateForm("mesesConstruccionRestantes", v)}
+                    label="Meses construcción"
+                    value={form.mesesConstruccion}
+                    onChange={(v) => {
+                      updateForm("mesesConstruccion", v);
+                      updateForm("mesesConstruccionRestantes", v);
+                    }}
                     type="number"
                   />
                 </div>
@@ -1812,6 +2059,22 @@ disabled={
               <Section title="6. Plan comercial de entrada">
                 <div style={grid2Style()}>
                   <TextField
+                    label="Entrada mínima / requerida"
+                    value={form.entradaMinima}
+                    onChange={(v) => updateForm("entradaMinima", v)}
+                    type="number"
+                    placeholder="5290"
+                  />
+
+                  <TextField
+                    label="Entrada requerida (%)"
+                    value={form.porcentajeEntradaRequerida}
+                    onChange={(v) => updateForm("porcentajeEntradaRequerida", v)}
+                    type="number"
+                    placeholder="0.1"
+                  />
+
+                  <TextField
                     label="Reserva mínima"
                     value={form.reservaMinima}
                     onChange={(v) => updateForm("reservaMinima", v)}
@@ -1822,13 +2085,6 @@ disabled={
                     label="Monto firma promesa"
                     value={form.montoFirmaPromesa}
                     onChange={(v) => updateForm("montoFirmaPromesa", v)}
-                    type="number"
-                  />
-
-                  <TextField
-                    label="Entrada requerida"
-                    value={form.porcentajeEntradaRequerida}
-                    onChange={(v) => updateForm("porcentajeEntradaRequerida", v)}
                     type="number"
                   />
 
@@ -1855,7 +2111,38 @@ disabled={
               </Section>
 
               <Section
-                title="7. Financiamiento aceptado"
+                title="7. Plan referencial hipotecario"
+                hint="Estos campos son referenciales para Property Detail. No representan aprobación ni oferta financiera."
+              >
+                <div style={grid2Style()}>
+                  <TextField
+                    label="Cuota estimada mensual"
+                    value={form.cuotaEstimada}
+                    onChange={(v) => updateForm("cuotaEstimada", v)}
+                    type="number"
+                    placeholder="240"
+                  />
+
+                  <TextField
+                    label="Tasa referencial anual"
+                    value={form.tasaReferencial}
+                    onChange={(v) => updateForm("tasaReferencial", v)}
+                    type="number"
+                    placeholder="8.5"
+                  />
+
+                  <TextField
+                    label="Plazo años"
+                    value={form.plazoAnios}
+                    onChange={(v) => updateForm("plazoAnios", v)}
+                    type="number"
+                    placeholder="20"
+                  />
+                </div>
+              </Section>
+
+              <Section
+                title="8. Financiamiento aceptado"
                 hint="No cargamos avalúo ni tier BIESS. HabitaLibre calcula rangos estimados con base en precio y reglas internas."
               >
                 <TextField
@@ -1937,7 +2224,7 @@ disabled={
                 </div>
               </Section>
 
-              <Section title="8. Multimedia">
+              <Section title="9. Multimedia y detalle visual">
                 <TextField
                   label="Imagen principal URL"
                   value={form.imagen}
@@ -1954,6 +2241,27 @@ disabled={
                 />
 
                 <TextField
+                  label="Plano URL"
+                  value={form.planoUrl}
+                  onChange={(v) => updateForm("planoUrl", v)}
+                  placeholder="https://..."
+                />
+
+                <TextAreaField
+                  label="Entorno cercano, uno por línea"
+                  value={form.nearby}
+                  onChange={(v) => updateForm("nearby", v)}
+                  placeholder={"Zona financiera\nTransporte cercano\nSupermercados"}
+                />
+
+                <TextAreaField
+                  label="Amenidades, una por línea"
+                  value={form.amenities}
+                  onChange={(v) => updateForm("amenities", v)}
+                  placeholder={"Lobby\nTerraza\nCoworking"}
+                />
+
+                <TextField
                   label="Brochure URL"
                   value={form.brochureUrl}
                   onChange={(v) => updateForm("brochureUrl", v)}
@@ -1966,7 +2274,7 @@ disabled={
                 />
               </Section>
 
-              <Section title="9. Estado comercial">
+              <Section title="10. Estado comercial">
                 <SelectField
                   label="Estado comercial"
                   value={form.estadoComercial}
