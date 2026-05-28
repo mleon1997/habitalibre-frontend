@@ -1032,8 +1032,8 @@ function CompactChip({ active, onClick, children }) {
   );
 }
 
-function MatchHeader({ subtitle, tab }) {
-  const isBanksTab = tab === "banks";
+function MatchHeader({ subtitle, tab, hasSelectedProperty = false }) {
+  const isBanksTab = tab === "banks" && !hasSelectedProperty;
 
   return (
     <div style={{ marginBottom: 18 }}>
@@ -1080,15 +1080,26 @@ function MatchHeader({ subtitle, tab }) {
               color: "rgba(148,163,184,0.95)",
             }}
           >
-            Ordenamos viviendas e hipotecas según tu capacidad, entrada y ruta
-            más probable. Esto es una guía, no una aprobación final.
+            Ordenamos viviendas según tu capacidad, entrada y ruta más probable.
+            Esto es una guía, no una aprobación final.
           </div>
         </div>
 
-        <Pill tone={isBanksTab ? "green" : "neutral"}>
+        <Pill tone={hasSelectedProperty ? "green" : isBanksTab ? "green" : "neutral"}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-            {isBanksTab ? <Landmark size={12} /> : <Building2 size={12} />}
-            {isBanksTab ? "Ruta hipotecaria" : "Viviendas para ti"}
+            {hasSelectedProperty ? (
+              <Building2 size={12} />
+            ) : isBanksTab ? (
+              <Landmark size={12} />
+            ) : (
+              <Building2 size={12} />
+            )}
+
+            {hasSelectedProperty
+              ? "Propiedad elegida"
+              : isBanksTab
+              ? "Ruta financiera"
+              : "Viviendas para ti"}
           </span>
         </Pill>
       </div>
@@ -1876,6 +1887,12 @@ const hasTargetPropertyValue = targetValueNumber != null;
     selectedProperty?.status ||
     null;
 
+    useEffect(() => {
+  if (selectedPropertyId && tab !== "props") {
+    setTab("props");
+  }
+}, [selectedPropertyId, tab]);
+
   const eligibilityProducts =
     pick(snapshot, ["eligibilityProducts"]) || buildEligibilityFallback(snapshot);
 
@@ -2633,8 +2650,11 @@ const normalizedProperty = {
 
   return (
     <ScreenWrap>
-      <MatchHeader subtitle={subtitle} tab={tab} />
-
+<MatchHeader
+  subtitle={subtitle}
+  tab={tab}
+  hasSelectedProperty={!!selectedPropertyId}
+/>
       {!unlocked ? (
         <LockedMarketplace onGoSimular={() => navigate(mapMobilePathToWeb("/journey/full"))} />
       ) : (
@@ -2975,7 +2995,7 @@ const normalizedProperty = {
             </>
           ) : null}
 
-          {tab === "banks" ? (
+{tab === "banks" && !selectedPropertyId ? (
             <div style={{ marginTop: 18, display: "grid", gap: 14 }}>
               <div
                 id="mortgage-detail"
