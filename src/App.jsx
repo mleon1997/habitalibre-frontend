@@ -182,6 +182,17 @@ export default function App() {
           <Route path="precalificar" element={<AppJourneySafe />} />
         </Route>
 
+<Route
+  path="/journey"
+  element={<Navigate to="/app?mode=journey" replace />}
+/>
+
+<Route
+  path="/journey/full"
+  element={<Navigate to="/app?mode=journey&afinando=1&force=1" replace />}
+/>
+
+
         {/* Website público + preview app */}
         <Route element={<AppLayoutShell />}>
           <Route path="/" element={<Landing />} />

@@ -988,20 +988,34 @@ export default function Ruta() {
 
   const propsCount = matchedPropsFromJourney ?? matchedPropsFromSnapshot ?? null;
 
-  const selectedPropertyId =
-    selectedPropertyRef?.id || journey?.propiedadId || null;
+const selectedPropertyId =
+  selectedPropertyRef?.id ||
+  selectedPropertyRef?._id ||
+  selectedPropertyRef?.propertyId ||
+  journey?.propiedadId ||
+  journey?.propiedadSeleccionada?.id ||
+  journey?.propiedadSeleccionada?._id ||
+  journey?.propiedadSeleccionada?.propertyId ||
+  null;
 
-  const selectedPropertyStatus =
-    journey?.selectedPropertyStatus || selectedPropertyRef?.status || null;
+const selectedPropertyStatus =
+  selectedPropertyRef?.status ||
+  journey?.selectedPropertyStatus ||
+  journey?.propiedadSeleccionada?.status ||
+  null;
 
-  const selectedPropertyStatusMeta = getSelectedPropertyStatusMeta(
-    selectedPropertyStatus,
-    Boolean(selectedPropertyId)
-  );
+const hasChosenProperty = Boolean(
+  selectedPropertyId ||
+  selectedPropertyRef ||
+  journey?.propiedadElegida ||
+  journey?.propiedadId ||
+  journey?.propiedadSeleccionada
+);
 
-  const hasChosenProperty = Boolean(
-    journey?.propiedadElegida || journey?.propiedadId || selectedPropertyId
-  );
+const selectedPropertyStatusMeta = getSelectedPropertyStatusMeta(
+  selectedPropertyStatus,
+  hasChosenProperty
+);
 
   const hasConfirmedMortgageRoute = Boolean(
     selectedMortgageRoute?.status === "confirmed" ||

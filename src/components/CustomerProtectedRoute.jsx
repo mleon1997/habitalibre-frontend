@@ -17,11 +17,10 @@ import { meCustomer } from "../lib/api"; // usa api.js si ahí tienes token rout
 export default function CustomerProtectedRoute({ children }) {
   const location = useLocation();
 
-  const {
-    token,
-    isAuthed,
-    loading: authLoading,
-  } = useCustomerAuth();
+ const {
+  token,
+  loading: authLoading,
+} = useCustomerAuth();
 
   const [checking, setChecking] = useState(true);
   const [ok, setOk] = useState(false);
@@ -102,16 +101,15 @@ export default function CustomerProtectedRoute({ children }) {
       </div>
     );
   }
-
-  if (!token || !ok || !isAuthed) {
-    return (
-      <Navigate
-        to="/login"
-        replace
-        state={{ returnTo, reason: "protected" }}
-      />
-    );
-  }
+if (!token || !ok) {
+  return (
+    <Navigate
+      to="/login"
+      replace
+      state={{ returnTo, reason: "protected" }}
+    />
+  );
+}
 
   return children;
 }

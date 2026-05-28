@@ -105,6 +105,55 @@ function saveJSON(key, val) {
   } catch {}
 }
 
+function normalizeSelectedProperty(raw) {
+  if (!raw || typeof raw !== "object") return null;
+
+  const id = raw.id || raw._id || raw.propertyId || raw._normalizedId || null;
+
+  const titulo =
+    raw.titulo ||
+    raw.nombre ||
+    raw.title ||
+    raw.name ||
+    raw.proyecto ||
+    raw._normalizedProjectName ||
+    "Propiedad elegida";
+
+  const ciudad =
+    raw.ciudad ||
+    raw.city ||
+    raw.zona ||
+    raw.sector ||
+    raw.ciudadZona ||
+    raw._normalizedCity ||
+    "Ubicación pendiente";
+
+  const precioRaw =
+    raw.precio ??
+    raw.price ??
+    raw.valor ??
+    raw.listPrice ??
+    raw._normalizedPrice ??
+    null;
+
+  const precio = Number.isFinite(Number(precioRaw)) ? Number(precioRaw) : null;
+
+  return {
+    ...raw,
+    id,
+    _id: id,
+    propertyId: id,
+    titulo,
+    nombre: titulo,
+    proyecto: titulo,
+    ciudad,
+    zona: ciudad,
+    precio,
+    price: precio,
+    status: raw.status || raw.selectedPropertyStatus || null,
+  };
+}
+
 function clearLocalScenarioState() {
   try {
     localStorage.removeItem(LS_SNAPSHOT);
@@ -1001,6 +1050,7 @@ export default function Progreso() {
 
   const [raw, setRaw] = useState(null);
   const [journey, setJourney] = useState(null);
+  const [selectedProperty, setSelectedProperty] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [, setIsOnline] = useState(false);
@@ -1025,12 +1075,20 @@ function go(path) {
 
   const snapshot = raw || null;
 
-  const targetPropertyValue =
-    toNum(snapshot?.input?.valorVivienda) ??
-    toNum(snapshot?.perfilInput?.valorVivienda) ??
-    toNum(snapshot?.__entrada?.valorVivienda) ??
-    toNum(snapshot?.inputNormalizado?.valorVivienda) ??
-    null;
+const selectedPropertyPrice =
+  toNum(selectedProperty?.precio) ??
+  toNum(selectedProperty?.price) ??
+  null;
+
+const targetPropertyValue =
+  selectedPropertyPrice ??
+  toNum(snapshot?.input?.valorVivienda) ??
+  toNum(snapshot?.perfilInput?.valorVivienda) ??
+  toNum(snapshot?.__entrada?.valorVivienda) ??
+  toNum(snapshot?.inputNormalizado?.valorVivienda) ??
+  null;
+
+const hasSelectedProperty = selectedPropertyPrice != null && selectedPropertyPrice > 0;
 
   const hasTargetPropertyValue =
     targetPropertyValue != null && targetPropertyValue > 0;
@@ -1282,26 +1340,34 @@ const hasDebtReductionRoute =
       const currentOwnerEmail = getStorageOwnerEmail();
 
       const snapEnvelope = loadJSON(LS_SNAPSHOT);
-      const journeyEnvelope = loadJSON(LS_JOURNEY);
+const journeyEnvelope = loadJSON(LS_JOURNEY);
+const selectedPropertyEnvelope = loadJSON(LS_SELECTED_PROPERTY);
 
-      const snap =
-        snapEnvelope?.ownerEmail && snapEnvelope.ownerEmail === currentOwnerEmail
-          ? snapEnvelope.data
-          : null;
+const snap =
+  snapEnvelope?.ownerEmail && snapEnvelope.ownerEmail === currentOwnerEmail
+    ? snapEnvelope.data
+    : null;
 
-      const j =
-        journeyEnvelope?.ownerEmail &&
-        journeyEnvelope.ownerEmail === currentOwnerEmail
-          ? journeyEnvelope.data
-          : null;
+const j =
+  journeyEnvelope?.ownerEmail &&
+  journeyEnvelope.ownerEmail === currentOwnerEmail
+    ? journeyEnvelope.data
+    : null;
 
-      if (snapshotLooksValid(snap)) {
-        setRaw(snap);
-      } else {
-        setRaw(null);
-      }
+const selected =
+  selectedPropertyEnvelope?.ownerEmail &&
+  selectedPropertyEnvelope.ownerEmail === currentOwnerEmail
+    ? normalizeSelectedProperty(selectedPropertyEnvelope.data)
+    : null;
 
-      setJourney(j || null);
+if (snapshotLooksValid(snap)) {
+  setRaw(snap);
+} else {
+  setRaw(null);
+}
+
+setJourney(j || null);
+setSelectedProperty(selected || null);
 
       await syncLatestSnapshotFromBackend();
     })();
@@ -1693,20 +1759,93 @@ return (
         </Chip>
       </div>
 
-      {showConnecting ? (
+  {showConnecting ? (
+  <div
+    style={{
+      marginTop: 18,
+      color: "rgba(148,163,184,0.95)",
+      fontSize: 13,
+    }}
+  >
+    {COPY.connecting}
+  </div>
+) : null}
+
+{hasSelectedProperty ? (
+  <Card
+    style={{
+      marginTop: 18,
+      background:
+        "linear-gradient(135deg, rgba(37,211,166,0.10), rgba(59,130,246,0.08))",
+      border: "1px solid rgba(37,211,166,0.20)",
+    }}
+  >
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        gap: 12,
+      }}
+    >
+      <div>
         <div
           style={{
-            marginTop: 18,
+            fontSize: 12,
             color: "rgba(148,163,184,0.95)",
-            fontSize: 13,
+            fontWeight: 950,
           }}
         >
-          {COPY.connecting}
+          Propiedad elegida
         </div>
-      ) : null}
 
-      <div style={visibleInViewStyle}>
-        <Card style={{ marginTop: 18 }}>
+        <div
+          style={{
+            marginTop: 8,
+            fontSize: 20,
+            fontWeight: 980,
+            lineHeight: 1.15,
+            color: "rgba(226,232,240,0.98)",
+          }}
+        >
+          {selectedProperty?.titulo ||
+            selectedProperty?.nombre ||
+            "Propiedad seleccionada"}
+        </div>
+
+        <div
+          style={{
+            marginTop: 6,
+            fontSize: 13,
+            color: "rgba(148,163,184,0.95)",
+            lineHeight: 1.35,
+          }}
+        >
+          {selectedProperty?.ciudad ||
+            selectedProperty?.zona ||
+            "Ubicación pendiente"}
+        </div>
+      </div>
+
+      <Chip tone="good">{moneySafe(selectedPropertyPrice)}</Chip>
+    </div>
+
+    <div
+      style={{
+        marginTop: 12,
+        fontSize: 13,
+        lineHeight: 1.45,
+        color: "rgba(226,232,240,0.88)",
+      }}
+    >
+      Estamos usando esta propiedad como referencia para comparar tu capacidad,
+      entrada disponible y ruta hipotecaria.
+    </div>
+  </Card>
+) : null}
+
+<div style={visibleInViewStyle}>
+  <Card style={{ marginTop: 18 }}>
           <div
             style={{
               display: "flex",

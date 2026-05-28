@@ -803,6 +803,36 @@ function deriveMatchedProductsFromEngine(property) {
   return selectedId ? [selectedId] : [];
 }
 
+function getSelectedPropertyStatusFromProperty(property) {
+  if (!property) return null;
+
+  const estado = String(property?.estadoCompra || "");
+
+  if (
+    property?.evaluacionHipotecaHoy?.viable === true ||
+    property?.evaluacionHipoteca?.viable === true ||
+    estado === "top_match"
+  ) {
+    return "selected_viable_now";
+  }
+
+  if (
+    property?.evaluacionHipotecaFutura?.viable === true ||
+    estado === "entrada_viable_hipoteca_futura_viable"
+  ) {
+    return "selected_future_viable";
+  }
+
+  if (
+    estado === "entrada_viable_hipoteca_futura_debil" ||
+    estado === "ruta_cercana"
+  ) {
+    return "selected_near_route";
+  }
+
+  return "selected_no_longer_viable";
+}
+
 function getSelectedPropertyStatusMeta(status, isSelected) {
   if (!isSelected) {
     return {
@@ -1634,29 +1664,38 @@ function handleOpenMortgageDetail(route = mortgageDetailRoute) {
   const bestRoute = pick(snapshot, ["rutaRecomendada"]) || null;
   const matchedProperties = normalizeMatchedProperties(snapshot);
 
-  const targetPropertyValue =
-    snapshot?.inputNormalizado?.valorVivienda ??
-    snapshot?.output?.inputNormalizado?.valorVivienda ??
-    snapshot?.input?.valorVivienda ??
-    snapshot?.output?.input?.valorVivienda ??
-    snapshot?.perfilInput?.valorVivienda ??
-    snapshot?.output?.perfilInput?.valorVivienda ??
-    snapshot?.__entrada?.valorVivienda ??
-    snapshot?.output?.__entrada?.valorVivienda ??
-    pick(snapshot, [
-      "valorVivienda",
-      "targetPropertyValue",
-      "goalValue",
-      "propertyPrice",
-    ]) ??
-    null;
+const selectedPropertyPrice =
+  selectedProperty?.precio ??
+  selectedProperty?.price ??
+  selectedProperty?.valor ??
+  selectedProperty?.listPrice ??
+  selectedProperty?._normalizedPrice ??
+  null;
 
-  const targetValueNumber =
-    Number.isFinite(Number(targetPropertyValue)) && Number(targetPropertyValue) > 0
-      ? Number(targetPropertyValue)
-      : null;
+const targetPropertyValue =
+  selectedPropertyPrice ??
+  snapshot?.inputNormalizado?.valorVivienda ??
+  snapshot?.output?.inputNormalizado?.valorVivienda ??
+  snapshot?.input?.valorVivienda ??
+  snapshot?.output?.input?.valorVivienda ??
+  snapshot?.perfilInput?.valorVivienda ??
+  snapshot?.output?.perfilInput?.valorVivienda ??
+  snapshot?.__entrada?.valorVivienda ??
+  snapshot?.output?.__entrada?.valorVivienda ??
+  pick(snapshot, [
+    "valorVivienda",
+    "targetPropertyValue",
+    "goalValue",
+    "propertyPrice",
+  ]) ??
+  null;
 
-  const hasTargetPropertyValue = targetValueNumber != null;
+const targetValueNumber =
+  Number.isFinite(Number(targetPropertyValue)) && Number(targetPropertyValue) > 0
+    ? Number(targetPropertyValue)
+    : null;
+
+const hasTargetPropertyValue = targetValueNumber != null;
 
   const rankedMortgagesRaw = pick(snapshot, ["rankedMortgages"]) || [];
   const rankedMortgages = Array.isArray(rankedMortgagesRaw)
@@ -2399,16 +2438,17 @@ const mortgageDetailHomeValue =
     const propertyPrice = Number.isFinite(Number(propertyPriceRaw))
       ? Number(propertyPriceRaw)
       : null;
+const propertyImage =
+  property?.imagen ||
+  property?.image ||
+  property?.imageUrl ||
+  property?.foto ||
+  property?.cover ||
+  null;
 
-    const propertyImage =
-      property?.imagen ||
-      property?.image ||
-      property?.imageUrl ||
-      property?.foto ||
-      property?.cover ||
-      null;
+const computedSelectedStatus = getSelectedPropertyStatusFromProperty(property);
 
-    const normalizedProperty = {
+const normalizedProperty = {
       id: propertyId,
       _id: propertyId,
       propertyId: propertyId,
@@ -2433,10 +2473,7 @@ const mortgageDetailHomeValue =
         snapshot?.cuotaMensual ||
         snapshot?.bestMortgage?.cuota ||
         null,
-      status:
-        journey?.selectedPropertyStatus ||
-        selectedProperty?.status ||
-        null,
+  status: computedSelectedStatus,
       source: "marketplace",
       selectedAt: new Date().toISOString(),
       raw: property,
@@ -2450,8 +2487,7 @@ const mortgageDetailHomeValue =
       propiedadElegida: true,
       propiedadId: propertyId,
       propiedadSeleccionada: normalizedProperty,
-      selectedPropertyStatus:
-        journey?.selectedPropertyStatus || normalizedProperty?.status || null,
+      selectedPropertyStatus: computedSelectedStatus,
     };
 
     saveOwnedData(LS_JOURNEY, nextJourney);

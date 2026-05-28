@@ -26,6 +26,7 @@ import mockProperties from "../data/mockProperties.js";
 const LS_SNAPSHOT = "hl_mobile_last_snapshot_v1";
 const LS_JOURNEY = "hl_mobile_journey_v1";
 const LS_SELECTED_PROPERTY = "hl_selected_property_v1";
+const LS_SELECTED_MORTGAGE_ROUTE = "hl_selected_mortgage_route_v1";
 const LS_DOCS_CHECKLIST = "hl_docs_checklist_v1";
 
 const RAW_API_BASE =
@@ -335,16 +336,25 @@ function getStatusMeta(selectedPropertyStatus, hasChosenProperty) {
 function getCaseReadinessStatus({
   hasChosenProperty,
   selectedPropertyStatus,
+  hasConfirmedMortgageRoute,
   docsReady,
 }) {
   if (!hasChosenProperty) return "no_listo";
+
   if (selectedPropertyStatus === "selected_no_longer_viable") {
     return "revisar_ruta";
   }
+
   if (selectedPropertyStatus === "selected_near_route") {
     return "comparar_propiedades";
   }
+
+  if (!hasConfirmedMortgageRoute) {
+    return "confirmar_hipoteca";
+  }
+
   if (!docsReady) return "no_listo";
+
   return "listo_para_promotor_y_banco";
 }
 
@@ -392,23 +402,23 @@ function getReadinessMeta({ caseReadinessStatus, hasChosenProperty }) {
     };
   }
 
-  if (caseReadinessStatus === "comparar_propiedades") {
-    return {
-      heroTitle: "Tu caso está cerca, pero conviene comparar antes de activarlo",
-      heroBody:
-        "La propiedad elegida quedó cerca de tu ruta, pero vale la pena compararla con otras opciones antes de mover tu caso.",
-      cardTitle: "Primero conviene revisar el encaje",
-      cardBody:
-        "Todavía no es ideal activar tu caso. Primero conviene validar si esta sigue siendo tu mejor propiedad base.",
-      cta: "Comparar opciones",
-      path: "/match",
-      chip: "Comparar primero",
-      tone: "neutral",
-      nextActionTitle: "Revisar si esta sigue siendo tu mejor opción",
-      nextActionBody:
-        "Si otra propiedad encaja mejor, tu caso llegará más sólido a la cola operativa.",
-    };
-  }
+ if (caseReadinessStatus === "confirmar_hipoteca") {
+  return {
+    heroTitle: "Antes de activar tu caso, falta confirmar tu ruta hipotecaria",
+    heroBody:
+      "Ya tienes una propiedad base, pero todavía falta elegir con qué ruta hipotecaria quieres avanzar.",
+    cardTitle: "Falta confirmar la hipoteca",
+    cardBody:
+      "Para activar tu caso con HabitaLibre, primero necesitamos saber qué ruta hipotecaria estás tomando como base.",
+    cta: "Comparar hipotecas",
+    path: "/match",
+    chip: "Falta hipoteca",
+    tone: "neutral",
+    nextActionTitle: "Confirmar tu ruta hipotecaria",
+    nextActionBody:
+      "Esto ayuda a que HabitaLibre revise tu caso con una propiedad y una ruta financiera concreta.",
+  };
+}
 
   return {
     heroTitle: "Tu caso ya está listo para revisión HabitaLibre",
@@ -434,11 +444,17 @@ export default function SiguientePaso() {
 
   const snapshot = useMemo(() => loadOwnedData(LS_SNAPSHOT) || {}, []);
   const journey = useMemo(() => loadOwnedData(LS_JOURNEY) || {}, []);
-  const selectedPropertyRef = useMemo(
-    () => loadOwnedData(LS_SELECTED_PROPERTY),
-    []
-  );
-  const docsChecklist = useMemo(() => loadOwnedData(LS_DOCS_CHECKLIST) || {}, []);
+const selectedPropertyRef = useMemo(
+  () => loadOwnedData(LS_SELECTED_PROPERTY),
+  []
+);
+
+const selectedMortgageRoute = useMemo(
+  () => loadOwnedData(LS_SELECTED_MORTGAGE_ROUTE),
+  []
+);
+
+const docsChecklist = useMemo(() => loadOwnedData(LS_DOCS_CHECKLIST) || {}, []);
 
   const normalizedSelectedProperty = useMemo(() => {
     const fromSelected = normalizeProperty(selectedPropertyRef);
@@ -502,19 +518,27 @@ export default function SiguientePaso() {
     snapshot?.bestMortgage?.cuota ??
     null;
 
-  const selectedPropertyStatus =
-    journey?.selectedPropertyStatus ||
-    selectedPropertyRef?.status ||
-    normalizedSelectedProperty?.status ||
-    null;
+const selectedPropertyStatus =
+  selectedPropertyRef?.status ||
+  normalizedSelectedProperty?.status ||
+  journey?.selectedPropertyStatus ||
+  journey?.propiedadSeleccionada?.status ||
+  null;
+
+  const hasConfirmedMortgageRoute = Boolean(
+  selectedMortgageRoute?.status === "confirmed" ||
+    selectedMortgageRoute?.status === "selected" ||
+    journey?.mortgageRouteConfirmed === true
+);
 
   const statusMeta = getStatusMeta(selectedPropertyStatus, hasChosenProperty);
 
-  const caseReadinessStatus = getCaseReadinessStatus({
-    hasChosenProperty,
-    selectedPropertyStatus,
-    docsReady,
-  });
+const caseReadinessStatus = getCaseReadinessStatus({
+  hasChosenProperty,
+  selectedPropertyStatus,
+  hasConfirmedMortgageRoute,
+  docsReady,
+});
 
   const readinessMeta = getReadinessMeta({
     caseReadinessStatus,
@@ -581,6 +605,29 @@ export default function SiguientePaso() {
             status: normalizedSelectedProperty.status || null,
           }
         : null,
+
+        selectedMortgageRoute: selectedMortgageRoute
+  ? {
+      mortgageId: selectedMortgageRoute.mortgageId || null,
+      providerLabel:
+        selectedMortgageRoute.providerLabel ||
+        selectedMortgageRoute.banco ||
+        null,
+      productLabel:
+        selectedMortgageRoute.productLabel ||
+        selectedMortgageRoute.tipoProducto ||
+        selectedMortgageRoute.label ||
+        null,
+      cuota: selectedMortgageRoute.cuota ?? null,
+      annualRate:
+        selectedMortgageRoute.annualRate ??
+        selectedMortgageRoute.tasaAnual ??
+        null,
+      montoPrestamo: selectedMortgageRoute.montoPrestamo ?? null,
+      plazoMeses: selectedMortgageRoute.plazoMeses ?? null,
+      status: selectedMortgageRoute.status || null,
+    }
+  : null,
       snapshot,
       journey,
       docsChecklist,
@@ -804,6 +851,10 @@ export default function SiguientePaso() {
                 {docsDone} de {docsTotal} ítems listos
               </Chip>
             </div>
+
+            <Chip tone={hasConfirmedMortgageRoute ? "good" : "neutral"}>
+  {hasConfirmedMortgageRoute ? "Hipoteca confirmada" : "Falta hipoteca"}
+</Chip>
 
             <PrimaryButton onClick={handlePrimaryAction} disabled={isSubmitting}>
               <span

@@ -387,10 +387,10 @@ function buildLegacyOutputFromMatcher(resultado = {}, entradaPayload = {}) {
         s?.mortgage?.segment === "PRIVATE"
           ? "Privada"
           : s?.mortgage?.segment || s?.mortgage?.id || s?.label || null,
-      tasa: s?.annualRate ?? null,
-      plazo: s?.mortgage?.termMonths ?? null,
-      cuota: s?.cuota ?? null,
-      viable: !!s?.viable,
+tasa: s?.mortgage?.annualRate ?? null,
+          plazo: s?.mortgage?.termMonths ?? null,
+cuota: s?.mortgage?.cuota ?? null,
+          viable: !!s?.viable,
     }));
 
   const rutaRecomendada = effectiveBestMortgage
@@ -1539,8 +1539,8 @@ export default function AppJourney() {
           ? previousJourneyEnvelope.data || {}
           : {};
 
-      const previousSelectedEnvelope = selectedPropertyEnvelope;
-      const previousSelected =
+const previousSelectedEnvelope = loadJSON(LS_SELECTED_PROPERTY);
+          const previousSelected =
         previousSelectedEnvelope?.ownerEmail === ownerEmail
           ? normalizeSelectedProperty(previousSelectedEnvelope.data)
           : null;

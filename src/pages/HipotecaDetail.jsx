@@ -17,6 +17,7 @@ import { getCustomer } from "../lib/customerSession.js";
 
 const LS_SNAPSHOT = "hl_mobile_last_snapshot_v1";
 const LS_JOURNEY = "hl_mobile_journey_v1";
+const LS_SELECTED_PROPERTY = "hl_selected_property_v1";
 const LS_SELECTED_MORTGAGE_ROUTE = "hl_selected_mortgage_route_v1";
 
 function loadJSON(key) {
@@ -662,9 +663,13 @@ function Bar({ left, right, leftLabel, rightLabel }) {
 export default function HipotecaDetail() {
   const navigate = useNavigate();
 
-  const snapshot = useMemo(() => loadOwnedData(LS_SNAPSHOT) || {}, []);
-  const journey = useMemo(() => loadOwnedData(LS_JOURNEY) || {}, []);
-  const storedRoute = useMemo(() => loadOwnedData(LS_SELECTED_MORTGAGE_ROUTE), []);
+const snapshot = useMemo(() => loadOwnedData(LS_SNAPSHOT) || {}, []);
+const journey = useMemo(() => loadOwnedData(LS_JOURNEY) || {}, []);
+const selectedProperty = useMemo(
+  () => loadOwnedData(LS_SELECTED_PROPERTY),
+  []
+);
+const storedRoute = useMemo(() => loadOwnedData(LS_SELECTED_MORTGAGE_ROUTE), []);
 
   const route = useMemo(
     () => normalizeRoute(storedRoute, snapshot),
@@ -691,13 +696,24 @@ export default function HipotecaDetail() {
 
     const loanAmount = asNumber(route?.montoPrestamo ?? route?.loanAmount, 0);
     const annualRate = normalizeRate(route?.annualRate ?? route?.tasaAnual);
-    const estimatedHomeValue = asNumber(
-      route?.valorViviendaEstimado ??
-        route?.precioMaxVivienda ??
-        route?.priceMax ??
-        route?.homeValue,
-      loanAmount
-    );
+ const selectedPropertyPrice =
+  selectedProperty?.precio ??
+  selectedProperty?.price ??
+  selectedProperty?.valor ??
+  selectedProperty?.listPrice ??
+  selectedProperty?._normalizedPrice ??
+  journey?.propiedadSeleccionada?.precio ??
+  journey?.propiedadSeleccionada?.price ??
+  null;
+
+const estimatedHomeValue = asNumber(
+  selectedPropertyPrice ??
+    route?.valorViviendaEstimado ??
+    route?.precioMaxVivienda ??
+    route?.priceMax ??
+    route?.homeValue,
+  loanAmount
+);
 
     const downPayment = Math.max(0, estimatedHomeValue - loanAmount);
 
@@ -769,8 +785,17 @@ export default function HipotecaDetail() {
       year10,
       extra,
     };
-  }, [route, termOptionsYears, selectedYears, routeYears, userAge, extraMonthly]);
 
+  }, [
+  route,
+  termOptionsYears,
+  selectedYears,
+  routeYears,
+  userAge,
+  extraMonthly,
+  selectedProperty,
+  journey,
+]);
   function confirmRoute() {
     if (!route) return;
 
@@ -784,13 +809,27 @@ export default function HipotecaDetail() {
 
     saveOwnedData(LS_SELECTED_MORTGAGE_ROUTE, confirmedRoute);
 
-    const nextJourney = {
-      ...(journey || {}),
-      matchExplorado: true,
-      mortgageRouteConfirmed: true,
-      mortgageRoute: confirmedRoute,
-      mortgageRouteConfirmedAt: new Date().toISOString(),
-    };
+const nextJourney = {
+  ...(journey || {}),
+  matchExplorado: true,
+  propiedadElegida:
+    journey?.propiedadElegida || Boolean(selectedProperty),
+  propiedadId:
+    journey?.propiedadId ||
+    selectedProperty?.id ||
+    selectedProperty?._id ||
+    selectedProperty?.propertyId ||
+    null,
+  propiedadSeleccionada:
+    journey?.propiedadSeleccionada || selectedProperty || null,
+  selectedPropertyStatus:
+    journey?.selectedPropertyStatus ||
+    selectedProperty?.status ||
+    null,
+  mortgageRouteConfirmed: true,
+  mortgageRoute: confirmedRoute,
+  mortgageRouteConfirmedAt: new Date().toISOString(),
+};
 
     saveOwnedData(LS_JOURNEY, nextJourney);
     navigate("/ruta");

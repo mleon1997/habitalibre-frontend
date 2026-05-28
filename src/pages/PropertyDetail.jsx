@@ -134,6 +134,36 @@ function formatEstadoCompra(estado) {
   return map[estado] || "Pendiente de análisis";
 }
 
+function getSelectedPropertyStatusFromProperty(property) {
+  if (!property) return null;
+
+  const estado = String(property?.estadoCompra || "");
+
+  if (
+    property?.evaluacionHipotecaHoy?.viable === true ||
+    property?.evaluacionHipoteca?.viable === true ||
+    estado === "top_match"
+  ) {
+    return "selected_viable_now";
+  }
+
+  if (
+    property?.evaluacionHipotecaFutura?.viable === true ||
+    estado === "entrada_viable_hipoteca_futura_viable"
+  ) {
+    return "selected_future_viable";
+  }
+
+  if (
+    estado === "entrada_viable_hipoteca_futura_debil" ||
+    estado === "ruta_cercana"
+  ) {
+    return "selected_near_route";
+  }
+
+  return "selected_no_longer_viable";
+}
+
 const UI = {
   card: "rgba(15,23,42,0.72)",
   cardStrong: "rgba(8,15,32,0.86)",
@@ -383,10 +413,18 @@ export default function PropertyDetail() {
     pick(snapshot, ["propiedades"]) ||
     [];
 
-  const propertyFromSnapshot = useMemo(() => {
-    if (!Array.isArray(matchedProperties)) return null;
-    return matchedProperties.find((p) => String(p.id) === String(id)) || null;
-  }, [matchedProperties, id]);
+const propertyFromSnapshot = useMemo(() => {
+  if (!Array.isArray(matchedProperties)) return null;
+
+  return (
+    matchedProperties.find((p) => {
+      const candidateId =
+        p?.id || p?._id || p?.propertyId || p?._normalizedId || null;
+
+      return String(candidateId) === String(id);
+    }) || null
+  );
+}, [matchedProperties, id]);
 
   const propertyFromMock = useMemo(
     () => mockProperties.find((p) => String(p.id) === String(id)) || null,
@@ -529,99 +567,118 @@ export default function PropertyDetail() {
       : evaluacionHipotecaFutura?.razon || "No disponible"
     : evaluacionHipotecaFutura?.razon || "No disponible";
 
-  function handleSelectProperty() {
-    const propertyId =
-      property?.id || property?._id || property?.propertyId || id || null;
+function handleSelectProperty() {
+  const propertyId =
+    property?.id ||
+    property?._id ||
+    property?.propertyId ||
+    property?._normalizedId ||
+    id ||
+    null;
 
-    const propertyTitle =
-      property?.titulo ||
-      property?.nombre ||
-      property?.title ||
-      property?.name ||
-      property?.proyecto ||
-      "Propiedad elegida";
+  const propertyTitle =
+    property?.titulo ||
+    property?.nombre ||
+    property?.title ||
+    property?.name ||
+    property?.proyecto ||
+    property?._normalizedProjectName ||
+    "Propiedad elegida";
 
-    const propertyCity =
-      property?.ciudad ||
-      property?.zona ||
-      property?.ciudadZona ||
-      property?.sector ||
-      journey?.form?.ciudadCompra ||
-      journey?.ciudadCompra ||
-      "Ubicación pendiente";
+  const propertyCity =
+    property?.ciudad ||
+    property?.city ||
+    property?.zona ||
+    property?.ciudadZona ||
+    property?.sector ||
+    property?._normalizedCity ||
+    journey?.form?.ciudadCompra ||
+    journey?.ciudadCompra ||
+    "Ubicación pendiente";
 
-    const propertyPriceRaw =
-      property?.precio ?? property?.price ?? property?.valor ?? property?.listPrice ?? null;
+  const propertyPriceRaw =
+    property?.precio ??
+    property?.price ??
+    property?.valor ??
+    property?.listPrice ??
+    property?._normalizedPrice ??
+    null;
 
-    const propertyPrice = Number.isFinite(Number(propertyPriceRaw))
-      ? Number(propertyPriceRaw)
-      : null;
+  const propertyPrice = Number.isFinite(Number(propertyPriceRaw))
+    ? Number(propertyPriceRaw)
+    : null;
 
-    const propertyImage =
-      property?.imagen ||
-      property?.image ||
-      property?.imageUrl ||
-      property?.foto ||
-      property?.cover ||
-      null;
+  const propertyImage =
+    property?.imagen ||
+    property?.image ||
+    property?.imageUrl ||
+    property?.foto ||
+    property?.cover ||
+    null;
 
-    const normalizedProperty = {
-      id: propertyId,
-      _id: propertyId,
-      propertyId,
+  const computedSelectedStatus = getSelectedPropertyStatusFromProperty(property);
 
-      titulo: propertyTitle,
-      nombre: propertyTitle,
-      proyecto: propertyTitle,
+  const normalizedProperty = {
+    id: propertyId,
+    _id: propertyId,
+    propertyId,
 
-      ciudad: propertyCity,
-      zona: propertyCity,
-      sector: property?.sector || propertyCity,
-      ciudadZona: property?.ciudadZona || propertyCity,
+    titulo: propertyTitle,
+    nombre: propertyTitle,
+    proyecto: propertyTitle,
 
-      precio: propertyPrice,
-      price: propertyPrice,
+    ciudad: propertyCity,
+    zona: propertyCity,
+    sector: property?.sector || propertyCity,
+    ciudadZona: property?.ciudadZona || propertyCity,
 
-      imagen: propertyImage,
-      image: propertyImage,
+    precio: propertyPrice,
+    price: propertyPrice,
 
-      cuotaEstimada:
-        property?.cuotaEstimada ||
-        property?.cuota ||
-        property?.evaluacionHipotecaFutura?.cuotaReferencia ||
-        property?.evaluacionHipotecaHoy?.cuotaReferencia ||
-        snapshot?.cuotaEstimada ||
-        snapshot?.cuotaMensual ||
-        snapshot?.bestMortgage?.cuota ||
-        null,
+    imagen: propertyImage,
+    image: propertyImage,
 
-      entradaMinima:
-        property?.entradaMinima ??
-        property?.entradaRequerida ??
-        property?.evaluacionEntrada?.entradaRequerida ??
-        null,
+    cuotaEstimada:
+      property?.cuotaEstimada ||
+      property?.cuota ||
+      property?.evaluacionHipotecaFutura?.cuotaReferencia ||
+      property?.evaluacionHipotecaHoy?.cuotaReferencia ||
+      property?.evaluacionHipoteca?.cuotaReferencia ||
+      snapshot?.cuotaEstimada ||
+      snapshot?.cuotaMensual ||
+      snapshot?.bestMortgage?.cuota ||
+      null,
 
-      descripcion:
-        property?.descripcion ||
-        `${propertyTitle} es una propiedad que hoy se alinea con tu ruta estimada dentro de HabitaLibre.`,
+    entradaMinima:
+      property?.entradaMinima ??
+      property?.entradaRequerida ??
+      property?.evaluacionEntrada?.entradaRequerida ??
+      null,
 
-      source: "property_detail",
-      selectedAt: new Date().toISOString(),
+    descripcion:
+      property?.descripcion ||
+      `${propertyTitle} es una propiedad que hoy se alinea con tu ruta estimada dentro de HabitaLibre.`,
 
-      raw: property,
-    };
+    status: computedSelectedStatus,
+    source: "property_detail",
+    selectedAt: new Date().toISOString(),
 
-    saveOwnedData(LS_SELECTED_PROPERTY, normalizedProperty);
+    raw: property,
+  };
 
-    saveOwnedData(LS_JOURNEY, {
-      ...(journey || {}),
-      propiedadElegida: true,
-      propiedadId: propertyId,
-      propiedadSeleccionada: normalizedProperty,
-    });
+  saveOwnedData(LS_SELECTED_PROPERTY, normalizedProperty);
 
-    navigate("/ruta");
-  }
+  saveOwnedData(LS_JOURNEY, {
+    ...(journey || {}),
+    matchExplorado: true,
+    propiedadElegida: true,
+    propiedadId: propertyId,
+    propiedadSeleccionada: normalizedProperty,
+    selectedPropertyStatus: computedSelectedStatus,
+  });
+
+  navigate("/ruta");
+}
 
   return (
     <HabitaShell maxWidth={980}>

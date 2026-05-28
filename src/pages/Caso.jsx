@@ -26,6 +26,7 @@ import { getCustomer, getCustomerToken } from "../lib/customerSession.js";
 const LS_SNAPSHOT = "hl_mobile_last_snapshot_v1";
 const LS_JOURNEY = "hl_mobile_journey_v1";
 const LS_SELECTED_PROPERTY = "hl_selected_property_v1";
+const LS_SELECTED_MORTGAGE_ROUTE = "hl_selected_mortgage_route_v1";
 const LS_DOCS_CHECKLIST = "hl_docs_checklist_v1";
 
 const RAW_API_BASE =
@@ -129,6 +130,68 @@ function normalizeProperty(raw) {
     raw,
   };
 }
+
+function normalizeMortgageRoute(raw) {
+  if (!raw || typeof raw !== "object") return null;
+
+  const providerLabel =
+    raw.providerLabel ||
+    raw.banco ||
+    raw.provider ||
+    raw.channel ||
+    raw.raw?.providerLabel ||
+    raw.raw?.banco ||
+    null;
+
+  const productLabel =
+    raw.productLabel ||
+    raw.tipoProducto ||
+    raw.label ||
+    raw.mortgageId ||
+    raw.raw?.productLabel ||
+    raw.raw?.tipoProducto ||
+    raw.raw?.label ||
+    raw.raw?.mortgageId ||
+    null;
+
+  const mortgageId =
+    raw.mortgageId ||
+    raw.id ||
+    raw.raw?.mortgageId ||
+    raw.raw?.id ||
+    null;
+
+  if (!providerLabel && !productLabel && !mortgageId) return null;
+
+  return {
+    mortgageId,
+    providerLabel: providerLabel || "Entidad financiera",
+    productLabel: productLabel || "Ruta hipotecaria",
+    cuota: raw.cuota ?? raw.monthlyPayment ?? raw.raw?.cuota ?? null,
+    annualRate:
+      raw.annualRate ??
+      raw.tasaAnual ??
+      raw.rate ??
+      raw.raw?.annualRate ??
+      raw.raw?.tasaAnual ??
+      null,
+    montoPrestamo:
+      raw.montoPrestamo ??
+      raw.loanAmount ??
+      raw.raw?.montoPrestamo ??
+      raw.raw?.loanAmount ??
+      null,
+    plazoMeses:
+      raw.plazoMeses ??
+      raw.termMonths ??
+      raw.raw?.plazoMeses ??
+      raw.raw?.termMonths ??
+      null,
+    status: raw.status || null,
+    raw,
+  };
+}
+
 
 function InfoCard({ title, subtitle, children }) {
   return (
@@ -273,20 +336,26 @@ function TimelineItem({ title, body, done = false }) {
 
 function getSimpleCaseDefinition({
   hasChosenProperty,
+  hasConfirmedMortgageRoute,
   docsReady,
   activationRequestedAt,
   statusGeneral,
   projectStatus,
   bankStatus,
+  projectSubmittedAt,
+  bankSubmittedAt,
 }) {
   const wasReceived = Boolean(
     activationRequestedAt || statusGeneral === "pendiente_revision_habitalibre"
   );
 
-  const wasSent =
+  const wasSent = Boolean(
     statusGeneral === "enviado" ||
-    projectStatus === "enviado" ||
-    bankStatus === "enviado";
+      projectStatus === "enviado" ||
+      bankStatus === "enviado" ||
+      projectSubmittedAt ||
+      bankSubmittedAt
+  );
 
   if (wasSent) {
     return {
@@ -306,21 +375,21 @@ function getSimpleCaseDefinition({
       ctaLabel: "Volver a mi ruta",
       ctaPath: "/ruta",
       projectStatusLabel:
-        projectStatus === "enviado"
+        projectStatus === "enviado" || projectSubmittedAt
           ? "Enviado al promotor"
           : "Pendiente de envío",
       bankStatusLabel:
-        bankStatus === "enviado"
+        bankStatus === "enviado" || bankSubmittedAt
           ? "Enviado a entidad financiera"
           : "Pendiente de envío",
       timelineProjectTitle: "Caso enviado al promotor",
       timelineProjectBody:
-        projectStatus === "enviado"
+        projectStatus === "enviado" || projectSubmittedAt
           ? "HabitaLibre ya compartió tu perfil con el promotor."
           : "Todavía no se ha enviado al promotor.",
       timelineBankTitle: "Caso enviado a entidad financiera",
       timelineBankBody:
-        bankStatus === "enviado"
+        bankStatus === "enviado" || bankSubmittedAt
           ? "HabitaLibre ya compartió tu perfil con una entidad financiera."
           : "Todavía no se ha enviado a una entidad financiera.",
     };
@@ -328,16 +397,17 @@ function getSimpleCaseDefinition({
 
   if (wasReceived) {
     return {
-      statusLabel: "Pendiente de envío",
+      statusLabel: "En revisión interna",
       statusTone: "good",
       heroTitle: "Tu caso fue recibido por HabitaLibre",
       heroBody:
-        "Ya recibimos tu caso. Ahora HabitaLibre revisará y lo enviará al promotor, al banco o a ambos.",
-      nextActorLabel: "Pendiente de envío",
+        "Ya recibimos tu caso. Ahora HabitaLibre revisará internamente si conviene moverlo al promotor, a una entidad financiera o a ambos.",
+      nextActorLabel: "En revisión HabitaLibre",
       nextActorText:
-        "Tu caso ya fue recibido por HabitaLibre y está pendiente de envío.",
-      userAction: "Esperar mientras HabitaLibre realiza el envío correspondiente.",
-      habitalibreAction: "Enviar tu perfil al promotor, al banco o a ambos.",
+        "Tu caso ya fue recibido y todavía no ha sido enviado externamente.",
+      userAction: "Esperar mientras HabitaLibre revisa el caso.",
+      habitalibreAction:
+        "Revisar tu propiedad, ruta hipotecaria, documentos y perfil antes de enviarlo.",
       nextExternalStep:
         "Una vez enviado, aquí podrás ver por qué frente ya fue compartido tu caso.",
       ctaLabel: "Volver a mi ruta",
@@ -381,13 +451,41 @@ function getSimpleCaseDefinition({
     };
   }
 
+  if (!hasConfirmedMortgageRoute) {
+    return {
+      statusLabel: "Esperando ruta hipotecaria",
+      statusTone: "neutral",
+      heroTitle: "Antes de avanzar, falta confirmar tu ruta hipotecaria",
+      heroBody:
+        "Ya tienes una propiedad base, pero todavía falta confirmar con qué ruta hipotecaria quieres avanzar.",
+      nextActorLabel: "Primero hipoteca",
+      nextActorText:
+        "Antes de mover tu caso, conviene confirmar una ruta financiera concreta.",
+      userAction:
+        "Comparar y confirmar la hipoteca que mejor encaja con tu propiedad base.",
+      habitalibreAction:
+        "Usar esa ruta hipotecaria para revisar tu caso con más precisión.",
+      nextExternalStep: "Después podrás completar preparación y activar tu caso.",
+      ctaLabel: "Comparar hipotecas",
+      ctaPath: "/match",
+      projectStatusLabel: "Pendiente",
+      bankStatusLabel: "Pendiente",
+      timelineProjectTitle: "Envío al promotor pendiente",
+      timelineProjectBody:
+        "Todavía no conviene enviarlo mientras falta una ruta hipotecaria confirmada.",
+      timelineBankTitle: "Envío a entidad financiera pendiente",
+      timelineBankBody:
+        "Todavía no conviene enviarlo mientras falta una ruta hipotecaria confirmada.",
+    };
+  }
+
   if (!docsReady) {
     return {
       statusLabel: "Esperando preparación",
       statusTone: "neutral",
       heroTitle: "Tu caso va bien, pero todavía falta preparación",
       heroBody:
-        "Ya tienes una propiedad base. Antes de enviar tu caso a HabitaLibre, conviene completar mejor tu checklist documental.",
+        "Ya tienes una propiedad base y una ruta hipotecaria confirmada. Antes de enviar tu caso a HabitaLibre, conviene completar mejor tu checklist documental.",
       nextActorLabel: "Primero preparación",
       nextActorText:
         "Antes de mover tu caso, conviene fortalecer tu base documental.",
@@ -411,24 +509,25 @@ function getSimpleCaseDefinition({
   }
 
   return {
-    statusLabel: "Caso en preparación",
-    statusTone: "neutral",
-    heroTitle: "Tu caso todavía no está listo para enviarse",
-    heroBody: "Primero conviene revisar qué te falta antes de activar tu caso.",
-    nextActorLabel: "Preparación",
-    nextActorText: "Antes de mover el caso, conviene fortalecer su base.",
-    userAction: "Revisar tu propiedad, checklist y ruta actual.",
+    statusLabel: "Listo para activar",
+    statusTone: "good",
+    heroTitle: "Tu caso está listo para enviarse a HabitaLibre",
+    heroBody:
+      "Ya tienes propiedad base, ruta hipotecaria confirmada y una preparación documental suficiente.",
+    nextActorLabel: "Listo para revisión",
+    nextActorText: "El siguiente paso es activar tu caso con HabitaLibre.",
+    userAction: "Enviar tu caso a HabitaLibre desde la pantalla de siguiente paso.",
     habitalibreAction:
-      "Usar esa información para decidir si el caso ya puede enviarse.",
-    nextExternalStep: "Después podrás enviarlo a HabitaLibre.",
-    ctaLabel: "Volver al siguiente paso",
+      "Revisar internamente si conviene moverlo al promotor, al banco o a ambos.",
+    nextExternalStep: "Después podrás ver aquí el estado real del caso.",
+    ctaLabel: "Activar caso",
     ctaPath: "/siguiente-paso",
     projectStatusLabel: "Pendiente",
     bankStatusLabel: "Pendiente",
     timelineProjectTitle: "Envío al promotor pendiente",
-    timelineProjectBody: "Todavía no se ha habilitado este frente.",
+    timelineProjectBody: "Todavía no se ha enviado al promotor.",
     timelineBankTitle: "Envío a entidad financiera pendiente",
-    timelineBankBody: "Todavía no se ha habilitado este frente.",
+    timelineBankBody: "Todavía no se ha enviado a una entidad financiera.",
   };
 }
 
@@ -440,11 +539,16 @@ export default function Caso() {
   const snapshot = useMemo(() => loadOwnedData(LS_SNAPSHOT) || {}, []);
   const journey = useMemo(() => loadOwnedData(LS_JOURNEY) || {}, []);
   const selectedPropertyRef = useMemo(
-    () => loadOwnedData(LS_SELECTED_PROPERTY),
-    []
-  );
-  const docsChecklist = useMemo(() => loadOwnedData(LS_DOCS_CHECKLIST) || {}, []);
+  () => loadOwnedData(LS_SELECTED_PROPERTY),
+  []
+);
 
+const selectedMortgageRouteRef = useMemo(
+  () => loadOwnedData(LS_SELECTED_MORTGAGE_ROUTE),
+  []
+);
+
+const docsChecklist = useMemo(() => loadOwnedData(LS_DOCS_CHECKLIST) || {}, []);
   useEffect(() => {
     let cancelled = false;
 
@@ -520,14 +624,26 @@ export default function Caso() {
   }, [journey]);
 
   const property =
-    normalizeProperty(remoteCase?.selectedProperty) ||
-    normalizeProperty(selectedPropertyRef) ||
-    normalizeProperty(journey?.propiedadSeleccionada) ||
-    normalizeProperty(journey?.selectedProperty) ||
-    normalizeProperty(journey?.property) ||
-    null;
+  normalizeProperty(remoteCase?.selectedProperty) ||
+  normalizeProperty(selectedPropertyRef) ||
+  normalizeProperty(journey?.propiedadSeleccionada) ||
+  normalizeProperty(journey?.selectedProperty) ||
+  normalizeProperty(journey?.property) ||
+  null;
 
-  const hasChosenProperty = Boolean(property?.id);
+const selectedMortgageRoute =
+  normalizeMortgageRoute(remoteCase?.selectedMortgageRoute) ||
+  normalizeMortgageRoute(selectedMortgageRouteRef) ||
+  normalizeMortgageRoute(journey?.mortgageRoute) ||
+  null;
+
+const hasChosenProperty = Boolean(property?.id);
+
+const hasConfirmedMortgageRoute = Boolean(
+  selectedMortgageRoute?.status === "confirmed" ||
+    selectedMortgageRoute?.status === "selected" ||
+    journey?.mortgageRouteConfirmed === true
+);
 
   const remoteDocsChecklist = remoteCase?.docsChecklist || null;
   const effectiveDocsChecklist = remoteDocsChecklist || docsChecklist;
@@ -578,14 +694,17 @@ export default function Caso() {
   const bankSubmittedAt =
     remoteCase?.bankSubmittedAt || journey?.bankSubmittedAt || null;
 
-  const caseDef = getSimpleCaseDefinition({
-    hasChosenProperty,
-    docsReady,
-    activationRequestedAt,
-    statusGeneral,
-    projectStatus,
-    bankStatus,
-  });
+const caseDef = getSimpleCaseDefinition({
+  hasChosenProperty,
+  hasConfirmedMortgageRoute,
+  docsReady,
+  activationRequestedAt,
+  statusGeneral,
+  projectStatus,
+  bankStatus,
+  projectSubmittedAt,
+  bankSubmittedAt,
+});
 
   return (
     <HabitaShell maxWidth={860}>
@@ -687,6 +806,9 @@ export default function Caso() {
               </Chip>
             </div>
 
+<Chip tone={hasConfirmedMortgageRoute ? "good" : "neutral"}>
+  {hasConfirmedMortgageRoute ? "Hipoteca confirmada" : "Falta hipoteca"}
+</Chip>
             <div
               style={{
                 display: "grid",
@@ -849,6 +971,66 @@ export default function Caso() {
                     marginBottom: 8,
                   }}
                 >
+<div
+  style={{
+    padding: 15,
+    borderRadius: 18,
+    border: "1px solid rgba(255,255,255,0.09)",
+    background: "rgba(255,255,255,0.04)",
+  }}
+>
+  <div
+    style={{
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 8,
+      fontWeight: 950,
+      color: "rgba(226,232,240,0.98)",
+      marginBottom: 8,
+    }}
+  >
+    <Landmark size={15} />
+    Ruta hipotecaria
+  </div>
+
+  <div
+    style={{
+      fontSize: 15,
+      fontWeight: 950,
+      color: "rgba(226,232,240,0.98)",
+    }}
+  >
+    {selectedMortgageRoute
+      ? `${selectedMortgageRoute.providerLabel} · ${selectedMortgageRoute.productLabel}`
+      : "Aún no confirmada"}
+  </div>
+
+  <div
+    style={{
+      marginTop: 6,
+      fontSize: 13.5,
+      color: "rgba(148,163,184,0.95)",
+      lineHeight: 1.45,
+    }}
+  >
+    {selectedMortgageRoute
+      ? `${
+          selectedMortgageRoute.cuota != null
+            ? `Cuota aprox. ${moneyUSD(selectedMortgageRoute.cuota)}`
+            : "Cuota pendiente"
+        }${
+          selectedMortgageRoute.annualRate != null
+            ? ` · Tasa ${
+                Number(selectedMortgageRoute.annualRate) <= 1
+                  ? (Number(selectedMortgageRoute.annualRate) * 100).toFixed(2)
+                  : Number(selectedMortgageRoute.annualRate).toFixed(2)
+              }%`
+            : ""
+        }`
+      : "Primero confirma la ruta hipotecaria con la que quieres avanzar."}
+  </div>
+</div>
+
                   <FileText size={15} />
                   Preparación documental
                 </div>
@@ -886,6 +1068,16 @@ export default function Caso() {
                 }
                 done={hasChosenProperty}
               />
+
+            <TimelineItem
+  title="Ruta hipotecaria confirmada"
+  body={
+    hasConfirmedMortgageRoute
+      ? "Ya confirmaste una ruta hipotecaria base para tu caso."
+      : "Todavía falta confirmar la ruta hipotecaria con la que quieres avanzar."
+  }
+  done={hasConfirmedMortgageRoute}
+/>
               <TimelineItem
                 title="Preparación documental"
                 body={
