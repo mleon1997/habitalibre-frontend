@@ -2657,12 +2657,61 @@ const normalizedProperty = {
 )}
 
 
-<SegmentedControl
-  value={tab}
-  onChange={setTab}
-  hasSelectedProperty={!!selectedPropertyId}
-  onOpenPropertyFinancing={() => navigate("/financiamiento-propiedad")}
-/>
+{selectedPropertyId ? (
+  <div
+    style={{
+      marginTop: 16,
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 10,
+    }}
+  >
+    <button
+      onClick={() => setTab("props")}
+      style={{
+        padding: 13,
+        borderRadius: 18,
+        border: `1px solid ${
+          tab === "props" ? UI.greenBorder : "rgba(255,255,255,0.14)"
+        }`,
+        background:
+          tab === "props"
+            ? "rgba(37,211,166,0.14)"
+            : "rgba(255,255,255,0.06)",
+        color: "white",
+        fontWeight: 950,
+        boxShadow: tab === "props" ? UI.shadowSoft : "none",
+        cursor: "pointer",
+      }}
+    >
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+        <Building2 size={15} />
+        Viviendas para ti
+      </span>
+    </button>
+
+    <button
+      onClick={() => navigate("/financiamiento-propiedad")}
+      style={{
+        padding: 13,
+        borderRadius: 18,
+        border: "1px solid rgba(37,211,166,0.25)",
+        background: "rgba(37,211,166,0.10)",
+        color: "white",
+        fontWeight: 950,
+        boxShadow: UI.shadowSoft,
+        cursor: "pointer",
+      }}
+    >
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+        <Landmark size={15} />
+        Financiamiento de esta propiedad
+      </span>
+    </button>
+  </div>
+) : (
+  <SegmentedControl value={tab} onChange={setTab} />
+)}
           {tab === "props" ? (
             <>
               <FilterCard
