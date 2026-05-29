@@ -10,10 +10,6 @@ import {
   Info,
   Landmark,
   MapPin,
-  Plane,
-  Route,
-  ShieldCheck,
-  Trees,
 } from "lucide-react";
 
 import HabitaShell from "../components/HabitaShell.jsx";
@@ -26,6 +22,7 @@ const LS_JOURNEY = "hl_mobile_journey_v1";
 const LS_SELECTED_PROPERTY = "hl_selected_property_v1";
 
 /* ---------------- storage ---------------- */
+
 function loadJSON(key) {
   try {
     const raw = localStorage.getItem(key);
@@ -83,6 +80,8 @@ function saveOwnedData(key, data) {
     // no-op
   }
 }
+
+/* ---------------- helpers ---------------- */
 
 function pick(snapshot, keys) {
   if (!snapshot) return null;
@@ -264,8 +263,8 @@ function getPropertyTitle(property = {}) {
     property?.nombre ||
     property?.title ||
     property?.name ||
-    property?.proyecto ||
-    property?._normalizedProjectName ||
+    property?.unidad ||
+    property?.unitName ||
     "Propiedad"
   );
 }
@@ -278,7 +277,7 @@ function getPropertyLocation(property = {}) {
     property?.ciudad ||
     property?.city ||
     property?._normalizedCity ||
-    "Quito"
+    ""
   );
 }
 
@@ -289,7 +288,7 @@ function getProjectName(property = {}) {
     property?._normalizedProjectName ||
     property?.nombreProyecto ||
     property?.raw?.proyecto ||
-    "Proyecto"
+    ""
   );
 }
 
@@ -301,7 +300,7 @@ function getDeveloperName(property = {}) {
     property?.constructor ||
     property?.constructora ||
     property?.raw?.promotor ||
-    "Por confirmar"
+    ""
   );
 }
 
@@ -311,44 +310,43 @@ function getPropertyType(property = {}) {
     property?.tipoVivienda ||
     property?.propertyType ||
     property?.type ||
-    (positiveNum(property?.dormitorios) && Number(property.dormitorios) >= 2
-      ? "Casa"
-      : "Propiedad")
+    ""
   );
 }
 
-function getAmenities(property = {}, location = "") {
+function getPropertyStatusLabel(property = {}) {
+  if (property?.estadoProyecto) return property.estadoProyecto;
+  if (property?.estado) return property.estado;
+  if (property?.statusComercial) return property.statusComercial;
+  if (property?.proyectoNuevo === true) return "Proyecto nuevo";
+  if (property?.proyectoNuevo === false) return "Entrega inmediata";
+  return "";
+}
+
+function getDescription(property = {}) {
+  return (
+    property?.descripcion ||
+    property?.description ||
+    property?.descripcionComercial ||
+    property?.resumen ||
+    property?.detalle ||
+    ""
+  );
+}
+
+function getAmenities(property = {}) {
   const explicit = [
     ...asArray(property?.amenidades),
     ...asArray(property?.amenities),
     ...asArray(property?.features),
     ...asArray(property?.caracteristicas),
+    ...asArray(property?.servicios),
+    ...asArray(property?.beneficios),
   ]
     .map((x) => (typeof x === "string" ? x : x?.name || x?.label || x?.title))
     .filter(Boolean);
 
-  const loc = String(location || "").toLowerCase();
-  const inferred = [];
-
-  if (loc.includes("tababela")) {
-    inferred.push(
-      "Aeropuerto Mariscal Sucre",
-      "Ruta Viva",
-      "Tababela",
-      "Áreas verdes",
-      "Servicios cercanos"
-    );
-  }
-
-  if (loc.includes("cumbay")) {
-    inferred.push("Cumbayá", "Servicios cercanos", "Áreas verdes");
-  }
-
-  if (loc.includes("quito") || loc.includes("centro")) {
-    inferred.push("Quito", "Servicios cercanos");
-  }
-
-  return uniqueList([...explicit, ...inferred]).slice(0, 8);
+  return uniqueList(explicit).slice(0, 12);
 }
 
 function getMainImage(property) {
@@ -411,6 +409,8 @@ function getAvailableEntry({ snapshot, journey, property }) {
     null
   );
 }
+
+/* ---------------- UI ---------------- */
 
 const UI = {
   card: "rgba(15,23,42,0.72)",
@@ -528,8 +528,8 @@ function StatCard({ label, value, accent = false }) {
   return (
     <div
       style={{
-        padding: 18,
-        borderRadius: 22,
+        padding: 16,
+        borderRadius: 20,
         background: accent ? "rgba(37,211,166,0.10)" : UI.cardSoft,
         border: accent
           ? `1px solid ${UI.greenBorder}`
@@ -538,7 +538,7 @@ function StatCard({ label, value, accent = false }) {
     >
       <div
         style={{
-          fontSize: 13,
+          fontSize: 12,
           color: UI.textMuted,
           fontWeight: 900,
         }}
@@ -548,12 +548,13 @@ function StatCard({ label, value, accent = false }) {
 
       <div
         style={{
-          marginTop: 9,
-          fontSize: 26,
+          marginTop: 8,
+          fontSize: 22,
           fontWeight: 980,
-          letterSpacing: -0.8,
+          letterSpacing: -0.6,
           color: "rgba(226,232,240,0.98)",
           lineHeight: 1.05,
+          wordBreak: "break-word",
         }}
       >
         {value}
@@ -567,8 +568,8 @@ function InfoCard({ title, subtitle, children, icon }) {
     <section
       style={{
         marginTop: 18,
-        padding: 24,
-        borderRadius: 30,
+        padding: 22,
+        borderRadius: 28,
         background: UI.card,
         border: `1px solid ${UI.border}`,
         boxShadow: UI.shadowSoft,
@@ -580,8 +581,8 @@ function InfoCard({ title, subtitle, children, icon }) {
           gap: 10,
           alignItems: "center",
           fontWeight: 980,
-          fontSize: 26,
-          letterSpacing: -0.8,
+          fontSize: 22,
+          letterSpacing: -0.5,
           color: "rgba(226,232,240,0.98)",
         }}
       >
@@ -597,7 +598,7 @@ function InfoCard({ title, subtitle, children, icon }) {
         <div
           style={{
             marginTop: 10,
-            fontSize: 16,
+            fontSize: 15,
             lineHeight: 1.45,
             color: UI.textMuted,
             maxWidth: 820,
@@ -607,7 +608,7 @@ function InfoCard({ title, subtitle, children, icon }) {
         </div>
       ) : null}
 
-      <div style={{ marginTop: 18 }}>{children}</div>
+      <div style={{ marginTop: 16 }}>{children}</div>
     </section>
   );
 }
@@ -630,11 +631,11 @@ function ToneBox({ tone = "neutral", children }) {
   return (
     <div
       style={{
-        padding: 18,
-        borderRadius: 22,
+        padding: 16,
+        borderRadius: 20,
         background,
         border: `1px solid ${border}`,
-        fontSize: 16,
+        fontSize: 15,
         lineHeight: 1.48,
         color: "rgba(226,232,240,0.94)",
       }}
@@ -648,13 +649,13 @@ function CheckTile({ children }) {
   return (
     <div
       style={{
-        padding: 18,
-        borderRadius: 22,
+        padding: 16,
+        borderRadius: 20,
         background: UI.cardSoft,
         border: `1px solid ${UI.borderSoft}`,
         color: "rgba(226,232,240,0.96)",
-        fontSize: 17,
-        fontWeight: 950,
+        fontSize: 15,
+        fontWeight: 900,
         lineHeight: 1.2,
         display: "flex",
         alignItems: "center",
@@ -662,7 +663,7 @@ function CheckTile({ children }) {
       }}
     >
       <CheckCircle2
-        size={20}
+        size={19}
         style={{ color: UI.green, flexShrink: 0 }}
       />
       {children}
@@ -674,13 +675,13 @@ function FinancialDisclaimer() {
   return (
     <div
       style={{
-        marginTop: 18,
-        padding: 18,
-        borderRadius: 22,
+        marginTop: 16,
+        padding: 16,
+        borderRadius: 20,
         border: "1px solid rgba(245,158,11,0.24)",
         background: "rgba(245,158,11,0.08)",
         color: "rgba(254,243,199,0.96)",
-        fontSize: 15,
+        fontSize: 14,
         lineHeight: 1.45,
       }}
     >
@@ -704,6 +705,8 @@ function NotFound({ onBack }) {
     </HabitaShell>
   );
 }
+
+/* ---------------- page ---------------- */
 
 export default function PropertyDetail() {
   const navigate = useNavigate();
@@ -753,9 +756,11 @@ export default function PropertyDetail() {
   const projectName = getProjectName(property);
   const developerName = getDeveloperName(property);
   const propertyType = getPropertyType(property);
+  const estadoProyecto = getPropertyStatusLabel(property);
+  const descripcionReal = getDescription(property);
   const mainImage = getMainImage(property);
   const galleryImages = getGalleryImages(property);
-  const amenities = getAmenities(property, heroLocation);
+  const amenities = getAmenities(property);
 
   const entradaDisponible = getAvailableEntry({
     snapshot,
@@ -830,11 +835,6 @@ export default function PropertyDetail() {
   const calzaPrecio =
     precioMaxVivienda != null && precio > 0 ? precio <= precioMaxVivienda : null;
 
-  const gapPrecio =
-    precioMaxVivienda != null && precio > 0
-      ? Math.max(0, precio - precioMaxVivienda)
-      : null;
-
   const hasPrecioMax = precioMaxVivienda != null && precioMaxVivienda > 0;
   const hasEntradaDisponible = entradaDisponible != null;
   const hasEvaluacionEntrada = !!evaluacionEntrada;
@@ -870,17 +870,18 @@ export default function PropertyDetail() {
 
   const lecturaBody =
     property?.matchReasonCalculado ||
-    (calzaPrecio
-      ? "Proyecto compatible con tu perfil y tu ruta estimada."
-      : "Esta propiedad puede servirte como referencia, pero requiere revisar el encaje financiero.");
+    (calzaPrecio === true
+      ? "Esta propiedad se alinea con tu perfil y tu ruta estimada."
+      : calzaPrecio === false
+      ? "Esta propiedad puede servir como referencia, pero requiere revisar el encaje financiero."
+      : "Esta propiedad puede servir como referencia para revisar tu camino de compra.");
 
-  const descripcionReal =
-    property.descripcion ||
-    `${heroTitle} en proyecto ${projectName}, ubicada en ${heroLocation}. Opción orientada a vivienda propia dentro de HabitaLibre.`;
-
-  const estadoProyecto = property?.proyectoNuevo
-    ? "Proyecto nuevo"
-    : property?.estadoProyecto || property?.estado || "Entrega inmediata";
+  const projectInfoItems = [
+    projectName ? { label: "Proyecto", value: projectName } : null,
+    propertyType ? { label: "Tipo", value: propertyType } : null,
+    estadoProyecto ? { label: "Estado", value: estadoProyecto } : null,
+    developerName ? { label: "Promotor", value: developerName } : null,
+  ].filter(Boolean);
 
   function buildNormalizedProperty() {
     const propertyTitle =
@@ -916,7 +917,8 @@ export default function PropertyDetail() {
       property?._normalizedImage ||
       null;
 
-    const computedSelectedStatus = getSelectedPropertyStatusFromProperty(property);
+    const computedSelectedStatus =
+      getSelectedPropertyStatusFromProperty(property);
 
     return {
       id: propertyId,
@@ -925,7 +927,7 @@ export default function PropertyDetail() {
 
       titulo: propertyTitle,
       nombre: propertyTitle,
-      proyecto: propertyTitle,
+      proyecto: property?.proyecto || property?._normalizedProjectName || "",
 
       ciudad: propertyCity,
       zona: propertyCity,
@@ -947,9 +949,7 @@ export default function PropertyDetail() {
         entradaRequerida ??
         null,
 
-      descripcion:
-        property?.descripcion ||
-        `${propertyTitle} es una propiedad que hoy se alinea con tu ruta estimada dentro de HabitaLibre.`,
+      descripcion: descripcionReal || "",
 
       status: computedSelectedStatus,
       source: "property_detail",
@@ -983,14 +983,14 @@ export default function PropertyDetail() {
         <div
           style={{
             position: "relative",
-            minHeight: 420,
+            minHeight: 360,
             width: "100%",
-            borderRadius: 34,
+            borderRadius: 32,
             overflow: "hidden",
             border: `1px solid ${UI.border}`,
             boxShadow: UI.shadow,
             background: mainImage
-              ? `linear-gradient(180deg, rgba(3,7,18,0.10) 0%, rgba(3,7,18,0.30) 45%, rgba(8,15,32,0.94) 100%), url(${mainImage}) center/cover`
+              ? `linear-gradient(180deg, rgba(3,7,18,0.08) 0%, rgba(3,7,18,0.28) 46%, rgba(8,15,32,0.94) 100%), url(${mainImage}) center/cover`
               : "linear-gradient(135deg, rgba(37,211,166,0.18), rgba(255,255,255,0.06))",
           }}
         >
@@ -1000,10 +1000,10 @@ export default function PropertyDetail() {
             aria-label="Volver"
             style={{
               position: "absolute",
-              top: 20,
-              left: 20,
-              width: 54,
-              height: 54,
+              top: 18,
+              left: 18,
+              width: 50,
+              height: 50,
               border: "1px solid rgba(255,255,255,0.18)",
               background: "rgba(9,18,38,0.88)",
               color: "white",
@@ -1018,7 +1018,7 @@ export default function PropertyDetail() {
               boxShadow: "0 10px 28px rgba(0,0,0,0.28)",
             }}
           >
-            <ArrowLeft size={22} />
+            <ArrowLeft size={21} />
           </button>
 
           <div
@@ -1027,9 +1027,9 @@ export default function PropertyDetail() {
               left: 24,
               right: 24,
               bottom: 24,
-              padding: 28,
-              borderRadius: 30,
-              background: "rgba(8,15,32,0.90)",
+              padding: 24,
+              borderRadius: 28,
+              background: "rgba(8,15,32,0.91)",
               border: `1px solid ${UI.border}`,
               boxShadow: UI.shadow,
               backdropFilter: "blur(16px)",
@@ -1038,8 +1038,12 @@ export default function PropertyDetail() {
           >
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <Pill tone={toneEstado}>{mainBadgeLabel}</Pill>
-              <Pill>{estadoProyecto}</Pill>
-              <Pill>{formatMatchReason(property.matchReason)}</Pill>
+
+              {estadoProyecto ? <Pill>{estadoProyecto}</Pill> : null}
+
+              {property.matchReason ? (
+                <Pill>{formatMatchReason(property.matchReason)}</Pill>
+              ) : null}
             </div>
 
             <div
@@ -1047,7 +1051,7 @@ export default function PropertyDetail() {
                 marginTop: 18,
                 display: "grid",
                 gridTemplateColumns: "minmax(0,1fr) auto",
-                gap: 24,
+                gap: 22,
                 alignItems: "end",
               }}
             >
@@ -1055,10 +1059,10 @@ export default function PropertyDetail() {
                 <h1
                   style={{
                     margin: 0,
-                    fontSize: 48,
+                    fontSize: 40,
                     lineHeight: 1.02,
                     fontWeight: 980,
-                    letterSpacing: -1.8,
+                    letterSpacing: -1.4,
                     color: "rgba(248,250,252,0.98)",
                     maxWidth: 720,
                   }}
@@ -1066,19 +1070,21 @@ export default function PropertyDetail() {
                   {heroTitle}
                 </h1>
 
-                <div
-                  style={{
-                    marginTop: 14,
-                    fontSize: 17,
-                    color: "rgba(203,213,225,0.90)",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 9,
-                  }}
-                >
-                  <MapPin size={18} />
-                  {heroLocation}
-                </div>
+                {heroLocation ? (
+                  <div
+                    style={{
+                      marginTop: 14,
+                      fontSize: 16,
+                      color: "rgba(203,213,225,0.90)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 9,
+                    }}
+                  >
+                    <MapPin size={17} />
+                    {heroLocation}
+                  </div>
+                ) : null}
               </div>
 
               <div style={{ textAlign: "right" }}>
@@ -1095,9 +1101,9 @@ export default function PropertyDetail() {
                 <div
                   style={{
                     marginTop: 8,
-                    fontSize: 46,
+                    fontSize: 38,
                     fontWeight: 980,
-                    letterSpacing: -1.4,
+                    letterSpacing: -1.2,
                     lineHeight: 1,
                     color: "rgba(248,250,252,0.98)",
                   }}
@@ -1148,7 +1154,7 @@ export default function PropertyDetail() {
         <InfoCard
           title="Tu lectura HabitaLibre"
           subtitle="Una lectura simple para saber si esta propiedad calza con tu camino de compra."
-          icon={<Info size={24} />}
+          icon={<Info size={22} />}
         >
           <div style={{ display: "grid", gap: 14 }}>
             <ToneBox tone={toneEstado}>
@@ -1188,7 +1194,7 @@ export default function PropertyDetail() {
         <InfoCard
           title="Plan referencial"
           subtitle="Un resumen simple para entender precio, entrada, saldo y posible esfuerzo mensual."
-          icon={<Landmark size={24} />}
+          icon={<Landmark size={22} />}
         >
           <div
             style={{
@@ -1233,9 +1239,7 @@ export default function PropertyDetail() {
                   )}
                 </>
               ) : (
-                <>
-                  Aún no tenemos una entrada registrada para esta propiedad.
-                </>
+                <>Aún no tenemos una entrada registrada para esta propiedad.</>
               )}
             </ToneBox>
           </div>
@@ -1244,7 +1248,7 @@ export default function PropertyDetail() {
         <InfoCard
           title="Entrada al proyecto"
           subtitle="Te mostramos cuánto pide el proyecto, cuánto te faltaría y cómo se ve esa entrada para tu situación."
-          icon={<Home size={24} />}
+          icon={<Home size={22} />}
         >
           <div
             style={{
@@ -1324,12 +1328,12 @@ export default function PropertyDetail() {
           </div>
         </InfoCard>
 
-        <InfoCard
-          title="Entorno y ubicación"
-          subtitle="Señales rápidas para entender la vida diaria alrededor del proyecto."
-          icon={<MapPin size={24} />}
-        >
-          {amenities.length ? (
+        {amenities.length ? (
+          <InfoCard
+            title="Entorno y ubicación"
+            subtitle="Información cargada sobre el entorno y servicios del proyecto."
+            icon={<MapPin size={22} />}
+          >
             <div
               style={{
                 display: "grid",
@@ -1337,133 +1341,124 @@ export default function PropertyDetail() {
                 gap: 12,
               }}
             >
-              {amenities.map((item, index) => {
-                const text = String(item);
-                const lower = text.toLowerCase();
-
-                const Icon =
-                  lower.includes("aeropuerto") ? Plane :
-                  lower.includes("ruta") ? Route :
-                  lower.includes("verde") ? Trees :
-                  lower.includes("seguridad") ? ShieldCheck :
-                  CheckCircle2;
-
-                return (
-                  <CheckTile key={`${text}-${index}`}>
-                    <Icon
-                      size={20}
-                      style={{ color: UI.green, flexShrink: 0 }}
-                    />
-                    {text}
-                  </CheckTile>
-                );
-              })}
+              {amenities.map((item, index) => (
+                <CheckTile key={`${item}-${index}`}>{item}</CheckTile>
+              ))}
             </div>
-          ) : (
-            <ToneBox>
-              Aún no tenemos información detallada del entorno para esta
-              propiedad.
-            </ToneBox>
-          )}
-        </InfoCard>
+          </InfoCard>
+        ) : null}
 
         {galleryImages.length ? (
           <InfoCard
             title="Galería y distribución"
-            subtitle="Fotos, renders y plano para entender mejor cómo se vive el espacio."
-            icon={<ImageIcon size={24} />}
+            subtitle="Fotos, renders y plano cargados para esta propiedad."
+            icon={<ImageIcon size={22} />}
           >
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1.35fr 0.65fr",
+                gridTemplateColumns: galleryImages.length > 1 ? "1.35fr 0.65fr" : "1fr",
                 gap: 12,
               }}
             >
               <div
                 style={{
-                  minHeight: 360,
-                  borderRadius: 26,
+                  minHeight: 340,
+                  borderRadius: 24,
                   overflow: "hidden",
                   border: `1px solid ${UI.border}`,
                   background: `url(${galleryImages[0]}) center/cover`,
                 }}
               />
 
-              <div style={{ display: "grid", gap: 12 }}>
-                {galleryImages.slice(1, 4).map((img, index) => (
-                  <div
-                    key={`${img}-${index}`}
-                    style={{
-                      minHeight: 112,
-                      borderRadius: 22,
-                      overflow: "hidden",
-                      border: `1px solid ${UI.border}`,
-                      background: `url(${img}) center/cover`,
-                    }}
-                  />
-                ))}
-              </div>
+              {galleryImages.length > 1 ? (
+                <div style={{ display: "grid", gap: 12 }}>
+                  {galleryImages.slice(1, 4).map((img, index) => (
+                    <div
+                      key={`${img}-${index}`}
+                      style={{
+                        minHeight: 104,
+                        borderRadius: 20,
+                        overflow: "hidden",
+                        border: `1px solid ${UI.border}`,
+                        background: `url(${img}) center/cover`,
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : null}
             </div>
           </InfoCard>
         ) : null}
 
-        <InfoCard
-          title="Sobre el proyecto"
-          subtitle="Información base para decidir si vale la pena avanzar con esta unidad."
-          icon={<Building2 size={24} />}
-        >
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-              gap: 12,
-            }}
+        {projectInfoItems.length || amenities.length ? (
+          <InfoCard
+            title="Sobre el proyecto"
+            subtitle="Información cargada para ayudarte a decidir si vale la pena avanzar con esta unidad."
+            icon={<Building2 size={22} />}
           >
-            <StatCard label="Proyecto" value={projectName} />
-            <StatCard label="Tipo" value={propertyType} />
-            <StatCard label="Estado" value={estadoProyecto} />
-            <StatCard label="Promotor" value={developerName} />
-          </div>
-
-          {amenities.length ? (
-            <div style={{ marginTop: 20 }}>
+            {projectInfoItems.length ? (
               <div
                 style={{
-                  fontSize: 16,
-                  color: UI.textMuted,
-                  fontWeight: 950,
-                  marginBottom: 12,
+                  display: "grid",
+                  gridTemplateColumns: `repeat(${Math.min(
+                    projectInfoItems.length,
+                    4
+                  )}, minmax(0, 1fr))`,
+                  gap: 12,
                 }}
               >
-                Amenidades
-              </div>
-
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {amenities.slice(0, 6).map((item, index) => (
-                  <Pill key={`${item}-${index}`}>{item}</Pill>
+                {projectInfoItems.map((item) => (
+                  <StatCard
+                    key={item.label}
+                    label={item.label}
+                    value={item.value}
+                  />
                 ))}
               </div>
-            </div>
-          ) : null}
-        </InfoCard>
+            ) : null}
 
-        <InfoCard
-          title="Descripción"
-          subtitle="Resumen de la propiedad."
-          icon={<Info size={24} />}
-        >
-          <div
-            style={{
-              fontSize: 18,
-              color: UI.textDim,
-              lineHeight: 1.6,
-              maxWidth: 860,
-            }}
+            {amenities.length ? (
+              <div style={{ marginTop: projectInfoItems.length ? 20 : 0 }}>
+                <div
+                  style={{
+                    fontSize: 15,
+                    color: UI.textMuted,
+                    fontWeight: 950,
+                    marginBottom: 12,
+                  }}
+                >
+                  Amenidades
+                </div>
+
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {amenities.slice(0, 8).map((item, index) => (
+                    <Pill key={`${item}-${index}`}>{item}</Pill>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </InfoCard>
+        ) : null}
+
+        {descripcionReal ? (
+          <InfoCard
+            title="Descripción"
+            subtitle="Resumen cargado de la propiedad."
+            icon={<Info size={22} />}
           >
-            {descripcionReal}
-          </div>
-        </InfoCard>
+            <div
+              style={{
+                fontSize: 16,
+                color: UI.textDim,
+                lineHeight: 1.6,
+                maxWidth: 860,
+              }}
+            >
+              {descripcionReal}
+            </div>
+          </InfoCard>
+        ) : null}
 
         <div
           style={{
