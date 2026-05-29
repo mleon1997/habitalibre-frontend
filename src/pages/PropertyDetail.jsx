@@ -1,7 +1,20 @@
 // src/pages/PropertyDetail.jsx
 import React, { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, MapPin } from "lucide-react";
+import {
+  ArrowLeft,
+  Building2,
+  CheckCircle2,
+  Home,
+  Image as ImageIcon,
+  Info,
+  Landmark,
+  MapPin,
+  Plane,
+  Route,
+  ShieldCheck,
+  Trees,
+} from "lucide-react";
 
 import HabitaShell from "../components/HabitaShell.jsx";
 import { moneyUSD } from "../lib/money";
@@ -62,6 +75,13 @@ function loadOwnedData(key) {
 function saveOwnedData(key, data) {
   const ownerEmail = getStorageOwnerEmail();
   saveJSON(key, { ownerEmail, data });
+
+  try {
+    window.dispatchEvent(new Event("hl:user-app-state-hydrated"));
+    window.dispatchEvent(new Event("hl:selected-property-updated"));
+  } catch {
+    // no-op
+  }
 }
 
 function pick(snapshot, keys) {
@@ -86,6 +106,11 @@ function maybeNum(v) {
   return Number.isFinite(x) ? x : null;
 }
 
+function positiveNum(v) {
+  const x = maybeNum(v);
+  return x != null && x > 0 ? x : null;
+}
+
 function formatMoney(v) {
   const x = Number(v);
   return Number.isFinite(x) ? moneyUSD(x) : "—";
@@ -100,11 +125,6 @@ function formatPct(v, digits = 1) {
 function formatMonthly(v) {
   const x = Number(v);
   return Number.isFinite(x) ? `${moneyUSD(x)}/mes` : "—";
-}
-
-function formatProbability(prob) {
-  if (!prob) return "—";
-  return String(prob);
 }
 
 function formatMatchReason(reason) {
@@ -164,10 +184,238 @@ function getSelectedPropertyStatusFromProperty(property) {
   return "selected_no_longer_viable";
 }
 
+function asArray(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  return [value];
+}
+
+function imageUrlFromAny(item) {
+  if (!item) return null;
+  if (typeof item === "string") return item;
+
+  return (
+    item?.url ||
+    item?.src ||
+    item?.image ||
+    item?.imagen ||
+    item?.imageUrl ||
+    item?.foto ||
+    item?.cover ||
+    null
+  );
+}
+
+function uniqueList(list) {
+  return [...new Set(list.filter(Boolean).map((v) => String(v).trim()))].filter(
+    Boolean
+  );
+}
+
+function collectPropertyImages(property) {
+  const candidates = [
+    property?.imagen,
+    property?.image,
+    property?.imageUrl,
+    property?.foto,
+    property?.cover,
+    property?._normalizedImage,
+    ...asArray(property?.imagenes),
+    ...asArray(property?.images),
+    ...asArray(property?.galeria),
+    ...asArray(property?.gallery),
+    ...asArray(property?.renders),
+    ...asArray(property?.fotos),
+    ...asArray(property?.planos),
+  ]
+    .map(imageUrlFromAny)
+    .filter(Boolean);
+
+  return uniqueList(candidates);
+}
+
+function getPropertyPrice(property = {}) {
+  return (
+    positiveNum(property?.precio) ??
+    positiveNum(property?.price) ??
+    positiveNum(property?.valor) ??
+    positiveNum(property?.listPrice) ??
+    positiveNum(property?.propertyPrice) ??
+    positiveNum(property?._normalizedPrice) ??
+    null
+  );
+}
+
+function getPropertyId(property = {}, fallbackId = null) {
+  return (
+    property?.id ||
+    property?._id ||
+    property?.propertyId ||
+    property?._normalizedId ||
+    property?.slug ||
+    fallbackId ||
+    null
+  );
+}
+
+function getPropertyTitle(property = {}) {
+  return (
+    property?.titulo ||
+    property?.nombre ||
+    property?.title ||
+    property?.name ||
+    property?.proyecto ||
+    property?._normalizedProjectName ||
+    "Propiedad"
+  );
+}
+
+function getPropertyLocation(property = {}) {
+  return (
+    property?.sector ||
+    property?.zona ||
+    property?.ciudadZona ||
+    property?.ciudad ||
+    property?.city ||
+    property?._normalizedCity ||
+    "Quito"
+  );
+}
+
+function getProjectName(property = {}) {
+  return (
+    property?.proyecto ||
+    property?.projectName ||
+    property?._normalizedProjectName ||
+    property?.nombreProyecto ||
+    property?.raw?.proyecto ||
+    "Proyecto"
+  );
+}
+
+function getDeveloperName(property = {}) {
+  return (
+    property?.promotor ||
+    property?.developerName ||
+    property?.developer ||
+    property?.constructor ||
+    property?.constructora ||
+    property?.raw?.promotor ||
+    "Por confirmar"
+  );
+}
+
+function getPropertyType(property = {}) {
+  return (
+    property?.tipo ||
+    property?.tipoVivienda ||
+    property?.propertyType ||
+    property?.type ||
+    (positiveNum(property?.dormitorios) && Number(property.dormitorios) >= 2
+      ? "Casa"
+      : "Propiedad")
+  );
+}
+
+function getAmenities(property = {}, location = "") {
+  const explicit = [
+    ...asArray(property?.amenidades),
+    ...asArray(property?.amenities),
+    ...asArray(property?.features),
+    ...asArray(property?.caracteristicas),
+  ]
+    .map((x) => (typeof x === "string" ? x : x?.name || x?.label || x?.title))
+    .filter(Boolean);
+
+  const loc = String(location || "").toLowerCase();
+  const inferred = [];
+
+  if (loc.includes("tababela")) {
+    inferred.push(
+      "Aeropuerto Mariscal Sucre",
+      "Ruta Viva",
+      "Tababela",
+      "Áreas verdes",
+      "Servicios cercanos"
+    );
+  }
+
+  if (loc.includes("cumbay")) {
+    inferred.push("Cumbayá", "Servicios cercanos", "Áreas verdes");
+  }
+
+  if (loc.includes("quito") || loc.includes("centro")) {
+    inferred.push("Quito", "Servicios cercanos");
+  }
+
+  return uniqueList([...explicit, ...inferred]).slice(0, 8);
+}
+
+function getMainImage(property) {
+  const imgs = collectPropertyImages(property);
+  return imgs[0] || null;
+}
+
+function getGalleryImages(property) {
+  return collectPropertyImages(property).slice(0, 4);
+}
+
+function getAvailableEntry({ snapshot, journey, property }) {
+  return (
+    positiveNum(property?.entradaDisponible) ??
+    positiveNum(property?.availableEntry) ??
+    positiveNum(property?.entradaRegistrada) ??
+    positiveNum(property?.entrada) ??
+    positiveNum(property?.downPayment) ??
+    positiveNum(property?.downPaymentAmount) ??
+    positiveNum(property?.selectedMatchPayload?.entradaDisponible) ??
+    positiveNum(property?.match?.entradaDisponible) ??
+    positiveNum(journey?.entradaDisponible) ??
+    positiveNum(journey?.entrada) ??
+    positiveNum(journey?.ahorroDisponible) ??
+    positiveNum(journey?.ahorro) ??
+    positiveNum(journey?.montoEntrada) ??
+    positiveNum(journey?.input?.entradaDisponible) ??
+    positiveNum(journey?.input?.entrada) ??
+    positiveNum(journey?.input?.ahorroDisponible) ??
+    positiveNum(journey?.input?.ahorro) ??
+    positiveNum(journey?.input?.montoEntrada) ??
+    positiveNum(journey?.form?.entradaDisponible) ??
+    positiveNum(journey?.form?.entrada) ??
+    positiveNum(journey?.form?.ahorroDisponible) ??
+    positiveNum(snapshot?.entradaDisponible) ??
+    positiveNum(snapshot?.entrada) ??
+    positiveNum(snapshot?.ahorroDisponible) ??
+    positiveNum(snapshot?.ahorro) ??
+    positiveNum(snapshot?.montoEntrada) ??
+    positiveNum(snapshot?.input?.entradaDisponible) ??
+    positiveNum(snapshot?.input?.entrada) ??
+    positiveNum(snapshot?.input?.ahorroDisponible) ??
+    positiveNum(snapshot?.input?.ahorro) ??
+    positiveNum(snapshot?.input?.montoEntrada) ??
+    positiveNum(snapshot?.perfilInput?.entradaDisponible) ??
+    positiveNum(snapshot?.perfilInput?.entrada) ??
+    positiveNum(snapshot?.perfilInput?.ahorroDisponible) ??
+    positiveNum(snapshot?.perfilInput?.ahorro) ??
+    positiveNum(snapshot?.perfilInput?.montoEntrada) ??
+    positiveNum(snapshot?.__entrada?.entradaDisponible) ??
+    positiveNum(snapshot?.__entrada?.entrada) ??
+    positiveNum(snapshot?.__entrada?.ahorroDisponible) ??
+    positiveNum(snapshot?.output?.entradaDisponible) ??
+    positiveNum(snapshot?.output?.entrada) ??
+    positiveNum(snapshot?.output?.ahorroDisponible) ??
+    positiveNum(snapshot?.output?.input?.entradaDisponible) ??
+    positiveNum(snapshot?.output?.perfilInput?.entradaDisponible) ??
+    positiveNum(snapshot?.inputNormalizado?.entradaDisponible) ??
+    positiveNum(snapshot?.output?.inputNormalizado?.entradaDisponible) ??
+    null
+  );
+}
+
 const UI = {
   card: "rgba(15,23,42,0.72)",
-  cardStrong: "rgba(8,15,32,0.86)",
-  cardSoft: "rgba(255,255,255,0.05)",
+  cardStrong: "rgba(8,15,32,0.88)",
+  cardSoft: "rgba(255,255,255,0.055)",
   border: "rgba(255,255,255,0.10)",
   borderSoft: "rgba(255,255,255,0.08)",
   textDim: "rgba(226,232,240,0.72)",
@@ -183,7 +431,7 @@ const UI = {
   shadowSoft: "0 12px 34px rgba(0,0,0,0.22)",
 };
 
-function Pill({ children, tone = "neutral" }) {
+function Pill({ children, tone = "neutral", style }) {
   let bg = "rgba(255,255,255,0.08)";
   let br = "rgba(255,255,255,0.10)";
   let color = "rgba(226,232,240,0.96)";
@@ -210,7 +458,7 @@ function Pill({ children, tone = "neutral" }) {
     <span
       style={{
         fontSize: 12,
-        padding: "7px 11px",
+        padding: "8px 12px",
         borderRadius: 999,
         background: bg,
         border: `1px solid ${br}`,
@@ -218,7 +466,9 @@ function Pill({ children, tone = "neutral" }) {
         fontWeight: 900,
         display: "inline-flex",
         alignItems: "center",
+        gap: 6,
         lineHeight: 1,
+        ...style,
       }}
     >
       {children}
@@ -233,7 +483,7 @@ function PrimaryButton({ children, onClick, style }) {
       onClick={onClick}
       style={{
         width: "100%",
-        padding: 15,
+        padding: 16,
         borderRadius: 18,
         border: "none",
         background:
@@ -241,7 +491,7 @@ function PrimaryButton({ children, onClick, style }) {
         color: "#052019",
         fontWeight: 950,
         cursor: "pointer",
-        fontSize: 14,
+        fontSize: 15,
         boxShadow: "0 18px 42px rgba(37,211,166,0.18)",
         ...style,
       }}
@@ -258,14 +508,14 @@ function SecondaryButton({ children, onClick, style }) {
       onClick={onClick}
       style={{
         width: "100%",
-        padding: 15,
+        padding: 16,
         borderRadius: 18,
         border: "1px solid rgba(255,255,255,0.14)",
         background: "rgba(255,255,255,0.05)",
         color: "rgba(226,232,240,0.96)",
         fontWeight: 950,
         cursor: "pointer",
-        fontSize: 14,
+        fontSize: 15,
         ...style,
       }}
     >
@@ -274,21 +524,23 @@ function SecondaryButton({ children, onClick, style }) {
   );
 }
 
-function StatCard({ label, value }) {
+function StatCard({ label, value, accent = false }) {
   return (
     <div
       style={{
-        padding: 15,
-        borderRadius: 20,
-        background: UI.cardSoft,
-        border: `1px solid ${UI.borderSoft}`,
+        padding: 18,
+        borderRadius: 22,
+        background: accent ? "rgba(37,211,166,0.10)" : UI.cardSoft,
+        border: accent
+          ? `1px solid ${UI.greenBorder}`
+          : `1px solid ${UI.borderSoft}`,
       }}
     >
       <div
         style={{
-          fontSize: 11,
+          fontSize: 13,
           color: UI.textMuted,
-          fontWeight: 850,
+          fontWeight: 900,
         }}
       >
         {label}
@@ -296,10 +548,12 @@ function StatCard({ label, value }) {
 
       <div
         style={{
-          marginTop: 7,
-          fontSize: 17,
-          fontWeight: 950,
+          marginTop: 9,
+          fontSize: 26,
+          fontWeight: 980,
+          letterSpacing: -0.8,
           color: "rgba(226,232,240,0.98)",
+          lineHeight: 1.05,
         }}
       >
         {value}
@@ -308,13 +562,13 @@ function StatCard({ label, value }) {
   );
 }
 
-function InfoCard({ title, subtitle, children }) {
+function InfoCard({ title, subtitle, children, icon }) {
   return (
     <section
       style={{
         marginTop: 18,
-        padding: 20,
-        borderRadius: 28,
+        padding: 24,
+        borderRadius: 30,
         background: UI.card,
         border: `1px solid ${UI.border}`,
         boxShadow: UI.shadowSoft,
@@ -322,29 +576,38 @@ function InfoCard({ title, subtitle, children }) {
     >
       <div
         style={{
-          fontWeight: 950,
-          fontSize: 18,
-          letterSpacing: -0.2,
+          display: "flex",
+          gap: 10,
+          alignItems: "center",
+          fontWeight: 980,
+          fontSize: 26,
+          letterSpacing: -0.8,
           color: "rgba(226,232,240,0.98)",
         }}
       >
+        {icon ? (
+          <span style={{ color: "rgba(37,211,166,0.95)", display: "flex" }}>
+            {icon}
+          </span>
+        ) : null}
         {title}
       </div>
 
       {subtitle ? (
         <div
           style={{
-            marginTop: 8,
-            fontSize: 13,
+            marginTop: 10,
+            fontSize: 16,
             lineHeight: 1.45,
             color: UI.textMuted,
+            maxWidth: 820,
           }}
         >
           {subtitle}
         </div>
       ) : null}
 
-      <div style={{ marginTop: 14 }}>{children}</div>
+      <div style={{ marginTop: 18 }}>{children}</div>
     </section>
   );
 }
@@ -367,16 +630,62 @@ function ToneBox({ tone = "neutral", children }) {
   return (
     <div
       style={{
-        padding: 15,
-        borderRadius: 20,
+        padding: 18,
+        borderRadius: 22,
         background,
         border: `1px solid ${border}`,
-        fontSize: 14,
-        lineHeight: 1.45,
-        color: "rgba(226,232,240,0.92)",
+        fontSize: 16,
+        lineHeight: 1.48,
+        color: "rgba(226,232,240,0.94)",
       }}
     >
       {children}
+    </div>
+  );
+}
+
+function CheckTile({ children }) {
+  return (
+    <div
+      style={{
+        padding: 18,
+        borderRadius: 22,
+        background: UI.cardSoft,
+        border: `1px solid ${UI.borderSoft}`,
+        color: "rgba(226,232,240,0.96)",
+        fontSize: 17,
+        fontWeight: 950,
+        lineHeight: 1.2,
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+      }}
+    >
+      <CheckCircle2
+        size={20}
+        style={{ color: UI.green, flexShrink: 0 }}
+      />
+      {children}
+    </div>
+  );
+}
+
+function FinancialDisclaimer() {
+  return (
+    <div
+      style={{
+        marginTop: 18,
+        padding: 18,
+        borderRadius: 22,
+        border: "1px solid rgba(245,158,11,0.24)",
+        background: "rgba(245,158,11,0.08)",
+        color: "rgba(254,243,199,0.96)",
+        fontSize: 15,
+        lineHeight: 1.45,
+      }}
+    >
+      <strong>Estimación referencial.</strong> HabitaLibre no otorga ni aprueba
+      créditos. Las condiciones finales dependen de cada entidad financiera.
     </div>
   );
 }
@@ -413,18 +722,18 @@ export default function PropertyDetail() {
     pick(snapshot, ["propiedades"]) ||
     [];
 
-const propertyFromSnapshot = useMemo(() => {
-  if (!Array.isArray(matchedProperties)) return null;
+  const propertyFromSnapshot = useMemo(() => {
+    if (!Array.isArray(matchedProperties)) return null;
 
-  return (
-    matchedProperties.find((p) => {
-      const candidateId =
-        p?.id || p?._id || p?.propertyId || p?._normalizedId || null;
+    return (
+      matchedProperties.find((p) => {
+        const candidateId =
+          p?.id || p?._id || p?.propertyId || p?._normalizedId || null;
 
-      return String(candidateId) === String(id);
-    }) || null
-  );
-}, [matchedProperties, id]);
+        return String(candidateId) === String(id);
+      }) || null
+    );
+  }, [matchedProperties, id]);
 
   const propertyFromMock = useMemo(
     () => mockProperties.find((p) => String(p.id) === String(id)) || null,
@@ -437,25 +746,29 @@ const propertyFromSnapshot = useMemo(() => {
     return <NotFound onBack={() => navigate("/match")} />;
   }
 
-  const precio = n(property?.precio);
+  const propertyId = getPropertyId(property, id);
+  const precio = getPropertyPrice(property) ?? n(property?.precio);
+  const heroTitle = getPropertyTitle(property);
+  const heroLocation = getPropertyLocation(property);
+  const projectName = getProjectName(property);
+  const developerName = getDeveloperName(property);
+  const propertyType = getPropertyType(property);
+  const mainImage = getMainImage(property);
+  const galleryImages = getGalleryImages(property);
+  const amenities = getAmenities(property, heroLocation);
 
-  const entradaDisponibleRaw =
-    pick(snapshot, ["entradaDisponible"]) ??
-    snapshot?.plan?.currentEntry ??
-    snapshot?.financialCapacity?.plannedEntry?.currentEntry ??
-    journey?.form?.entradaDisponible ??
-    journey?.form?.entrada ??
-    journey?.entrada ??
-    property?.evaluacionEntrada?.entradaDisponibleHoy ??
-    null;
-
-  const entradaDisponible = maybeNum(entradaDisponibleRaw);
+  const entradaDisponible = getAvailableEntry({
+    snapshot,
+    journey,
+    property,
+  });
 
   const precioMaxViviendaRaw =
     pick(snapshot, ["precioMaxVivienda"]) ??
     pick(snapshot, ["precioMaxPerfil"]) ??
     pick(snapshot, ["precioMax"]) ??
     snapshot?.financialCapacity?.estimatedMaxPropertyValue ??
+    snapshot?.output?.financialCapacity?.estimatedMaxPropertyValue ??
     snapshot?.homeRecommendation
       ?.profileProgramsThatCouldWorkIfRangeAdjusted?.[0]?.priceMax ??
     property?.evaluacionHipotecaHoy?.precioMaxVivienda ??
@@ -464,65 +777,75 @@ const propertyFromSnapshot = useMemo(() => {
 
   const precioMaxVivienda = maybeNum(precioMaxViviendaRaw);
 
-  const productoElegido =
-    pick(snapshot, ["productoElegido", "productoSugerido"]) ||
-    property?.evaluacionHipotecaHoy?.productoSugerido ||
-    property?.evaluacionHipotecaFutura?.productoSugerido ||
-    null;
-
-  const bancosTop3 =
-    pick(snapshot, ["bancosTop3"]) ||
-    pick(snapshot, ["bancosProbabilidad"]) ||
-    snapshot?.rankedMortgages ||
-    [];
-
-  const bankSuggested =
-    Array.isArray(bancosTop3) && bancosTop3.length ? bancosTop3[0] : null;
-
   const evaluacionEntrada = property?.evaluacionEntrada || null;
   const evaluacionHipotecaHoy =
     property?.evaluacionHipotecaHoy || property?.evaluacionHipoteca || null;
   const evaluacionHipotecaFutura = property?.evaluacionHipotecaFutura || null;
   const estadoCompra = property?.estadoCompra || null;
 
-  const hasPrecioMax = precioMaxVivienda != null && precioMaxVivienda > 0;
-  const hasEntradaDisponible = entradaDisponible != null;
-  const hasEvaluacionEntrada = !!evaluacionEntrada;
-  const hasHipotecaData =
-    !!evaluacionHipotecaHoy || !!evaluacionHipotecaFutura || !!bankSuggested;
+  const entradaRequerida =
+    positiveNum(property?.entradaRequerida) ??
+    positiveNum(property?.entradaMinima) ??
+    positiveNum(evaluacionEntrada?.entradaRequerida) ??
+    (precio ? Math.round(precio * 0.1) : null);
 
-  const calzaPrecio = hasPrecioMax ? precio <= precioMaxVivienda : null;
-  const gapPrecio = hasPrecioMax ? Math.max(0, precio - precioMaxVivienda) : null;
+  const faltanteEntrada =
+    maybeNum(evaluacionEntrada?.faltanteEntrada) ??
+    (entradaRequerida != null && entradaDisponible != null
+      ? Math.max(0, entradaRequerida - entradaDisponible)
+      : null);
+
+  const cuotaEntradaMensual =
+    maybeNum(evaluacionEntrada?.cuotaEntradaMensual) ??
+    maybeNum(property?.cuotaEntradaMensual) ??
+    null;
+
+  const mesesConstruccion =
+    maybeNum(evaluacionEntrada?.mesesConstruccionRestantes) ??
+    maybeNum(property?.mesesConstruccionRestantes) ??
+    maybeNum(property?.mesesConstruccion) ??
+    null;
 
   const entradaPct =
-    hasEntradaDisponible && precio > 0
+    entradaDisponible != null && precio > 0
       ? (entradaDisponible / precio) * 100
       : null;
 
-  const entradaRequerida =
-    evaluacionEntrada?.entradaRequerida == null
-      ? null
-      : maybeNum(evaluacionEntrada?.entradaRequerida);
+  const saldoAFinanciar =
+    precio && entradaRequerida != null
+      ? Math.max(0, precio - entradaRequerida)
+      : null;
 
-  const faltanteEntrada =
-    evaluacionEntrada?.faltanteEntrada == null
-      ? null
-      : maybeNum(evaluacionEntrada?.faltanteEntrada);
+  const cuotaReferencial =
+    positiveNum(property?.cuotaEstimada) ??
+    positiveNum(property?.cuota) ??
+    positiveNum(evaluacionHipotecaHoy?.cuotaReferencia) ??
+    positiveNum(evaluacionHipotecaFutura?.cuotaReferencia) ??
+    positiveNum(snapshot?.cuotaEstimada) ??
+    positiveNum(snapshot?.cuotaMensual) ??
+    positiveNum(snapshot?.bestMortgage?.cuota) ??
+    positiveNum(snapshot?.output?.cuotaEstimada) ??
+    null;
 
-  const cuotaEntradaMensual =
-    evaluacionEntrada?.cuotaEntradaMensual == null
-      ? null
-      : maybeNum(evaluacionEntrada?.cuotaEntradaMensual);
+  const calzaPrecio =
+    precioMaxVivienda != null && precio > 0 ? precio <= precioMaxVivienda : null;
 
-  const mesesConstruccion =
-    evaluacionEntrada?.mesesConstruccionRestantes == null
-      ? null
-      : maybeNum(evaluacionEntrada?.mesesConstruccionRestantes);
+  const gapPrecio =
+    precioMaxVivienda != null && precio > 0
+      ? Math.max(0, precio - precioMaxVivienda)
+      : null;
+
+  const hasPrecioMax = precioMaxVivienda != null && precioMaxVivienda > 0;
+  const hasEntradaDisponible = entradaDisponible != null;
+  const hasEvaluacionEntrada = !!evaluacionEntrada;
+  const hasHipotecaData = !!evaluacionHipotecaHoy || !!evaluacionHipotecaFutura;
 
   const hasAnalisisCompletoMinimo =
-    hasPrecioMax && hasEntradaDisponible && (hasEvaluacionEntrada || hasHipotecaData);
+    hasPrecioMax &&
+    hasEntradaDisponible &&
+    (hasEvaluacionEntrada || hasHipotecaData);
 
-  let toneEstado = "neutral";
+  let toneEstado = "amber";
 
   if (hasAnalisisCompletoMinimo) {
     toneEstado =
@@ -533,167 +856,141 @@ const propertyFromSnapshot = useMemo(() => {
           estadoCompra === "ruta_cercana"
         ? "amber"
         : "red";
-  } else {
-    toneEstado = "amber";
   }
-
-  const heroTitle =
-    property.titulo || property.nombre || property.proyecto || "Propiedad";
-
-  const heroLocation =
-    property.sector ||
-    property.zona ||
-    property.ciudadZona ||
-    property.ciudad ||
-    "Quito";
-
-  const descripcionReal =
-    property.descripcion ||
-    `${heroTitle} es una propiedad orientada a primera vivienda, ubicada en ${heroLocation}. Esta opción se muestra porque se alinea con tu perfil actual y con una ruta estimada de compra dentro de HabitaLibre.`;
 
   const mainBadgeLabel = hasAnalisisCompletoMinimo
     ? property?.matchBadgeCalculado ||
       property?.matchBadge ||
       formatEstadoCompra(estadoCompra)
-    : "Pendiente de análisis";
+    : property?.matchBadge || "Pendiente de análisis";
 
-  const estadoLabel = hasAnalisisCompletoMinimo
+  const lecturaTitle = hasAnalisisCompletoMinimo
     ? formatEstadoCompra(estadoCompra)
-    : "Análisis parcial";
+    : property?.matchBadge || "Lectura referencial";
 
-  const futureReasonText = evaluacionHipotecaFutura?.viable
-    ? faltanteEntrada === 0
-      ? "Con la entrada requerida ya cubierta, esta propiedad podría calzar con tu ruta hipotecaria al momento de la entrega."
-      : evaluacionHipotecaFutura?.razon || "No disponible"
-    : evaluacionHipotecaFutura?.razon || "No disponible";
+  const lecturaBody =
+    property?.matchReasonCalculado ||
+    (calzaPrecio
+      ? "Proyecto compatible con tu perfil y tu ruta estimada."
+      : "Esta propiedad puede servirte como referencia, pero requiere revisar el encaje financiero.");
 
-function handleSelectProperty() {
-  const propertyId =
-    property?.id ||
-    property?._id ||
-    property?.propertyId ||
-    property?._normalizedId ||
-    id ||
-    null;
+  const descripcionReal =
+    property.descripcion ||
+    `${heroTitle} en proyecto ${projectName}, ubicada en ${heroLocation}. Opción orientada a vivienda propia dentro de HabitaLibre.`;
 
-  const propertyTitle =
-    property?.titulo ||
-    property?.nombre ||
-    property?.title ||
-    property?.name ||
-    property?.proyecto ||
-    property?._normalizedProjectName ||
-    "Propiedad elegida";
+  const estadoProyecto = property?.proyectoNuevo
+    ? "Proyecto nuevo"
+    : property?.estadoProyecto || property?.estado || "Entrega inmediata";
 
-  const propertyCity =
-    property?.ciudad ||
-    property?.city ||
-    property?.zona ||
-    property?.ciudadZona ||
-    property?.sector ||
-    property?._normalizedCity ||
-    journey?.form?.ciudadCompra ||
-    journey?.ciudadCompra ||
-    "Ubicación pendiente";
+  function buildNormalizedProperty() {
+    const propertyTitle =
+      property?.titulo ||
+      property?.nombre ||
+      property?.title ||
+      property?.name ||
+      property?.proyecto ||
+      property?._normalizedProjectName ||
+      "Propiedad elegida";
 
-  const propertyPriceRaw =
-    property?.precio ??
-    property?.price ??
-    property?.valor ??
-    property?.listPrice ??
-    property?._normalizedPrice ??
-    null;
+    const propertyCity =
+      property?.ciudad ||
+      property?.city ||
+      property?.zona ||
+      property?.ciudadZona ||
+      property?.sector ||
+      property?._normalizedCity ||
+      journey?.form?.ciudadCompra ||
+      journey?.ciudadCompra ||
+      "Ubicación pendiente";
 
-  const propertyPrice = Number.isFinite(Number(propertyPriceRaw))
-    ? Number(propertyPriceRaw)
-    : null;
+    const propertyPrice = Number.isFinite(Number(precio))
+      ? Number(precio)
+      : null;
 
-  const propertyImage =
-    property?.imagen ||
-    property?.image ||
-    property?.imageUrl ||
-    property?.foto ||
-    property?.cover ||
-    null;
+    const propertyImage =
+      property?.imagen ||
+      property?.image ||
+      property?.imageUrl ||
+      property?.foto ||
+      property?.cover ||
+      property?._normalizedImage ||
+      null;
 
-  const computedSelectedStatus = getSelectedPropertyStatusFromProperty(property);
+    const computedSelectedStatus = getSelectedPropertyStatusFromProperty(property);
 
-  const normalizedProperty = {
-    id: propertyId,
-    _id: propertyId,
-    propertyId,
+    return {
+      id: propertyId,
+      _id: propertyId,
+      propertyId,
 
-    titulo: propertyTitle,
-    nombre: propertyTitle,
-    proyecto: propertyTitle,
+      titulo: propertyTitle,
+      nombre: propertyTitle,
+      proyecto: propertyTitle,
 
-    ciudad: propertyCity,
-    zona: propertyCity,
-    sector: property?.sector || propertyCity,
-    ciudadZona: property?.ciudadZona || propertyCity,
+      ciudad: propertyCity,
+      zona: propertyCity,
+      sector: property?.sector || propertyCity,
+      ciudadZona: property?.ciudadZona || propertyCity,
 
-    precio: propertyPrice,
-    price: propertyPrice,
+      precio: propertyPrice,
+      price: propertyPrice,
 
-    imagen: propertyImage,
-    image: propertyImage,
+      imagen: propertyImage,
+      image: propertyImage,
 
-    cuotaEstimada:
-      property?.cuotaEstimada ||
-      property?.cuota ||
-      property?.evaluacionHipotecaFutura?.cuotaReferencia ||
-      property?.evaluacionHipotecaHoy?.cuotaReferencia ||
-      property?.evaluacionHipoteca?.cuotaReferencia ||
-      snapshot?.cuotaEstimada ||
-      snapshot?.cuotaMensual ||
-      snapshot?.bestMortgage?.cuota ||
-      null,
+      cuotaEstimada: cuotaReferencial,
 
-    entradaMinima:
-      property?.entradaMinima ??
-      property?.entradaRequerida ??
-      property?.evaluacionEntrada?.entradaRequerida ??
-      null,
+      entradaMinima:
+        property?.entradaMinima ??
+        property?.entradaRequerida ??
+        property?.evaluacionEntrada?.entradaRequerida ??
+        entradaRequerida ??
+        null,
 
-    descripcion:
-      property?.descripcion ||
-      `${propertyTitle} es una propiedad que hoy se alinea con tu ruta estimada dentro de HabitaLibre.`,
+      descripcion:
+        property?.descripcion ||
+        `${propertyTitle} es una propiedad que hoy se alinea con tu ruta estimada dentro de HabitaLibre.`,
 
-    status: computedSelectedStatus,
-    source: "property_detail",
-    selectedAt: new Date().toISOString(),
+      status: computedSelectedStatus,
+      source: "property_detail",
+      selectedAt: new Date().toISOString(),
 
-    raw: property,
-  };
+      raw: property,
+    };
+  }
 
-  saveOwnedData(LS_SELECTED_PROPERTY, normalizedProperty);
+  function handleSelectProperty(nextPath = "/financiamiento-propiedad") {
+    const normalizedProperty = buildNormalizedProperty();
+    const computedSelectedStatus = normalizedProperty.status;
 
-  saveOwnedData(LS_JOURNEY, {
-    ...(journey || {}),
-    matchExplorado: true,
-    propiedadElegida: true,
-    propiedadId: propertyId,
-    propiedadSeleccionada: normalizedProperty,
-    selectedPropertyStatus: computedSelectedStatus,
-  });
+    saveOwnedData(LS_SELECTED_PROPERTY, normalizedProperty);
 
-  navigate("/ruta");
-}
+    saveOwnedData(LS_JOURNEY, {
+      ...(journey || {}),
+      matchExplorado: true,
+      propiedadElegida: true,
+      propiedadId,
+      propiedadSeleccionada: normalizedProperty,
+      selectedPropertyStatus: computedSelectedStatus,
+    });
+
+    navigate(nextPath);
+  }
 
   return (
     <HabitaShell maxWidth={980}>
-      <div style={{ paddingBottom: 32 }}>
+      <div style={{ paddingBottom: 36 }}>
         <div
           style={{
             position: "relative",
-            height: 300,
+            minHeight: 420,
             width: "100%",
-            borderRadius: 32,
+            borderRadius: 34,
             overflow: "hidden",
             border: `1px solid ${UI.border}`,
             boxShadow: UI.shadow,
-            background: property.imagen
-              ? `linear-gradient(rgba(0,0,0,0.10), rgba(8,15,32,0.62)), url(${property.imagen}) center/cover`
+            background: mainImage
+              ? `linear-gradient(180deg, rgba(3,7,18,0.10) 0%, rgba(3,7,18,0.30) 45%, rgba(8,15,32,0.94) 100%), url(${mainImage}) center/cover`
               : "linear-gradient(135deg, rgba(37,211,166,0.18), rgba(255,255,255,0.06))",
           }}
         >
@@ -703,10 +1000,10 @@ function handleSelectProperty() {
             aria-label="Volver"
             style={{
               position: "absolute",
-              top: 16,
-              left: 16,
-              width: 48,
-              height: 48,
+              top: 20,
+              left: 20,
+              width: 54,
+              height: 54,
               border: "1px solid rgba(255,255,255,0.18)",
               background: "rgba(9,18,38,0.88)",
               color: "white",
@@ -721,111 +1018,103 @@ function handleSelectProperty() {
               boxShadow: "0 10px 28px rgba(0,0,0,0.28)",
             }}
           >
-            <ArrowLeft size={20} />
+            <ArrowLeft size={22} />
           </button>
-        </div>
 
-        <div
-          style={{
-            marginTop: -44,
-            position: "relative",
-            zIndex: 2,
-            padding: "0 12px",
-          }}
-        >
           <div
             style={{
-              padding: 22,
-              borderRadius: 32,
-              background: UI.cardStrong,
+              position: "absolute",
+              left: 24,
+              right: 24,
+              bottom: 24,
+              padding: 28,
+              borderRadius: 30,
+              background: "rgba(8,15,32,0.90)",
               border: `1px solid ${UI.border}`,
               boxShadow: UI.shadow,
-              backdropFilter: "blur(14px)",
-              WebkitBackdropFilter: "blur(14px)",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
             }}
           >
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <Pill tone={toneEstado}>{mainBadgeLabel}</Pill>
-
-              {property.proyectoNuevo ? (
-                <Pill>Proyecto nuevo</Pill>
-              ) : (
-                <Pill>Entrega inmediata</Pill>
-              )}
-
+              <Pill>{estadoProyecto}</Pill>
               <Pill>{formatMatchReason(property.matchReason)}</Pill>
-            </div>
-
-            <div
-              style={{
-                marginTop: 16,
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 18,
-                alignItems: "flex-start",
-                flexWrap: "wrap",
-              }}
-            >
-              <div style={{ minWidth: 0, flex: "1 1 420px" }}>
-                <div
-                  style={{
-                    fontSize: 36,
-                    fontWeight: 980,
-                    letterSpacing: -1.1,
-                    lineHeight: 1.03,
-                    color: "rgba(226,232,240,0.98)",
-                  }}
-                >
-                  {heroTitle}
-                </div>
-
-                <div
-                  style={{
-                    marginTop: 12,
-                    fontSize: 14,
-                    color: UI.textDim,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 7,
-                  }}
-                >
-                  <MapPin size={15} />
-                  {heroLocation}
-                </div>
-              </div>
-
-              <div style={{ flexShrink: 0 }}>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: UI.textMuted,
-                    fontWeight: 850,
-                  }}
-                >
-                  Precio
-                </div>
-
-                <div
-                  style={{
-                    marginTop: 6,
-                    fontSize: 38,
-                    fontWeight: 980,
-                    letterSpacing: -1,
-                    lineHeight: 1,
-                    color: "rgba(226,232,240,0.98)",
-                  }}
-                >
-                  {moneyUSD(precio)}
-                </div>
-              </div>
             </div>
 
             <div
               style={{
                 marginTop: 18,
                 display: "grid",
+                gridTemplateColumns: "minmax(0,1fr) auto",
+                gap: 24,
+                alignItems: "end",
+              }}
+            >
+              <div>
+                <h1
+                  style={{
+                    margin: 0,
+                    fontSize: 48,
+                    lineHeight: 1.02,
+                    fontWeight: 980,
+                    letterSpacing: -1.8,
+                    color: "rgba(248,250,252,0.98)",
+                    maxWidth: 720,
+                  }}
+                >
+                  {heroTitle}
+                </h1>
+
+                <div
+                  style={{
+                    marginTop: 14,
+                    fontSize: 17,
+                    color: "rgba(203,213,225,0.90)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 9,
+                  }}
+                >
+                  <MapPin size={18} />
+                  {heroLocation}
+                </div>
+              </div>
+
+              <div style={{ textAlign: "right" }}>
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: UI.textMuted,
+                    fontWeight: 900,
+                  }}
+                >
+                  Precio de referencia
+                </div>
+
+                <div
+                  style={{
+                    marginTop: 8,
+                    fontSize: 46,
+                    fontWeight: 980,
+                    letterSpacing: -1.4,
+                    lineHeight: 1,
+                    color: "rgba(248,250,252,0.98)",
+                  }}
+                >
+                  {formatMoney(precio)}
+                </div>
+              </div>
+            </div>
+
+            <FinancialDisclaimer />
+
+            <div
+              style={{
+                marginTop: 18,
+                display: "grid",
                 gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-                gap: 10,
+                gap: 12,
               }}
             >
               <StatCard
@@ -834,7 +1123,11 @@ function handleSelectProperty() {
               />
               <StatCard
                 label="Dormitorios"
-                value={property.dormitorios != null ? String(property.dormitorios) : "—"}
+                value={
+                  property.dormitorios != null
+                    ? String(property.dormitorios)
+                    : "—"
+                }
               />
               <StatCard
                 label="Baños"
@@ -843,7 +1136,9 @@ function handleSelectProperty() {
               <StatCard
                 label="Parqueaderos"
                 value={
-                  property.parqueaderos != null ? String(property.parqueaderos) : "—"
+                  property.parqueaderos != null
+                    ? String(property.parqueaderos)
+                    : "—"
                 }
               />
             </div>
@@ -851,58 +1146,96 @@ function handleSelectProperty() {
         </div>
 
         <InfoCard
-          title="Cómo se alinea con tu perfil"
-          subtitle="Aquí resumimos cómo se alinea esta propiedad con tu perfil actual y qué podrías ajustar."
+          title="Tu lectura HabitaLibre"
+          subtitle="Una lectura simple para saber si esta propiedad calza con tu camino de compra."
+          icon={<Info size={24} />}
         >
-          <div style={{ display: "grid", gap: 10 }}>
+          <div style={{ display: "grid", gap: 14 }}>
             <ToneBox tone={toneEstado}>
-              <strong>{estadoLabel}</strong>
-              <div style={{ marginTop: 6 }}>
-                {hasAnalisisCompletoMinimo
-                  ? property?.matchReasonCalculado ||
-                    "Analizamos esta propiedad con base en tu perfil y en el esquema financiero del proyecto."
-                  : "Todavía no tenemos suficiente información para confirmar el encaje completo de esta propiedad con tu perfil."}
-              </div>
-            </ToneBox>
-
-            <ToneBox>
-              Esta propiedad se alinea principalmente por{" "}
-              <strong>{formatMatchReason(property.matchReason)}</strong>.
+              <strong>{lecturaTitle}</strong>
+              <div style={{ marginTop: 8 }}>{lecturaBody}</div>
             </ToneBox>
 
             <ToneBox>
               {hasPrecioMax ? (
                 <>
-                  Tu precio máximo estimado hoy es{" "}
-                  <strong>{moneyUSD(precioMaxVivienda)}</strong>.
-                  {calzaPrecio ? (
-                    <>
-                      {" "}
-                      Esta propiedad <strong>sí entra</strong> dentro de ese rango.
-                    </>
-                  ) : (
-                    <>
-                      {" "}
-                      Esta propiedad queda <strong>{moneyUSD(gapPrecio)}</strong>{" "}
-                      por encima de tu rango hipotecario actual.
-                    </>
-                  )}
+                  Esta propiedad cuesta <strong>{formatMoney(precio)}</strong>.
+                  Tu capacidad prudente hoy es{" "}
+                  <strong>{formatMoney(precioMaxVivienda)}</strong>.
                 </>
               ) : (
-                <>Aún no tenemos tu precio máximo calculado.</>
+                <>
+                  Esta propiedad cuesta <strong>{formatMoney(precio)}</strong>.
+                  Aún falta confirmar tu capacidad prudente actual.
+                </>
               )}
             </ToneBox>
 
+            <ToneBox tone="green">
+              <strong>Siguiente paso sugerido:</strong> puedes usar esta
+              propiedad como referencia para revisar tu ruta, comparar opciones
+              hipotecarias y avanzar con mayor claridad.
+            </ToneBox>
+
+            <PrimaryButton
+              onClick={() => handleSelectProperty("/financiamiento-propiedad")}
+            >
+              Evaluar mi ruta con esta propiedad
+            </PrimaryButton>
+          </div>
+        </InfoCard>
+
+        <InfoCard
+          title="Plan referencial"
+          subtitle="Un resumen simple para entender precio, entrada, saldo y posible esfuerzo mensual."
+          icon={<Landmark size={24} />}
+        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+              gap: 12,
+            }}
+          >
+            <StatCard label="Precio" value={formatMoney(precio)} />
+            <StatCard
+              label="Entrada estimada"
+              value={formatMoney(entradaRequerida)}
+            />
+            <StatCard
+              label="Saldo a financiar"
+              value={formatMoney(saldoAFinanciar)}
+            />
+            <StatCard
+              label="Cuota referencial"
+              value={
+                cuotaReferencial != null
+                  ? formatMonthly(cuotaReferencial)
+                  : "Por calcular"
+              }
+              accent={Boolean(cuotaReferencial)}
+            />
+          </div>
+
+          <div style={{ marginTop: 14 }}>
             <ToneBox>
-              {hasEntradaDisponible ? (
+              {entradaDisponible != null ? (
                 <>
                   Tu entrada registrada es{" "}
-                  <strong>{moneyUSD(entradaDisponible)}</strong>, equivalente a{" "}
-                  <strong>{formatPct(entradaPct)}</strong> del valor de esta
-                  propiedad.
+                  <strong>{formatMoney(entradaDisponible)}</strong>
+                  {entradaPct != null ? (
+                    <>
+                      , equivalente a <strong>{formatPct(entradaPct)}</strong>{" "}
+                      del valor de esta propiedad.
+                    </>
+                  ) : (
+                    "."
+                  )}
                 </>
               ) : (
-                <>Aún no tenemos una entrada registrada para esta propiedad.</>
+                <>
+                  Aún no tenemos una entrada registrada para esta propiedad.
+                </>
               )}
             </ToneBox>
           </div>
@@ -911,52 +1244,54 @@ function handleSelectProperty() {
         <InfoCard
           title="Entrada al proyecto"
           subtitle="Te mostramos cuánto pide el proyecto, cuánto te faltaría y cómo se ve esa entrada para tu situación."
+          icon={<Home size={24} />}
         >
-          <div style={{ display: "grid", gap: 10 }}>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                gap: 10,
-              }}
-            >
-              <StatCard
-                label="Entrada requerida"
-                value={formatMoney(entradaRequerida)}
-              />
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+              gap: 12,
+            }}
+          >
+            <StatCard
+              label="Entrada requerida"
+              value={formatMoney(entradaRequerida)}
+            />
 
-              <StatCard
-                label="Faltante de entrada"
-                value={
-                  faltanteEntrada == null
-                    ? "—"
-                    : faltanteEntrada === 0
-                    ? "$0 (completo)"
-                    : formatMoney(faltanteEntrada)
-                }
-              />
+            <StatCard
+              label="Faltante"
+              value={
+                faltanteEntrada == null
+                  ? "—"
+                  : faltanteEntrada === 0
+                  ? "$0"
+                  : formatMoney(faltanteEntrada)
+              }
+              accent={faltanteEntrada === 0}
+            />
 
-              <StatCard
-                label="Cuota mensual de entrada"
-                value={
-                  cuotaEntradaMensual == null
-                    ? "No disponible"
-                    : cuotaEntradaMensual === 0
-                    ? "No requerida"
-                    : formatMonthly(cuotaEntradaMensual)
-                }
-              />
+            <StatCard
+              label="Cuota mensual de entrada"
+              value={
+                cuotaEntradaMensual == null
+                  ? "No requerida"
+                  : cuotaEntradaMensual === 0
+                  ? "No requerida"
+                  : formatMonthly(cuotaEntradaMensual)
+              }
+            />
 
-              <StatCard
-                label="Meses de construcción"
-                value={
-                  mesesConstruccion != null && mesesConstruccion > 0
-                    ? `${mesesConstruccion} meses`
-                    : "—"
-                }
-              />
-            </div>
+            <StatCard
+              label="Meses de construcción"
+              value={
+                mesesConstruccion != null && mesesConstruccion > 0
+                  ? `${mesesConstruccion} meses`
+                  : "—"
+              }
+            />
+          </div>
 
+          <div style={{ marginTop: 14 }}>
             {hasEvaluacionEntrada ? (
               <ToneBox tone={evaluacionEntrada?.viableEntrada ? "green" : "red"}>
                 <strong>
@@ -967,7 +1302,7 @@ function handleSelectProperty() {
                     : "La entrada todavía no se ve viable para ti."}
                 </strong>
 
-                <div style={{ marginTop: 6 }}>
+                <div style={{ marginTop: 8 }}>
                   {evaluacionEntrada?.viableEntrada
                     ? faltanteEntrada === 0
                       ? "No necesitas completar una cuota mensual de entrada en esta etapa."
@@ -979,10 +1314,10 @@ function handleSelectProperty() {
               </ToneBox>
             ) : (
               <ToneBox tone="amber">
-                <strong>Entrada pendiente de análisis</strong>
-                <div style={{ marginTop: 6 }}>
-                  Todavía no tenemos suficiente información para calcular la entrada
-                  de esta propiedad.
+                <strong>Entrada pendiente de análisis.</strong>
+                <div style={{ marginTop: 8 }}>
+                  Todavía no tenemos suficiente información para calcular la
+                  entrada específica de esta propiedad.
                 </div>
               </ToneBox>
             )}
@@ -990,130 +1325,140 @@ function handleSelectProperty() {
         </InfoCard>
 
         <InfoCard
-          title="Ruta hipotecaria"
-          subtitle="Aquí ves si esta propiedad se alinea con una hipoteca hoy, una hipoteca futura o una recomendación general de tu perfil."
+          title="Entorno y ubicación"
+          subtitle="Señales rápidas para entender la vida diaria alrededor del proyecto."
+          icon={<MapPin size={24} />}
         >
-          <div style={{ display: "grid", gap: 10 }}>
-            {evaluacionHipotecaHoy ? (
-              <ToneBox tone={evaluacionHipotecaHoy?.viable ? "green" : "amber"}>
-                <strong>Hipoteca en escenario actual</strong>
+          {amenities.length ? (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                gap: 12,
+              }}
+            >
+              {amenities.map((item, index) => {
+                const text = String(item);
+                const lower = text.toLowerCase();
 
-                <div style={{ marginTop: 6 }}>
-                  {evaluacionHipotecaHoy?.razon || "No disponible"}
-                </div>
+                const Icon =
+                  lower.includes("aeropuerto") ? Plane :
+                  lower.includes("ruta") ? Route :
+                  lower.includes("verde") ? Trees :
+                  lower.includes("seguridad") ? ShieldCheck :
+                  CheckCircle2;
 
-                <div
-                  style={{
-                    marginTop: 8,
-                    fontSize: 12,
-                    opacity: 0.82,
-                    lineHeight: 1.45,
-                  }}
-                >
-                  Producto:{" "}
-                  <strong>
-                    {evaluacionHipotecaHoy?.productoSugerido || "—"}
-                  </strong>
-                  {" • "}Probabilidad:{" "}
-                  <strong>
-                    {formatProbability(evaluacionHipotecaHoy?.probabilidad)}
-                  </strong>
-                  {" • "}Score:{" "}
-                  <strong>{n(evaluacionHipotecaHoy?.score)}</strong>
-                </div>
-              </ToneBox>
-            ) : null}
+                return (
+                  <CheckTile key={`${text}-${index}`}>
+                    <Icon
+                      size={20}
+                      style={{ color: UI.green, flexShrink: 0 }}
+                    />
+                    {text}
+                  </CheckTile>
+                );
+              })}
+            </div>
+          ) : (
+            <ToneBox>
+              Aún no tenemos información detallada del entorno para esta
+              propiedad.
+            </ToneBox>
+          )}
+        </InfoCard>
 
-            {evaluacionHipotecaFutura ? (
-              <ToneBox tone={evaluacionHipotecaFutura?.viable ? "green" : "amber"}>
-                <strong>Hipoteca futura al momento de entrega</strong>
+        {galleryImages.length ? (
+          <InfoCard
+            title="Galería y distribución"
+            subtitle="Fotos, renders y plano para entender mejor cómo se vive el espacio."
+            icon={<ImageIcon size={24} />}
+          >
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1.35fr 0.65fr",
+                gap: 12,
+              }}
+            >
+              <div
+                style={{
+                  minHeight: 360,
+                  borderRadius: 26,
+                  overflow: "hidden",
+                  border: `1px solid ${UI.border}`,
+                  background: `url(${galleryImages[0]}) center/cover`,
+                }}
+              />
 
-                <div style={{ marginTop: 6 }}>{futureReasonText}</div>
+              <div style={{ display: "grid", gap: 12 }}>
+                {galleryImages.slice(1, 4).map((img, index) => (
+                  <div
+                    key={`${img}-${index}`}
+                    style={{
+                      minHeight: 112,
+                      borderRadius: 22,
+                      overflow: "hidden",
+                      border: `1px solid ${UI.border}`,
+                      background: `url(${img}) center/cover`,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          </InfoCard>
+        ) : null}
 
-                <div
-                  style={{
-                    marginTop: 8,
-                    fontSize: 12,
-                    opacity: 0.82,
-                    lineHeight: 1.45,
-                  }}
-                >
-                  Monto hipotecario proyectado:{" "}
-                  <strong>
-                    {formatMoney(evaluacionHipotecaFutura?.montoHipotecaProyectado)}
-                  </strong>
-                  {" • "}Producto:{" "}
-                  <strong>
-                    {evaluacionHipotecaFutura?.productoSugerido || "—"}
-                  </strong>
-                  {" • "}Probabilidad:{" "}
-                  <strong>
-                    {formatProbability(evaluacionHipotecaFutura?.probabilidad)}
-                  </strong>
-                  {" • "}Score:{" "}
-                  <strong>{n(evaluacionHipotecaFutura?.score)}</strong>
-                </div>
-              </ToneBox>
-            ) : null}
-
-            {!evaluacionHipotecaHoy && !evaluacionHipotecaFutura && bankSuggested ? (
-              <ToneBox tone="amber">
-                <strong>Mejor ruta estimada</strong>
-
-                <div style={{ marginTop: 6 }}>
-                  {bankSuggested.banco || "Hipoteca sugerida"}
-                </div>
-
-                <div
-                  style={{
-                    marginTop: 8,
-                    fontSize: 12,
-                    opacity: 0.82,
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {bankSuggested.tasaAnual != null
-                    ? `Tasa ${(Number(bankSuggested.tasaAnual) * 100).toFixed(2)}%`
-                    : "Tasa —"}
-                  {" • "}
-                  {bankSuggested.cuota != null
-                    ? `Cuota aprox. ${moneyUSD(bankSuggested.cuota)}`
-                    : "Cuota —"}
-                  {" • "}
-                  {bankSuggested.montoPrestamo != null
-                    ? `Monto aprox. ${moneyUSD(bankSuggested.montoPrestamo)}`
-                    : "Monto —"}
-                </div>
-              </ToneBox>
-            ) : null}
-
-            {!hasHipotecaData ? (
-              <ToneBox tone="amber">
-                <strong>Ruta hipotecaria pendiente</strong>
-                <div style={{ marginTop: 6 }}>
-                  Todavía no hay una ruta hipotecaria calculada para esta propiedad.
-                </div>
-              </ToneBox>
-            ) : null}
-
-            {productoElegido ? (
-              <ToneBox>
-                Tu producto sugerido general actual es{" "}
-                <strong>{String(productoElegido)}</strong>.
-              </ToneBox>
-            ) : null}
+        <InfoCard
+          title="Sobre el proyecto"
+          subtitle="Información base para decidir si vale la pena avanzar con esta unidad."
+          icon={<Building2 size={24} />}
+        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+              gap: 12,
+            }}
+          >
+            <StatCard label="Proyecto" value={projectName} />
+            <StatCard label="Tipo" value={propertyType} />
+            <StatCard label="Estado" value={estadoProyecto} />
+            <StatCard label="Promotor" value={developerName} />
           </div>
+
+          {amenities.length ? (
+            <div style={{ marginTop: 20 }}>
+              <div
+                style={{
+                  fontSize: 16,
+                  color: UI.textMuted,
+                  fontWeight: 950,
+                  marginBottom: 12,
+                }}
+              >
+                Amenidades
+              </div>
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {amenities.slice(0, 6).map((item, index) => (
+                  <Pill key={`${item}-${index}`}>{item}</Pill>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </InfoCard>
 
         <InfoCard
           title="Descripción"
-          subtitle="Resumen de la propiedad y de su encaje estimado dentro de tu escenario actual."
+          subtitle="Resumen de la propiedad."
+          icon={<Info size={24} />}
         >
           <div
             style={{
-              fontSize: 14,
+              fontSize: 18,
               color: UI.textDim,
-              lineHeight: 1.55,
+              lineHeight: 1.6,
+              maxWidth: 860,
             }}
           >
             {descripcionReal}
@@ -1122,14 +1467,16 @@ function handleSelectProperty() {
 
         <div
           style={{
-            marginTop: 22,
+            marginTop: 24,
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
             gap: 12,
           }}
         >
-          <PrimaryButton onClick={handleSelectProperty}>
-            Seleccionar esta propiedad
+          <PrimaryButton
+            onClick={() => handleSelectProperty("/financiamiento-propiedad")}
+          >
+            Guardar esta propiedad y continuar
           </PrimaryButton>
 
           <SecondaryButton onClick={() => navigate("/match")}>
