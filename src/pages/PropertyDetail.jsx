@@ -980,176 +980,177 @@ export default function PropertyDetail() {
   return (
     <HabitaShell maxWidth={980}>
       <div style={{ paddingBottom: 36 }}>
-        <div
+       <div
+  style={{
+    position: "relative",
+    height: 330,
+    width: "100%",
+    borderRadius: 32,
+    overflow: "hidden",
+    border: `1px solid ${UI.border}`,
+    boxShadow: UI.shadow,
+    background: mainImage
+      ? `linear-gradient(180deg, rgba(3,7,18,0.06), rgba(3,7,18,0.38)), url(${mainImage}) center/cover`
+      : "linear-gradient(135deg, rgba(37,211,166,0.18), rgba(255,255,255,0.06))",
+  }}
+>
+  <button
+    type="button"
+    onClick={() => navigate("/match")}
+    aria-label="Volver"
+    style={{
+      position: "absolute",
+      top: 18,
+      left: 18,
+      width: 50,
+      height: 50,
+      border: "1px solid rgba(255,255,255,0.18)",
+      background: "rgba(9,18,38,0.88)",
+      color: "white",
+      borderRadius: 999,
+      cursor: "pointer",
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 10,
+      backdropFilter: "blur(12px)",
+      WebkitBackdropFilter: "blur(12px)",
+      boxShadow: "0 10px 28px rgba(0,0,0,0.28)",
+    }}
+  >
+    <ArrowLeft size={21} />
+  </button>
+</div>
+
+<div
+  style={{
+    marginTop: -54,
+    position: "relative",
+    zIndex: 2,
+    padding: "0 22px",
+  }}
+>
+  <div
+    style={{
+      padding: 24,
+      borderRadius: 30,
+      background: UI.cardStrong,
+      border: `1px solid ${UI.border}`,
+      boxShadow: UI.shadow,
+      backdropFilter: "blur(16px)",
+      WebkitBackdropFilter: "blur(16px)",
+    }}
+  >
+    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+      <Pill tone={toneEstado}>{mainBadgeLabel}</Pill>
+
+      {estadoProyecto ? <Pill>{estadoProyecto}</Pill> : null}
+
+      {property.matchReason ? (
+        <Pill>{formatMatchReason(property.matchReason)}</Pill>
+      ) : null}
+    </div>
+
+    <div
+      style={{
+        marginTop: 18,
+        display: "grid",
+        gridTemplateColumns: "minmax(0,1fr) auto",
+        gap: 22,
+        alignItems: "end",
+      }}
+    >
+      <div>
+        <h1
           style={{
-            position: "relative",
-            minHeight: 360,
-            width: "100%",
-            borderRadius: 32,
-            overflow: "hidden",
-            border: `1px solid ${UI.border}`,
-            boxShadow: UI.shadow,
-            background: mainImage
-              ? `linear-gradient(180deg, rgba(3,7,18,0.08) 0%, rgba(3,7,18,0.28) 46%, rgba(8,15,32,0.94) 100%), url(${mainImage}) center/cover`
-              : "linear-gradient(135deg, rgba(37,211,166,0.18), rgba(255,255,255,0.06))",
+            margin: 0,
+            fontSize: 40,
+            lineHeight: 1.02,
+            fontWeight: 980,
+            letterSpacing: -1.4,
+            color: "rgba(248,250,252,0.98)",
+            maxWidth: 720,
           }}
         >
-          <button
-            type="button"
-            onClick={() => navigate("/match")}
-            aria-label="Volver"
-            style={{
-              position: "absolute",
-              top: 18,
-              left: 18,
-              width: 50,
-              height: 50,
-              border: "1px solid rgba(255,255,255,0.18)",
-              background: "rgba(9,18,38,0.88)",
-              color: "white",
-              borderRadius: 999,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 10,
-              backdropFilter: "blur(12px)",
-              WebkitBackdropFilter: "blur(12px)",
-              boxShadow: "0 10px 28px rgba(0,0,0,0.28)",
-            }}
-          >
-            <ArrowLeft size={21} />
-          </button>
+          {heroTitle}
+        </h1>
 
+        {heroLocation ? (
           <div
             style={{
-              position: "absolute",
-              left: 24,
-              right: 24,
-              bottom: 24,
-              padding: 24,
-              borderRadius: 28,
-              background: "rgba(8,15,32,0.91)",
-              border: `1px solid ${UI.border}`,
-              boxShadow: UI.shadow,
-              backdropFilter: "blur(16px)",
-              WebkitBackdropFilter: "blur(16px)",
+              marginTop: 14,
+              fontSize: 16,
+              color: "rgba(203,213,225,0.90)",
+              display: "flex",
+              alignItems: "center",
+              gap: 9,
             }}
           >
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <Pill tone={toneEstado}>{mainBadgeLabel}</Pill>
-
-              {estadoProyecto ? <Pill>{estadoProyecto}</Pill> : null}
-
-              {property.matchReason ? (
-                <Pill>{formatMatchReason(property.matchReason)}</Pill>
-              ) : null}
-            </div>
-
-            <div
-              style={{
-                marginTop: 18,
-                display: "grid",
-                gridTemplateColumns: "minmax(0,1fr) auto",
-                gap: 22,
-                alignItems: "end",
-              }}
-            >
-              <div>
-                <h1
-                  style={{
-                    margin: 0,
-                    fontSize: 40,
-                    lineHeight: 1.02,
-                    fontWeight: 980,
-                    letterSpacing: -1.4,
-                    color: "rgba(248,250,252,0.98)",
-                    maxWidth: 720,
-                  }}
-                >
-                  {heroTitle}
-                </h1>
-
-                {heroLocation ? (
-                  <div
-                    style={{
-                      marginTop: 14,
-                      fontSize: 16,
-                      color: "rgba(203,213,225,0.90)",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 9,
-                    }}
-                  >
-                    <MapPin size={17} />
-                    {heroLocation}
-                  </div>
-                ) : null}
-              </div>
-
-              <div style={{ textAlign: "right" }}>
-                <div
-                  style={{
-                    fontSize: 13,
-                    color: UI.textMuted,
-                    fontWeight: 900,
-                  }}
-                >
-                  Precio de referencia
-                </div>
-
-                <div
-                  style={{
-                    marginTop: 8,
-                    fontSize: 38,
-                    fontWeight: 980,
-                    letterSpacing: -1.2,
-                    lineHeight: 1,
-                    color: "rgba(248,250,252,0.98)",
-                  }}
-                >
-                  {formatMoney(precio)}
-                </div>
-              </div>
-            </div>
-
-            <FinancialDisclaimer />
-
-            <div
-              style={{
-                marginTop: 18,
-                display: "grid",
-                gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-                gap: 12,
-              }}
-            >
-              <StatCard
-                label="Área"
-                value={property.m2 != null ? `${property.m2} m²` : "—"}
-              />
-              <StatCard
-                label="Dormitorios"
-                value={
-                  property.dormitorios != null
-                    ? String(property.dormitorios)
-                    : "—"
-                }
-              />
-              <StatCard
-                label="Baños"
-                value={property.banos != null ? String(property.banos) : "—"}
-              />
-              <StatCard
-                label="Parqueaderos"
-                value={
-                  property.parqueaderos != null
-                    ? String(property.parqueaderos)
-                    : "—"
-                }
-              />
-            </div>
+            <MapPin size={17} />
+            {heroLocation}
           </div>
+        ) : null}
+      </div>
+
+      <div style={{ textAlign: "right" }}>
+        <div
+          style={{
+            fontSize: 13,
+            color: UI.textMuted,
+            fontWeight: 900,
+          }}
+        >
+          Precio de referencia
         </div>
+
+        <div
+          style={{
+            marginTop: 8,
+            fontSize: 38,
+            fontWeight: 980,
+            letterSpacing: -1.2,
+            lineHeight: 1,
+            color: "rgba(248,250,252,0.98)",
+          }}
+        >
+          {formatMoney(precio)}
+        </div>
+      </div>
+    </div>
+
+    <FinancialDisclaimer />
+
+    <div
+      style={{
+        marginTop: 18,
+        display: "grid",
+        gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+        gap: 12,
+      }}
+    >
+      <StatCard
+        label="Área"
+        value={property.m2 != null ? `${property.m2} m²` : "—"}
+      />
+      <StatCard
+        label="Dormitorios"
+        value={
+          property.dormitorios != null ? String(property.dormitorios) : "—"
+        }
+      />
+      <StatCard
+        label="Baños"
+        value={property.banos != null ? String(property.banos) : "—"}
+      />
+      <StatCard
+        label="Parqueaderos"
+        value={
+          property.parqueaderos != null ? String(property.parqueaderos) : "—"
+        }
+      />
+    </div>
+  </div>
+</div>
 
         <InfoCard
           title="Tu lectura HabitaLibre"
