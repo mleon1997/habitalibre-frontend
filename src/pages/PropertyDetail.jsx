@@ -265,6 +265,8 @@ function getPropertyTitle(property = {}) {
     property?.name ||
     property?.unidad ||
     property?.unitName ||
+    property?.proyecto ||
+    property?._normalizedProjectName ||
     "Propiedad"
   );
 }
@@ -356,6 +358,147 @@ function getMainImage(property) {
 
 function getGalleryImages(property) {
   return collectPropertyImages(property).slice(0, 4);
+}
+
+function getPropertyMapUrl(property = {}) {
+  return (
+    property?.googleMapsUrl ||
+    property?.googleMapUrl ||
+    property?.mapsUrl ||
+    property?.mapUrl ||
+    property?.ubicacionGoogleMaps ||
+    property?.urlGoogleMaps ||
+    property?.linkMaps ||
+    property?.linkGoogleMaps ||
+    property?.linkUbicacion ||
+    property?.urlMapa ||
+    property?.maps ||
+    property?.googleMaps ||
+    property?.raw?.googleMapsUrl ||
+    property?.raw?.googleMapUrl ||
+    property?.raw?.mapsUrl ||
+    property?.raw?.mapUrl ||
+    property?.raw?.ubicacionGoogleMaps ||
+    property?.raw?.urlGoogleMaps ||
+    property?.raw?.linkMaps ||
+    property?.raw?.linkGoogleMaps ||
+    property?.raw?.linkUbicacion ||
+    property?.raw?.urlMapa ||
+    ""
+  );
+}
+
+function getPropertyCoordinates(property = {}) {
+  const lat =
+    property?.lat ??
+    property?.latitude ??
+    property?.coordenadas?.lat ??
+    property?.location?.lat ??
+    property?.ubicacion?.lat ??
+    property?.raw?.lat ??
+    property?.raw?.latitude ??
+    property?.raw?.coordenadas?.lat ??
+    property?.raw?.location?.lat ??
+    null;
+
+  const lng =
+    property?.lng ??
+    property?.lon ??
+    property?.longitude ??
+    property?.coordenadas?.lng ??
+    property?.coordenadas?.lon ??
+    property?.location?.lng ??
+    property?.location?.lon ??
+    property?.ubicacion?.lng ??
+    property?.ubicacion?.lon ??
+    property?.raw?.lng ??
+    property?.raw?.lon ??
+    property?.raw?.longitude ??
+    property?.raw?.coordenadas?.lng ??
+    property?.raw?.location?.lng ??
+    null;
+
+  const latNumber = Number(lat);
+  const lngNumber = Number(lng);
+
+  if (!Number.isFinite(latNumber) || !Number.isFinite(lngNumber)) {
+    return null;
+  }
+
+  return {
+    lat: latNumber,
+    lng: lngNumber,
+  };
+}
+
+function getPropertyAddress(property = {}) {
+  return (
+    property?.direccion ||
+    property?.address ||
+    property?.ubicacionTexto ||
+    property?.locationText ||
+    property?.mapAddress ||
+    property?.referenciaUbicacion ||
+    property?.raw?.direccion ||
+    property?.raw?.address ||
+    property?.raw?.ubicacionTexto ||
+    property?.raw?.locationText ||
+    property?.raw?.mapAddress ||
+    ""
+  );
+}
+
+function extractCoordsFromGoogleMapsUrl(url = "") {
+  const text = String(url || "");
+
+  const atMatch = text.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+  if (atMatch) {
+    return {
+      lat: Number(atMatch[1]),
+      lng: Number(atMatch[2]),
+    };
+  }
+
+  const bangMatch = text.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+  if (bangMatch) {
+    return {
+      lat: Number(bangMatch[1]),
+      lng: Number(bangMatch[2]),
+    };
+  }
+
+  const queryMatch = text.match(/[?&]q=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+  if (queryMatch) {
+    return {
+      lat: Number(queryMatch[1]),
+      lng: Number(queryMatch[2]),
+    };
+  }
+
+  return null;
+}
+
+function getMapEmbedSrc(property = {}) {
+  const mapUrl = getPropertyMapUrl(property);
+  const coords =
+    getPropertyCoordinates(property) || extractCoordsFromGoogleMapsUrl(mapUrl);
+  const address = getPropertyAddress(property);
+
+  if (mapUrl && String(mapUrl).includes("/maps/embed")) {
+    return mapUrl;
+  }
+
+  if (coords) {
+    return `https://www.google.com/maps?q=${coords.lat},${coords.lng}&output=embed`;
+  }
+
+  if (address) {
+    return `https://www.google.com/maps?q=${encodeURIComponent(
+      address
+    )}&output=embed`;
+  }
+
+  return "";
 }
 
 function getAvailableEntry({ snapshot, journey, property }) {
@@ -761,6 +904,9 @@ export default function PropertyDetail() {
   const mainImage = getMainImage(property);
   const galleryImages = getGalleryImages(property);
   const amenities = getAmenities(property);
+  const mapUrl = getPropertyMapUrl(property);
+  const mapEmbedSrc = getMapEmbedSrc(property);
+  const propertyAddress = getPropertyAddress(property);
 
   const entradaDisponible = getAvailableEntry({
     snapshot,
@@ -940,6 +1086,9 @@ export default function PropertyDetail() {
       imagen: propertyImage,
       image: propertyImage,
 
+      googleMapsUrl: mapUrl || "",
+      direccion: propertyAddress || "",
+
       cuotaEstimada: cuotaReferencial,
 
       entradaMinima:
@@ -980,177 +1129,181 @@ export default function PropertyDetail() {
   return (
     <HabitaShell maxWidth={980}>
       <div style={{ paddingBottom: 36 }}>
-       <div
-  style={{
-    position: "relative",
-    height: 330,
-    width: "100%",
-    borderRadius: 32,
-    overflow: "hidden",
-    border: `1px solid ${UI.border}`,
-    boxShadow: UI.shadow,
-    background: mainImage
-      ? `linear-gradient(180deg, rgba(3,7,18,0.06), rgba(3,7,18,0.38)), url(${mainImage}) center/cover`
-      : "linear-gradient(135deg, rgba(37,211,166,0.18), rgba(255,255,255,0.06))",
-  }}
->
-  <button
-    type="button"
-    onClick={() => navigate("/match")}
-    aria-label="Volver"
-    style={{
-      position: "absolute",
-      top: 18,
-      left: 18,
-      width: 50,
-      height: 50,
-      border: "1px solid rgba(255,255,255,0.18)",
-      background: "rgba(9,18,38,0.88)",
-      color: "white",
-      borderRadius: 999,
-      cursor: "pointer",
-      display: "inline-flex",
-      alignItems: "center",
-      justifyContent: "center",
-      zIndex: 10,
-      backdropFilter: "blur(12px)",
-      WebkitBackdropFilter: "blur(12px)",
-      boxShadow: "0 10px 28px rgba(0,0,0,0.28)",
-    }}
-  >
-    <ArrowLeft size={21} />
-  </button>
-</div>
-
-<div
-  style={{
-    marginTop: -54,
-    position: "relative",
-    zIndex: 2,
-    padding: "0 22px",
-  }}
->
-  <div
-    style={{
-      padding: 24,
-      borderRadius: 30,
-      background: UI.cardStrong,
-      border: `1px solid ${UI.border}`,
-      boxShadow: UI.shadow,
-      backdropFilter: "blur(16px)",
-      WebkitBackdropFilter: "blur(16px)",
-    }}
-  >
-    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-      <Pill tone={toneEstado}>{mainBadgeLabel}</Pill>
-
-      {estadoProyecto ? <Pill>{estadoProyecto}</Pill> : null}
-
-      {property.matchReason ? (
-        <Pill>{formatMatchReason(property.matchReason)}</Pill>
-      ) : null}
-    </div>
-
-    <div
-      style={{
-        marginTop: 18,
-        display: "grid",
-        gridTemplateColumns: "minmax(0,1fr) auto",
-        gap: 22,
-        alignItems: "end",
-      }}
-    >
-      <div>
-        <h1
+        <div
           style={{
-            margin: 0,
-            fontSize: 40,
-            lineHeight: 1.02,
-            fontWeight: 980,
-            letterSpacing: -1.4,
-            color: "rgba(248,250,252,0.98)",
-            maxWidth: 720,
+            position: "relative",
+            height: 330,
+            width: "100%",
+            borderRadius: 32,
+            overflow: "hidden",
+            border: `1px solid ${UI.border}`,
+            boxShadow: UI.shadow,
+            background: mainImage
+              ? `linear-gradient(180deg, rgba(3,7,18,0.06), rgba(3,7,18,0.38)), url(${mainImage}) center/cover`
+              : "linear-gradient(135deg, rgba(37,211,166,0.18), rgba(255,255,255,0.06))",
           }}
         >
-          {heroTitle}
-        </h1>
-
-        {heroLocation ? (
-          <div
+          <button
+            type="button"
+            onClick={() => navigate("/match")}
+            aria-label="Volver"
             style={{
-              marginTop: 14,
-              fontSize: 16,
-              color: "rgba(203,213,225,0.90)",
-              display: "flex",
+              position: "absolute",
+              top: 18,
+              left: 18,
+              width: 50,
+              height: 50,
+              border: "1px solid rgba(255,255,255,0.18)",
+              background: "rgba(9,18,38,0.88)",
+              color: "white",
+              borderRadius: 999,
+              cursor: "pointer",
+              display: "inline-flex",
               alignItems: "center",
-              gap: 9,
+              justifyContent: "center",
+              zIndex: 10,
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              boxShadow: "0 10px 28px rgba(0,0,0,0.28)",
             }}
           >
-            <MapPin size={17} />
-            {heroLocation}
+            <ArrowLeft size={21} />
+          </button>
+        </div>
+
+        <div
+          style={{
+            marginTop: -54,
+            position: "relative",
+            zIndex: 2,
+            padding: "0 22px",
+          }}
+        >
+          <div
+            style={{
+              padding: 24,
+              borderRadius: 30,
+              background: UI.cardStrong,
+              border: `1px solid ${UI.border}`,
+              boxShadow: UI.shadow,
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+            }}
+          >
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <Pill tone={toneEstado}>{mainBadgeLabel}</Pill>
+
+              {estadoProyecto ? <Pill>{estadoProyecto}</Pill> : null}
+
+              {property.matchReason ? (
+                <Pill>{formatMatchReason(property.matchReason)}</Pill>
+              ) : null}
+            </div>
+
+            <div
+              style={{
+                marginTop: 18,
+                display: "grid",
+                gridTemplateColumns: "minmax(0,1fr) auto",
+                gap: 22,
+                alignItems: "end",
+              }}
+            >
+              <div>
+                <h1
+                  style={{
+                    margin: 0,
+                    fontSize: 40,
+                    lineHeight: 1.02,
+                    fontWeight: 980,
+                    letterSpacing: -1.4,
+                    color: "rgba(248,250,252,0.98)",
+                    maxWidth: 720,
+                  }}
+                >
+                  {heroTitle}
+                </h1>
+
+                {heroLocation ? (
+                  <div
+                    style={{
+                      marginTop: 14,
+                      fontSize: 16,
+                      color: "rgba(203,213,225,0.90)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 9,
+                    }}
+                  >
+                    <MapPin size={17} />
+                    {heroLocation}
+                  </div>
+                ) : null}
+              </div>
+
+              <div style={{ textAlign: "right" }}>
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: UI.textMuted,
+                    fontWeight: 900,
+                  }}
+                >
+                  Precio de referencia
+                </div>
+
+                <div
+                  style={{
+                    marginTop: 8,
+                    fontSize: 38,
+                    fontWeight: 980,
+                    letterSpacing: -1.2,
+                    lineHeight: 1,
+                    color: "rgba(248,250,252,0.98)",
+                  }}
+                >
+                  {formatMoney(precio)}
+                </div>
+              </div>
+            </div>
+
+            <FinancialDisclaimer />
+
+            <div
+              style={{
+                marginTop: 18,
+                display: "grid",
+                gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                gap: 12,
+              }}
+            >
+              <StatCard
+                label="Área"
+                value={property.m2 != null ? `${property.m2} m²` : "—"}
+              />
+              <StatCard
+                label="Dormitorios"
+                value={
+                  property.dormitorios != null
+                    ? String(property.dormitorios)
+                    : "—"
+                }
+              />
+              <StatCard
+                label="Baños"
+                value={property.banos != null ? String(property.banos) : "—"}
+              />
+              <StatCard
+                label="Parqueaderos"
+                value={
+                  property.parqueaderos != null
+                    ? String(property.parqueaderos)
+                    : "—"
+                }
+              />
+            </div>
           </div>
-        ) : null}
-      </div>
-
-      <div style={{ textAlign: "right" }}>
-        <div
-          style={{
-            fontSize: 13,
-            color: UI.textMuted,
-            fontWeight: 900,
-          }}
-        >
-          Precio de referencia
         </div>
-
-        <div
-          style={{
-            marginTop: 8,
-            fontSize: 38,
-            fontWeight: 980,
-            letterSpacing: -1.2,
-            lineHeight: 1,
-            color: "rgba(248,250,252,0.98)",
-          }}
-        >
-          {formatMoney(precio)}
-        </div>
-      </div>
-    </div>
-
-    <FinancialDisclaimer />
-
-    <div
-      style={{
-        marginTop: 18,
-        display: "grid",
-        gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-        gap: 12,
-      }}
-    >
-      <StatCard
-        label="Área"
-        value={property.m2 != null ? `${property.m2} m²` : "—"}
-      />
-      <StatCard
-        label="Dormitorios"
-        value={
-          property.dormitorios != null ? String(property.dormitorios) : "—"
-        }
-      />
-      <StatCard
-        label="Baños"
-        value={property.banos != null ? String(property.banos) : "—"}
-      />
-      <StatCard
-        label="Parqueaderos"
-        value={
-          property.parqueaderos != null ? String(property.parqueaderos) : "—"
-        }
-      />
-    </div>
-  </div>
-</div>
 
         <InfoCard
           title="Tu lectura HabitaLibre"
@@ -1349,6 +1502,72 @@ export default function PropertyDetail() {
           </InfoCard>
         ) : null}
 
+        {mapEmbedSrc || mapUrl ? (
+          <InfoCard
+            title="Ubicación en mapa"
+            subtitle="Referencia cargada para ubicar mejor la propiedad."
+            icon={<MapPin size={22} />}
+          >
+            {mapEmbedSrc ? (
+              <div
+                style={{
+                  borderRadius: 24,
+                  overflow: "hidden",
+                  border: `1px solid ${UI.border}`,
+                  background: UI.cardSoft,
+                }}
+              >
+                <iframe
+                  title={`Mapa de ${heroTitle}`}
+                  src={mapEmbedSrc}
+                  width="100%"
+                  height="360"
+                  style={{
+                    border: 0,
+                    display: "block",
+                    filter: "grayscale(0.05) contrast(0.95)",
+                  }}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  allowFullScreen
+                />
+              </div>
+            ) : null}
+
+            {propertyAddress ? (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: 14,
+                  borderRadius: 18,
+                  background: "rgba(255,255,255,0.045)",
+                  border: `1px solid ${UI.borderSoft}`,
+                  color: UI.textDim,
+                  fontSize: 14,
+                  lineHeight: 1.45,
+                }}
+              >
+                <strong style={{ color: "rgba(226,232,240,0.95)" }}>
+                  Dirección / referencia:
+                </strong>{" "}
+                {propertyAddress}
+              </div>
+            ) : null}
+
+            {mapUrl ? (
+              <div style={{ marginTop: 12 }}>
+                <SecondaryButton
+                  onClick={() => {
+                    window.open(mapUrl, "_blank", "noopener,noreferrer");
+                  }}
+                >
+                  Abrir en Google Maps
+                </SecondaryButton>
+              </div>
+            ) : null}
+          </InfoCard>
+        ) : null}
+
         {galleryImages.length ? (
           <InfoCard
             title="Galería y distribución"
@@ -1358,7 +1577,8 @@ export default function PropertyDetail() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: galleryImages.length > 1 ? "1.35fr 0.65fr" : "1fr",
+                gridTemplateColumns:
+                  galleryImages.length > 1 ? "1.35fr 0.65fr" : "1fr",
                 gap: 12,
               }}
             >
