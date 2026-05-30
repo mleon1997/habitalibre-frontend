@@ -4,7 +4,6 @@ import HabitaShell from "../components/HabitaShell.jsx";
 import {
   Building2,
   Landmark,
-  MapPin,
   SlidersHorizontal,
   Target,
 } from "lucide-react";
@@ -916,7 +915,7 @@ const UI = {
 
 function ScreenWrap({ children }) {
   return (
-    <HabitaShell maxWidth={980}>
+    <HabitaShell maxWidth={1280}>
       <div
         style={{
           paddingBottom: 24,
@@ -1761,7 +1760,6 @@ function FilterCard({
 }
 
 
-
 function MarketplaceResultsPane({
   children,
   total = 0,
@@ -1783,82 +1781,127 @@ function MarketplaceResultsPane({
 
   return (
     <section
+      className="hl-results-shell"
       style={{
         marginTop: 18,
-        padding: 18,
-        borderRadius: 28,
-        background:
-          "linear-gradient(180deg, rgba(15,23,42,0.94), rgba(7,16,36,0.78))",
-        border: `1px solid ${UI.border}`,
-        boxShadow: "0 18px 60px rgba(0,0,0,0.28)",
       }}
     >
-      <div
-        style={{
-          position: "sticky",
-          top: 12,
-          zIndex: 20,
-          padding: 14,
-          borderRadius: 24,
-          background: "rgba(7,16,36,0.94)",
-          border: `1px solid ${UI.borderSoft}`,
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
-          boxShadow: "0 14px 40px rgba(0,0,0,0.30)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 14,
-            alignItems: "flex-start",
-            flexWrap: "wrap",
-          }}
-        >
-          <div style={{ minWidth: 0 }}>
-            <div
-              style={{
-                fontSize: 12,
-                color: "rgba(143,227,212,0.98)",
-                fontWeight: 950,
-                marginBottom: 6,
-              }}
-            >
-              Marketplace HabitaLibre
-            </div>
+      <style>
+        {`
+          .hl-results-shell {
+            width: 100%;
+          }
 
-            <div
-              style={{
-                fontSize: 21,
-                lineHeight: 1.1,
-                fontWeight: 980,
-                letterSpacing: -0.5,
-                color: "rgba(226,232,240,0.98)",
-              }}
-            >
-              {title}
-            </div>
+          .hl-results-layout {
+            display: grid;
+            grid-template-columns: 320px minmax(0, 1fr);
+            gap: 18px;
+            align-items: start;
+          }
 
-            <div
-              style={{
-                marginTop: 6,
-                fontSize: 13,
-                lineHeight: 1.4,
-                color: "rgba(148,163,184,0.95)",
-                maxWidth: 620,
-              }}
-            >
-              {subtitle}
-            </div>
+          .hl-results-rail {
+            position: sticky;
+            top: 14px;
+            z-index: 20;
+            padding: 16px;
+            border-radius: 28px;
+            background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(7,16,36,0.86));
+            border: 1px solid rgba(255,255,255,0.10);
+            box-shadow: 0 18px 60px rgba(0,0,0,0.28);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+          }
+
+          .hl-results-list {
+            min-width: 0;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+            align-items: start;
+          }
+
+          .hl-result-alert {
+            grid-column: 1 / -1;
+          }
+
+          .hl-results-list > div {
+            min-width: 0;
+          }
+
+          @media (max-width: 1100px) {
+            .hl-results-layout {
+              grid-template-columns: 1fr;
+            }
+
+            .hl-results-rail {
+              position: sticky;
+              top: 10px;
+            }
+
+            .hl-results-list {
+              grid-template-columns: 1fr;
+            }
+          }
+
+          @media (max-width: 720px) {
+            .hl-results-shell {
+              margin-top: 16px;
+            }
+
+            .hl-results-rail {
+              padding: 14px;
+              border-radius: 24px;
+            }
+
+            .hl-results-list {
+              gap: 16px;
+            }
+          }
+        `}
+      </style>
+
+      <div className="hl-results-layout">
+        <aside className="hl-results-rail">
+          <div
+            style={{
+              fontSize: 12,
+              color: "rgba(143,227,212,0.98)",
+              fontWeight: 950,
+              marginBottom: 6,
+            }}
+          >
+            Marketplace HabitaLibre
           </div>
 
           <div
             style={{
+              fontSize: 22,
+              lineHeight: 1.08,
+              fontWeight: 980,
+              letterSpacing: -0.5,
+              color: "rgba(226,232,240,0.98)",
+            }}
+          >
+            {title}
+          </div>
+
+          <div
+            style={{
+              marginTop: 8,
+              fontSize: 13,
+              lineHeight: 1.42,
+              color: "rgba(148,163,184,0.95)",
+            }}
+          >
+            {subtitle}
+          </div>
+
+          <div
+            style={{
+              marginTop: 14,
               display: "flex",
               gap: 8,
               flexWrap: "wrap",
-              justifyContent: "flex-end",
             }}
           >
             <Pill tone="green">
@@ -1869,19 +1912,11 @@ function MarketplaceResultsPane({
 
             <Pill>{modeLabel}</Pill>
           </div>
-        </div>
 
-        <div style={{ marginTop: 14 }}>{filters}</div>
-      </div>
+          <div style={{ marginTop: 14 }}>{filters}</div>
+        </aside>
 
-      <div
-        style={{
-          marginTop: 18,
-          display: "grid",
-          gap: 18,
-        }}
-      >
-        {children}
+        <div className="hl-results-list">{children}</div>
       </div>
     </section>
   );
@@ -2905,10 +2940,11 @@ const normalizedProperty = {
                 />
               }
             >
-              {recommendationType === "future_route" ? (
-                <div
-                  style={{
-                    padding: 16,
+{recommendationType === "future_route" ? (
+  <div
+    className="hl-result-alert"
+    style={{
+      padding: 16,
                     borderRadius: 22,
                     background: UI.greenBg,
                     border: `1px solid ${UI.greenBorder}`,
@@ -2941,10 +2977,11 @@ const normalizedProperty = {
                 </div>
               ) : null}
 
-              {recommendationType === "inventory_fallback" ? (
-                <div
-                  style={{
-                    padding: 16,
+{recommendationType === "inventory_fallback" ? (
+  <div
+    className="hl-result-alert"
+    style={{
+      padding: 16,
                     borderRadius: 22,
                     background: UI.amberBg,
                     border: `1px solid ${UI.amberBorder}`,
