@@ -10,6 +10,7 @@ import { moneyUSD } from "../lib/money.js";
 import mockProperties from "../data/mockProperties.js";
 import { resolveHousingRecommendation } from "../lib/recommendationResolver.js";
 import { getCustomer } from "../lib/customerSession.js";
+import HabitaLoader from "../components/HabitaLoader.jsx";
 
 const LS_SNAPSHOT = "hl_mobile_last_snapshot_v1";
 const LS_JOURNEY = "hl_mobile_journey_v1";
@@ -2510,6 +2511,15 @@ const [zona, setZona] = useState("Quito");
 const [propertyMode, setPropertyMode] = useState("strict");
 const [visiblePropertyCount, setVisiblePropertyCount] = useState(12);
 
+const [preparingMatch, setPreparingMatch] = useState(true);
+
+useEffect(() => {
+  const t = setTimeout(() => {
+    setPreparingMatch(false);
+  }, 750);
+
+  return () => clearTimeout(t);
+}, []);
 
 function handleOpenMortgageDetail(route = mortgageDetailRoute) {
   const selectedRoute = buildMortgageRoutePayload(
@@ -3516,7 +3526,26 @@ const normalizedProperty = {
 ) : (
   <SegmentedControl value={tab} onChange={setTab} />
 )}
-          {tab === "props" ? (
+
+{tab === "props" && preparingMatch ? (
+  <div style={{ marginTop: 18 }}>
+    <HabitaLoader
+      variant="match"
+      title={
+        selectedPropertyId
+          ? "Buscando opciones alrededor de tu propiedad base…"
+          : "Ordenando tus mejores opciones…"
+      }
+      subtitle={
+        selectedPropertyId
+          ? "Comparamos alternativas cercanas para que tomes una mejor decisión."
+          : "Estamos comparando precio, entrada y ruta estimada."
+      }
+    />
+  </div>
+) : null}
+
+{tab === "props" && !preparingMatch ? (
             <MarketplaceResultsPane
               total={orderedProps.length}
               zona={zona}
