@@ -1663,10 +1663,10 @@ function FilterCard({
 
   return (
     <div
-      style={{
-        marginTop: 18,
-        padding: 14,
-        borderRadius: 22,
+     style={{
+  marginTop: 0,
+  padding: 14,
+  borderRadius: 22,
         background: "rgba(255,255,255,0.045)",
         border: `1px solid ${UI.borderSoft}`,
         boxShadow: "none",
@@ -1760,25 +1760,26 @@ function FilterCard({
   );
 }
 
-function PropertyResultsSection({
+
+
+function MarketplaceResultsPane({
   children,
   total = 0,
   zona,
   propertyMode,
   selectedPropertyId,
+  filters,
 }) {
   const title = selectedPropertyId
-    ? "Viviendas recomendadas alrededor de tu propiedad base"
+    ? "Viviendas alrededor de tu propiedad base"
     : "Viviendas recomendadas para ti";
 
   const subtitle = selectedPropertyId
-    ? "Estas opciones se muestran tomando como referencia la propiedad que ya elegiste."
+    ? "Opciones comparables tomando como referencia la propiedad que elegiste."
     : "Opciones ordenadas según tu capacidad, entrada y ruta estimada.";
 
   const modeLabel =
-    propertyMode === "strict"
-      ? "Mejores opciones"
-      : "Alternativas ampliadas";
+    propertyMode === "strict" ? "Mejores opciones" : "Alternativas ampliadas";
 
   return (
     <section
@@ -1786,145 +1787,103 @@ function PropertyResultsSection({
         marginTop: 18,
         padding: 18,
         borderRadius: 28,
-  background:
-  "linear-gradient(180deg, rgba(15,23,42,0.92), rgba(7,16,36,0.74))",
+        background:
+          "linear-gradient(180deg, rgba(15,23,42,0.94), rgba(7,16,36,0.78))",
         border: `1px solid ${UI.border}`,
-        boxShadow: UI.shadowSoft,
+        boxShadow: "0 18px 60px rgba(0,0,0,0.28)",
       }}
     >
       <div
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: 14,
-          flexWrap: "wrap",
+          position: "sticky",
+          top: 12,
+          zIndex: 20,
+          padding: 14,
+          borderRadius: 24,
+          background: "rgba(7,16,36,0.94)",
+          border: `1px solid ${UI.borderSoft}`,
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+          boxShadow: "0 14px 40px rgba(0,0,0,0.30)",
         }}
       >
-        <div style={{ minWidth: 0 }}>
-          <div
-            style={{
-              fontSize: 12,
-              color: "rgba(143,227,212,0.98)",
-              fontWeight: 950,
-              marginBottom: 7,
-            }}
-          >
-            Tus opciones
-          </div>
-
-          <h2
-            style={{
-              margin: 0,
-              fontSize: 22,
-              lineHeight: 1.1,
-              letterSpacing: -0.5,
-              fontWeight: 980,
-              color: "rgba(226,232,240,0.98)",
-            }}
-          >
-            {title}
-          </h2>
-
-          <div
-            style={{
-              marginTop: 8,
-              fontSize: 13.5,
-              lineHeight: 1.45,
-              color: "rgba(148,163,184,0.95)",
-              maxWidth: 620,
-            }}
-          >
-            {subtitle}
-          </div>
-        </div>
-
         <div
           style={{
             display: "flex",
-            gap: 8,
+            justifyContent: "space-between",
+            gap: 14,
+            alignItems: "flex-start",
             flexWrap: "wrap",
-            justifyContent: "flex-end",
           }}
         >
-          <Pill tone="green">
-            {total === 1 ? "1 vivienda" : `${total} viviendas`}
-          </Pill>
+          <div style={{ minWidth: 0 }}>
+            <div
+              style={{
+                fontSize: 12,
+                color: "rgba(143,227,212,0.98)",
+                fontWeight: 950,
+                marginBottom: 6,
+              }}
+            >
+              Marketplace HabitaLibre
+            </div>
 
-          <Pill>{zona}</Pill>
+            <div
+              style={{
+                fontSize: 21,
+                lineHeight: 1.1,
+                fontWeight: 980,
+                letterSpacing: -0.5,
+                color: "rgba(226,232,240,0.98)",
+              }}
+            >
+              {title}
+            </div>
 
-          <Pill>{modeLabel}</Pill>
+            <div
+              style={{
+                marginTop: 6,
+                fontSize: 13,
+                lineHeight: 1.4,
+                color: "rgba(148,163,184,0.95)",
+                maxWidth: 620,
+              }}
+            >
+              {subtitle}
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              flexWrap: "wrap",
+              justifyContent: "flex-end",
+            }}
+          >
+            <Pill tone="green">
+              {total === 1 ? "1 vivienda" : `${total} viviendas`}
+            </Pill>
+
+            <Pill>{zona}</Pill>
+
+            <Pill>{modeLabel}</Pill>
+          </div>
         </div>
+
+        <div style={{ marginTop: 14 }}>{filters}</div>
       </div>
 
       <div
         style={{
-          marginTop: 16,
+          marginTop: 18,
           display: "grid",
-          gap: 16,
+          gap: 18,
         }}
       >
         {children}
       </div>
     </section>
-  );
-}
-
-function PropertyResultItem({ children, index, isSelected }) {
-  return (
-    <article
-      style={{
-        padding: 14,
-        borderRadius: 26,
-        background: isSelected
-          ? "linear-gradient(180deg, rgba(37,211,166,0.10), rgba(255,255,255,0.04))"
-          : "rgba(7,16,36,0.58)",
-        border: isSelected
-          ? `1px solid ${UI.greenBorder}`
-          : `1px solid ${UI.borderSoft}`,
-        boxShadow: "0 16px 44px rgba(0,0,0,0.20)",
-      }}
-    >
-      <div
-        style={{
-          marginBottom: 12,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 10,
-          flexWrap: "wrap",
-        }}
-      >
-        <div>
-          <div
-            style={{
-              fontSize: 11,
-              color: "rgba(143,227,212,0.95)",
-              fontWeight: 950,
-              textTransform: "uppercase",
-              letterSpacing: 0.4,
-            }}
-          >
-            Opción {index + 1}
-          </div>
-
-          <div
-            style={{
-              marginTop: 3,
-              fontSize: 13,
-              color: "rgba(148,163,184,0.95)",
-              fontWeight: 800,
-            }}
-          >
-            Vivienda dentro de tu listado recomendado
-          </div>
-        </div>
-
-        {isSelected ? <Pill tone="green">Propiedad elegida</Pill> : null}
-      </div>
-
-      {children}
-    </article>
   );
 }
 
@@ -2930,21 +2889,25 @@ const normalizedProperty = {
 ) : (
   <SegmentedControl value={tab} onChange={setTab} />
 )}
-
           {tab === "props" ? (
-            <>
-              <FilterCard
-                recommendationType={recommendationType}
-                zona={zona}
-                setZona={setZona}
-                propertyMode={propertyMode}
-                setPropertyMode={setPropertyMode}
-              />
-
+            <MarketplaceResultsPane
+              total={orderedProps.length}
+              zona={zona}
+              propertyMode={propertyMode}
+              selectedPropertyId={selectedPropertyId}
+              filters={
+                <FilterCard
+                  recommendationType={recommendationType}
+                  zona={zona}
+                  setZona={setZona}
+                  propertyMode={propertyMode}
+                  setPropertyMode={setPropertyMode}
+                />
+              }
+            >
               {recommendationType === "future_route" ? (
                 <div
                   style={{
-                    marginTop: 14,
                     padding: 16,
                     borderRadius: 22,
                     background: UI.greenBg,
@@ -2955,11 +2918,13 @@ const normalizedProperty = {
                   <div style={{ fontSize: 12, opacity: 0.85, fontWeight: 900 }}>
                     Ruta futura viable
                   </div>
+
                   <div style={{ marginTop: 8, fontWeight: 900, fontSize: 16 }}>
                     {goalValue != null
                       ? `Tu meta de ${moneyUSD(goalValue)} sí podría ser viable`
                       : "Sí existe una ruta futura viable para ti"}
                   </div>
+
                   <div
                     style={{
                       marginTop: 8,
@@ -2979,7 +2944,6 @@ const normalizedProperty = {
               {recommendationType === "inventory_fallback" ? (
                 <div
                   style={{
-                    marginTop: 14,
                     padding: 16,
                     borderRadius: 22,
                     background: UI.amberBg,
@@ -2990,9 +2954,11 @@ const normalizedProperty = {
                   <div style={{ fontSize: 12, opacity: 0.85, fontWeight: 900 }}>
                     Alternativa cercana
                   </div>
+
                   <div style={{ marginTop: 8, fontWeight: 900, fontSize: 16 }}>
                     Hoy no vemos una hipoteca ideal, pero sí una propiedad cercana
                   </div>
+
                   <div
                     style={{
                       marginTop: 8,
@@ -3002,205 +2968,199 @@ const normalizedProperty = {
                     }}
                   >
                     {goalValue != null
-                      ? `Tu meta original sigue siendo ${moneyUSD(goalValue)}, pero hoy vemos mejores opciones concretas cercanas.`
+                      ? `Tu meta original sigue siendo ${moneyUSD(
+                          goalValue
+                        )}, pero hoy vemos mejores opciones concretas cercanas.`
                       : "Hoy no vemos una ruta sólida, pero sí una propiedad del marketplace relativamente cercana a tu escenario actual."}
                   </div>
                 </div>
               ) : null}
-<PropertyResultsSection
-  total={orderedProps.length}
-  zona={zona}
-  propertyMode={propertyMode}
-  selectedPropertyId={selectedPropertyId}
->
-  {orderedProps.length ? (
-    orderedProps.map((p, idx) => {
-                    const propertyId =
-                      p.id || p._id || p._normalizedId || `prop-${idx}`;
 
-                    const propertyPrice =
-                      p.precio ?? p.price ?? p._normalizedPrice ?? null;
+              {orderedProps.length ? (
+                orderedProps.map((p, idx) => {
+                  const propertyId =
+                    p.id || p._id || p._normalizedId || `prop-${idx}`;
 
-                    const isSelected =
-                      !!selectedPropertyId && propertyId === selectedPropertyId;
+                  const propertyPrice =
+                    p.precio ?? p.price ?? p._normalizedPrice ?? null;
 
-                    const isClosestFallback =
-                      recommendationType === "inventory_fallback" &&
-                      inventoryFallbackProperty &&
-                      propertyId ===
-                        (inventoryFallbackProperty.id ||
-                          inventoryFallbackProperty._id ||
-                          inventoryFallbackProperty._normalizedId);
+                  const isSelected =
+                    !!selectedPropertyId && propertyId === selectedPropertyId;
 
-                    const selectedStatusMeta = getSelectedPropertyStatusMeta(
-                      isSelected ? selectedPropertyStatus : null,
-                      isSelected
-                    );
+                  const isClosestFallback =
+                    recommendationType === "inventory_fallback" &&
+                    inventoryFallbackProperty &&
+                    propertyId ===
+                      (inventoryFallbackProperty.id ||
+                        inventoryFallbackProperty._id ||
+                        inventoryFallbackProperty._normalizedId);
 
-                      return (
-  <PropertyResultItem
-    key={propertyId}
-    index={idx}
-    isSelected={isSelected}
-  >
-                        <PropertyCard
-                          property={{
-                            ...p,
-                            id: propertyId,
-                            precio: propertyPrice,
-                            zona:
-                              p.zona ??
-                              p.ciudad ??
-                              p.city ??
-                              p._normalizedCity ??
-                              null,
-                            evaluacionHipoteca:
-                              p.evaluacionHipoteca ??
-                              p.evaluacionHipotecaHoy ??
-                              null,
-                            evaluacionHipotecaHoy:
-                              p.evaluacionHipotecaHoy ??
-                              p.evaluacionHipoteca ??
-                              null,
-                            evaluacionHipotecaFutura:
-                              p.evaluacionHipotecaFutura ?? null,
-                            evaluacionEntrada: p.evaluacionEntrada ?? null,
-                          }}
-                          onClick={() => navigate(`/property/${propertyId}`)}
-                        />
+                  const selectedStatusMeta = getSelectedPropertyStatusMeta(
+                    isSelected ? selectedPropertyStatus : null,
+                    isSelected
+                  );
 
-                        <div
-                          style={{
-                            marginTop: 8,
-                            display: "flex",
-                            gap: 8,
-                            flexWrap: "wrap",
-                          }}
-                        >
-                          {isSelected ? (
-                            <>
-                              {selectedStatusMeta.chip ? (
-                                <Pill tone={selectedStatusMeta.chipTone}>
-                                  {selectedStatusMeta.chip}
+                  return (
+                    <div key={propertyId}>
+                      <PropertyCard
+                        property={{
+                          ...p,
+                          id: propertyId,
+                          precio: propertyPrice,
+                          zona:
+                            p.zona ??
+                            p.ciudad ??
+                            p.city ??
+                            p._normalizedCity ??
+                            null,
+                          evaluacionHipoteca:
+                            p.evaluacionHipoteca ??
+                            p.evaluacionHipotecaHoy ??
+                            null,
+                          evaluacionHipotecaHoy:
+                            p.evaluacionHipotecaHoy ??
+                            p.evaluacionHipoteca ??
+                            null,
+                          evaluacionHipotecaFutura:
+                            p.evaluacionHipotecaFutura ?? null,
+                          evaluacionEntrada: p.evaluacionEntrada ?? null,
+                        }}
+                        onClick={() => navigate(`/property/${propertyId}`)}
+                      />
+
+                      <div
+                        style={{
+                          marginTop: 8,
+                          display: "flex",
+                          gap: 8,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        {isSelected ? (
+                          <>
+                            {selectedStatusMeta.chip ? (
+                              <Pill tone={selectedStatusMeta.chipTone}>
+                                {selectedStatusMeta.chip}
+                              </Pill>
+                            ) : null}
+
+                            {selectedStatusMeta.secondaryChip ? (
+                              <Pill tone={selectedStatusMeta.secondaryTone}>
+                                {selectedStatusMeta.secondaryChip}
+                              </Pill>
+                            ) : null}
+                          </>
+                        ) : null}
+
+                        {isClosestFallback ? (
+                          <>
+                            <Pill tone="amber">
+                              Alternativa cercana principal
+                            </Pill>
+
+                            {goalValue != null ? (
+                              <Pill>
+                                <span
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                  }}
+                                >
+                                  <Target size={12} />
+                                  Meta {moneyUSD(goalValue)}
+                                </span>
+                              </Pill>
+                            ) : null}
+                          </>
+                        ) : null}
+
+                        {Array.isArray(p.matchedProducts) &&
+                        p.matchedProducts.length
+                          ? [...new Set(p.matchedProducts)]
+                              .slice(0, 2)
+                              .map((prodId, chipIdx) => (
+                                <Pill
+                                  key={`${propertyId}-${prodId}-${chipIdx}`}
+                                  tone="green"
+                                >
+                                  Compatible con{" "}
+                                  {getPropertyProgramLabel(prodId)}
                                 </Pill>
-                              ) : null}
+                              ))
+                          : null}
+                      </div>
 
-                              {selectedStatusMeta.secondaryChip ? (
-                                <Pill tone={selectedStatusMeta.secondaryTone}>
-                                  {selectedStatusMeta.secondaryChip}
-                                </Pill>
-                              ) : null}
-                            </>
-                          ) : null}
+                      <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                        {isSelected ? (
+                          <>
+                            <SecondaryButton disabled style={{ opacity: 1 }}>
+                              {selectedPropertyStatus === "selected_viable_now"
+                                ? "Propiedad elegida"
+                                : selectedPropertyStatus ===
+                                  "selected_future_viable"
+                                ? "Propiedad elegida · ruta futura"
+                                : selectedPropertyStatus ===
+                                  "selected_near_route"
+                                ? "Propiedad elegida · revisar encaje"
+                                : selectedPropertyStatus ===
+                                  "selected_no_longer_viable"
+                                ? "Propiedad elegida · ya no calza hoy"
+                                : "Propiedad elegida"}
+                            </SecondaryButton>
 
-                          {isClosestFallback ? (
-                            <>
-                              <Pill tone="amber">Alternativa cercana principal</Pill>
-                              {goalValue != null ? (
-                                <Pill>
-                                  <span
-                                    style={{
-                                      display: "inline-flex",
-                                      alignItems: "center",
-                                      gap: 6,
-                                    }}
-                                  >
-                                    <Target size={12} />
-                                    Meta {moneyUSD(goalValue)}
-                                  </span>
-                                </Pill>
-                              ) : null}
-                            </>
-                          ) : null}
+                            <PrimaryButton
+                              onClick={() =>
+                                selectedStatusMeta.ctaTone === "alternatives"
+                                  ? navigate(mapMobilePathToWeb("/marketplace"))
+                                  : navigate(mapMobilePathToWeb("/ruta"))
+                              }
+                            >
+                              {selectedStatusMeta.ctaLabel}
+                            </PrimaryButton>
 
-                          {Array.isArray(p.matchedProducts) &&
-                          p.matchedProducts.length
-                            ? [...new Set(p.matchedProducts)]
-                                .slice(0, 2)
-                                .map((prodId, chipIdx) => (
-                                  <Pill
-                                    key={`${propertyId}-${prodId}-${chipIdx}`}
-                                    tone="green"
-                                  >
-                                    Compatible con{" "}
-                                    {getPropertyProgramLabel(prodId)}
-                                  </Pill>
-                                ))
-                            : null}
-                        </div>
+                            <SecondaryButton
+                              onClick={() => navigate(`/property/${propertyId}`)}
+                            >
+                              Ver detalle
+                            </SecondaryButton>
+                          </>
+                        ) : (
+                          <>
+                            <PrimaryButton onClick={() => handleChooseProperty(p)}>
+                              {selectedPropertyId
+                                ? "Elegir en su lugar"
+                                : "Elegir esta propiedad"}
+                            </PrimaryButton>
 
-                        <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-                          {isSelected ? (
-                            <>
-                              <SecondaryButton disabled style={{ opacity: 1 }}>
-                                {selectedPropertyStatus === "selected_viable_now"
-                                  ? "Propiedad elegida"
-                                  : selectedPropertyStatus ===
-                                    "selected_future_viable"
-                                  ? "Propiedad elegida · ruta futura"
-                                  : selectedPropertyStatus ===
-                                    "selected_near_route"
-                                  ? "Propiedad elegida · revisar encaje"
-                                  : selectedPropertyStatus ===
-                                    "selected_no_longer_viable"
-                                  ? "Propiedad elegida · ya no calza hoy"
-                                  : "Propiedad elegida"}
-                              </SecondaryButton>
-
-                              <PrimaryButton
-                                onClick={() =>
-                                  selectedStatusMeta.ctaTone === "alternatives"
-                                    ? navigate(mapMobilePathToWeb("/marketplace"))
-                                    : navigate(mapMobilePathToWeb("/ruta"))
-                                }
-                              >
-                                {selectedStatusMeta.ctaLabel}
-                              </PrimaryButton>
-
-                              <SecondaryButton
-                                onClick={() => navigate(`/property/${propertyId}`)}
-                              >
-                                Ver detalle
-                              </SecondaryButton>
-                            </>
-                          ) : (
-                            <>
-                              <PrimaryButton onClick={() => handleChooseProperty(p)}>
-                                {selectedPropertyId
-                                  ? "Elegir en su lugar"
-                                  : "Elegir esta propiedad"}
-                              </PrimaryButton>
-
-                              <SecondaryButton
-                                onClick={() => navigate(`/property/${propertyId}`)}
-                              >
-                                Ver detalle
-                              </SecondaryButton>
-                            </>
-                          )}
-                        </div>
-                    </PropertyResultItem>
-    );
-  })
-                ) : (
-                  <EmptyState
-                    title={
-                      recommendationType === "inventory_fallback"
-                        ? "No encontramos alternativas cercanas en esta zona"
-                        : "No encontramos propiedades compatibles en esta zona"
-                    }
-                    subtitle={
-                      recommendationType === "inventory_fallback"
-                        ? "Prueba otra zona o cambia a opciones ampliadas para ver más alternativas."
-                        : "Prueba otra zona o cambia a opciones ampliadas para ver más propiedades."
-                    }
-                    cta="Volver a calcular"
-                    onClick={() => navigate(mapMobilePathToWeb("/journey/full"))}
-                  />
-                )}
-     
-     </PropertyResultsSection>
-            </>
+                            <SecondaryButton
+                              onClick={() => navigate(`/property/${propertyId}`)}
+                            >
+                              Ver detalle
+                            </SecondaryButton>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <EmptyState
+                  title={
+                    recommendationType === "inventory_fallback"
+                      ? "No encontramos alternativas cercanas en esta zona"
+                      : "No encontramos propiedades compatibles en esta zona"
+                  }
+                  subtitle={
+                    recommendationType === "inventory_fallback"
+                      ? "Prueba otra zona o cambia a opciones ampliadas para ver más alternativas."
+                      : "Prueba otra zona o cambia a opciones ampliadas para ver más propiedades."
+                  }
+                  cta="Volver a calcular"
+                  onClick={() => navigate(mapMobilePathToWeb("/journey/full"))}
+                />
+              )}
+            </MarketplaceResultsPane>
           ) : null}
 
 {tab === "banks" && !selectedPropertyId ? (
