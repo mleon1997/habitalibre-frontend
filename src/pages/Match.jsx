@@ -1760,6 +1760,116 @@ function FilterCard({
   );
 }
 
+function PropertyResultsSection({
+  children,
+  total = 0,
+  zona,
+  propertyMode,
+  selectedPropertyId,
+}) {
+  const title = selectedPropertyId
+    ? "Viviendas recomendadas alrededor de tu propiedad base"
+    : "Viviendas recomendadas para ti";
+
+  const subtitle = selectedPropertyId
+    ? "Estas opciones se muestran tomando como referencia la propiedad que ya elegiste."
+    : "Opciones ordenadas según tu capacidad, entrada y ruta estimada.";
+
+  const modeLabel =
+    propertyMode === "strict"
+      ? "Mejores opciones"
+      : "Alternativas ampliadas";
+
+  return (
+    <section
+      style={{
+        marginTop: 18,
+        padding: 18,
+        borderRadius: 28,
+        background:
+          "linear-gradient(180deg, rgba(255,255,255,0.065), rgba(255,255,255,0.035))",
+        border: `1px solid ${UI.border}`,
+        boxShadow: UI.shadowSoft,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 14,
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: 12,
+              color: "rgba(143,227,212,0.98)",
+              fontWeight: 950,
+              marginBottom: 7,
+            }}
+          >
+            Tus opciones
+          </div>
+
+          <h2
+            style={{
+              margin: 0,
+              fontSize: 22,
+              lineHeight: 1.1,
+              letterSpacing: -0.5,
+              fontWeight: 980,
+              color: "rgba(226,232,240,0.98)",
+            }}
+          >
+            {title}
+          </h2>
+
+          <div
+            style={{
+              marginTop: 8,
+              fontSize: 13.5,
+              lineHeight: 1.45,
+              color: "rgba(148,163,184,0.95)",
+              maxWidth: 620,
+            }}
+          >
+            {subtitle}
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            flexWrap: "wrap",
+            justifyContent: "flex-end",
+          }}
+        >
+          <Pill tone="green">
+            {total === 1 ? "1 vivienda" : `${total} viviendas`}
+          </Pill>
+
+          <Pill>{zona}</Pill>
+
+          <Pill>{modeLabel}</Pill>
+        </div>
+      </div>
+
+      <div
+        style={{
+          marginTop: 16,
+          display: "grid",
+          gap: 16,
+        }}
+      >
+        {children}
+      </div>
+    </section>
+  );
+}
+
 export default function Match() {
   const navigate = useNavigate();
 
@@ -2839,10 +2949,14 @@ const normalizedProperty = {
                   </div>
                 </div>
               ) : null}
-
-              <div style={{ marginTop: 16, display: "grid", gap: 14 }}>
-                {orderedProps.length ? (
-                  orderedProps.map((p, idx) => {
+<PropertyResultsSection
+  total={orderedProps.length}
+  zona={zona}
+  propertyMode={propertyMode}
+  selectedPropertyId={selectedPropertyId}
+>
+  {orderedProps.length ? (
+    orderedProps.map((p, idx) => {
                     const propertyId =
                       p.id || p._id || p._normalizedId || `prop-${idx}`;
 
@@ -3022,7 +3136,8 @@ const normalizedProperty = {
                     onClick={() => navigate(mapMobilePathToWeb("/journey/full"))}
                   />
                 )}
-              </div>
+     
+     </PropertyResultsSection>
             </>
           ) : null}
 
