@@ -1629,7 +1629,8 @@ const previousSelectedEnvelope = loadJSON(LS_SELECTED_PROPERTY);
         },
       });
 
-      try {
+   
+        try {
         await saveJourneyToBackend({
           entradaPayload,
           snapshot,
@@ -1637,6 +1638,10 @@ const previousSelectedEnvelope = loadJSON(LS_SELECTED_PROPERTY);
       } catch (backendErr) {
         console.warn("[AppJourney] No se pudo guardar en backend:", backendErr);
       }
+
+      try {
+        sessionStorage.setItem("hl_show_match_loader", "1");
+      } catch {}
 
       navigate("/progreso", {
         replace: true,
