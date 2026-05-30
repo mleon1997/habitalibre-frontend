@@ -5,10 +5,8 @@ import {
   Building2,
   Landmark,
   SlidersHorizontal,
-  Target,
 } from "lucide-react";
 import { moneyUSD } from "../lib/money.js";
-import PropertyCard from "../components/PropertyCard.jsx";
 import mockProperties from "../data/mockProperties.js";
 import { resolveHousingRecommendation } from "../lib/recommendationResolver.js";
 import { getCustomer } from "../lib/customerSession.js";
@@ -1760,6 +1758,7 @@ function FilterCard({
 }
 
 
+
 function MarketplaceResultsPane({
   children,
   total = 0,
@@ -1789,20 +1788,19 @@ function MarketplaceResultsPane({
     >
       <style>
         {`
-       .hl-results-shell {
-  width: 100%;
-  overflow: visible;
-}
+          .hl-results-shell {
+            width: 100%;
+            overflow: visible;
+          }
 
-.hl-results-panel {
-  width: 100%;
-  padding: 18px;
-  border-radius: 28px;
-  background: linear-gradient(180deg, rgba(15,23,42,0.94), rgba(7,16,36,0.78));
-  border: 1px solid rgba(255,255,255,0.10);
-  box-shadow: 0 18px 60px rgba(0,0,0,0.28);
-  overflow: visible;
-}
+          .hl-results-panel {
+            width: 100%;
+            padding: 18px;
+            border-radius: 28px;
+            background: linear-gradient(180deg, rgba(15,23,42,0.94), rgba(7,16,36,0.78));
+            border: 1px solid rgba(255,255,255,0.10);
+            box-shadow: 0 18px 60px rgba(0,0,0,0.28);
+            overflow: visible;
           }
 
           .hl-results-header {
@@ -1835,13 +1833,31 @@ function MarketplaceResultsPane({
             align-items: start;
           }
 
-       .hl-result-alert,
-.hl-results-footer {
-  grid-column: 1 / -1;
-}
+          .hl-result-alert,
+          .hl-results-footer {
+            grid-column: 1 / -1;
+          }
 
-          .hl-results-list > div {
+          .hl-compact-property-card {
             min-width: 0;
+          }
+
+          .hl-compact-metrics {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+          }
+
+          .hl-compact-quick-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+          }
+
+          .hl-compact-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
           }
 
           @media (max-width: 1100px) {
@@ -1865,6 +1881,18 @@ function MarketplaceResultsPane({
 
             .hl-results-list {
               gap: 16px;
+            }
+
+            .hl-compact-metrics {
+              grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .hl-compact-quick-grid {
+              grid-template-columns: 1fr;
+            }
+
+            .hl-compact-actions {
+              grid-template-columns: 1fr;
             }
           }
         `}
@@ -1934,6 +1962,502 @@ function MarketplaceResultsPane({
         <div className="hl-results-list">{children}</div>
       </div>
     </section>
+  );
+}
+
+function getListingPropertyId(property, fallback = "property") {
+  return (
+    property?.id ||
+    property?._id ||
+    property?._normalizedId ||
+    property?.propertyId ||
+    fallback
+  );
+}
+
+function getListingTitle(property) {
+  return (
+    property?.titulo ||
+    property?.nombre ||
+    property?.title ||
+    property?.name ||
+    property?.proyecto ||
+    property?._normalizedProjectName ||
+    "Propiedad"
+  );
+}
+
+function getListingCity(property) {
+  return (
+    property?.zona ||
+    property?.ciudad ||
+    property?.city ||
+    property?.sector ||
+    property?.ciudadZona ||
+    property?._normalizedCity ||
+    property?._normalizedSector ||
+    "Ubicación pendiente"
+  );
+}
+
+function getListingImage(property) {
+  return (
+    property?.imagen ||
+    property?.image ||
+    property?.imageUrl ||
+    property?.foto ||
+    property?.cover ||
+    property?.coverUrl ||
+    null
+  );
+}
+
+function getListingPrice(property) {
+  const value =
+    property?.precio ??
+    property?.price ??
+    property?._normalizedPrice ??
+    property?.valor ??
+    property?.listPrice ??
+    null;
+
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function getListingMetric(property, keys, fallback = "—") {
+  for (const key of keys) {
+    const value = property?.[key];
+    if (value !== null && value !== undefined && value !== "") return value;
+  }
+
+  return fallback;
+}
+
+function getListingFinanceSummary(property) {
+  const price = getListingPrice(property);
+
+  const entradaRequerida =
+    property?.evaluacionEntrada?.entradaRequerida ??
+    property?.entradaRequerida ??
+    property?.downPaymentRequired ??
+    (price ? price * 0.1 : null);
+
+  const faltante =
+    property?.evaluacionEntrada?.faltanteEntrada ??
+    property?.faltanteEntrada ??
+    property?.missingDownPayment ??
+    0;
+
+  const cuotaHipoteca =
+    property?.evaluacionHipotecaFutura?.cuotaReferencia ??
+    property?.evaluacionHipotecaHoy?.cuotaReferencia ??
+    property?.evaluacionHipoteca?.cuotaReferencia ??
+    property?.cuotaEstimada ??
+    property?.cuota ??
+    null;
+
+  const producto =
+    property?.evaluacionHipotecaFutura?.productoSugerido ||
+    property?.evaluacionHipotecaHoy?.productoSugerido ||
+    property?.evaluacionHipoteca?.productoSugerido ||
+    property?.mortgageSelected?.label ||
+    property?.mortgageSelected?.name ||
+    property?.productoSugerido ||
+    "Ruta hipotecaria referencial";
+
+  return {
+    entradaRequerida: Number.isFinite(Number(entradaRequerida))
+      ? Number(entradaRequerida)
+      : null,
+    faltante: Number.isFinite(Number(faltante)) ? Number(faltante) : null,
+    cuotaHipoteca: Number.isFinite(Number(cuotaHipoteca))
+      ? Number(cuotaHipoteca)
+      : null,
+    producto,
+  };
+}
+
+function getListingMatchBadge(property) {
+  const estado = String(property?.estadoCompra || "").toLowerCase();
+
+  if (estado === "top_match") {
+    return { label: "Top match", tone: "green" };
+  }
+
+  if (
+    estado === "entrada_viable_hipoteca_futura_viable" ||
+    property?.evaluacionHipotecaFutura?.viable === true
+  ) {
+    return { label: "Ruta futura", tone: "green" };
+  }
+
+  if (
+    estado === "entrada_viable_hipoteca_futura_debil" ||
+    estado === "ruta_cercana"
+  ) {
+    return { label: "Ruta cercana", tone: "amber" };
+  }
+
+  if (
+    property?.viableProyecto === true ||
+    property?.evaluacionHipotecaHoy?.viable === true ||
+    property?.evaluacionHipoteca?.viable === true
+  ) {
+    return { label: "Ruta viable", tone: "green" };
+  }
+
+  return { label: "Referencia", tone: "neutral" };
+}
+
+const listingMiniStatStyle = {
+  padding: "9px 10px",
+  borderRadius: 14,
+  background: "rgba(255,255,255,0.055)",
+  border: `1px solid ${UI.borderSoft}`,
+  minWidth: 0,
+};
+
+const listingMiniLabelStyle = {
+  fontSize: 10.5,
+  color: "rgba(148,163,184,0.95)",
+  fontWeight: 850,
+  lineHeight: 1,
+};
+
+const listingMiniValueStyle = {
+  marginTop: 5,
+  fontSize: 13.5,
+  color: "rgba(248,250,252,0.98)",
+  fontWeight: 950,
+  lineHeight: 1.05,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
+
+const listingQuickLabelStyle = {
+  fontSize: 10.5,
+  color: "rgba(148,163,184,0.95)",
+  fontWeight: 850,
+};
+
+const listingQuickValueStyle = {
+  marginTop: 4,
+  fontSize: 14,
+  color: "rgba(248,250,252,0.98)",
+  fontWeight: 950,
+  lineHeight: 1.1,
+};
+
+function CompactMatchPropertyCard({
+  property,
+  isSelected,
+  selectedStatusMeta,
+  isClosestFallback,
+  goalValue,
+  selectedPropertyId,
+  onChoose,
+  onOpen,
+}) {
+  const title = getListingTitle(property);
+  const city = getListingCity(property);
+  const image = getListingImage(property);
+  const price = getListingPrice(property);
+  const badge = getListingMatchBadge(property);
+  const finance = getListingFinanceSummary(property);
+
+  const area = getListingMetric(property, ["area", "areaM2", "metros", "m2"]);
+  const dorms = getListingMetric(property, [
+    "dormitorios",
+    "habitaciones",
+    "bedrooms",
+    "dorms",
+  ]);
+  const baths = getListingMetric(property, [
+    "banos",
+    "baños",
+    "bathrooms",
+    "baths",
+  ]);
+  const parking = getListingMetric(property, [
+    "parqueaderos",
+    "parking",
+    "garajes",
+  ]);
+
+  return (
+    <article
+      className="hl-compact-property-card"
+      onClick={onOpen}
+      style={{
+        borderRadius: 24,
+        overflow: "hidden",
+        background:
+          "linear-gradient(180deg, rgba(15,23,42,0.96), rgba(8,17,36,0.96))",
+        border: isSelected
+          ? `1px solid ${UI.greenBorder}`
+          : `1px solid ${UI.border}`,
+        boxShadow: isSelected
+          ? "0 18px 60px rgba(37,211,166,0.14)"
+          : "0 16px 46px rgba(0,0,0,0.24)",
+        cursor: "pointer",
+      }}
+    >
+      <div
+        style={{
+          position: "relative",
+          height: 178,
+          background: image
+            ? `linear-gradient(180deg, rgba(2,6,23,0.10), rgba(2,6,23,0.62)), url(${image}) center/cover no-repeat`
+            : "linear-gradient(135deg, rgba(37,211,166,0.16), rgba(15,23,42,0.95))",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            top: 14,
+            left: 14,
+            right: 14,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: 10,
+          }}
+        >
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Pill tone={badge.tone}>{badge.label}</Pill>
+
+            {isClosestFallback ? (
+              <Pill tone="amber">Alternativa cercana</Pill>
+            ) : null}
+          </div>
+
+          {price != null ? (
+            <div
+              style={{
+                padding: "10px 12px",
+                borderRadius: 16,
+                background: "rgba(7,16,36,0.92)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                color: "white",
+                minWidth: 112,
+                textAlign: "right",
+                boxShadow: "0 12px 30px rgba(0,0,0,0.28)",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 11,
+                  opacity: 0.72,
+                  fontWeight: 850,
+                  lineHeight: 1,
+                }}
+              >
+                Precio
+              </div>
+
+              <div
+                style={{
+                  marginTop: 4,
+                  fontSize: 20,
+                  lineHeight: 1,
+                  fontWeight: 980,
+                  letterSpacing: -0.5,
+                }}
+              >
+                {moneyUSD(price)}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div style={{ padding: 16 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 12,
+            alignItems: "flex-start",
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <h3
+              style={{
+                margin: 0,
+                fontSize: 19,
+                lineHeight: 1.12,
+                fontWeight: 980,
+                letterSpacing: -0.4,
+                color: "rgba(248,250,252,0.98)",
+              }}
+            >
+              {title}
+            </h3>
+
+            <div
+              style={{
+                marginTop: 7,
+                fontSize: 13,
+                color: "rgba(148,163,184,0.95)",
+                fontWeight: 750,
+              }}
+            >
+              {city}
+            </div>
+          </div>
+
+          {isSelected ? <Pill tone="green">Elegida</Pill> : null}
+        </div>
+
+        <div className="hl-compact-metrics" style={{ marginTop: 14 }}>
+          <div style={listingMiniStatStyle}>
+            <div style={listingMiniLabelStyle}>Área</div>
+            <div style={listingMiniValueStyle}>
+              {area !== "—" ? `${area} m²` : "—"}
+            </div>
+          </div>
+
+          <div style={listingMiniStatStyle}>
+            <div style={listingMiniLabelStyle}>Dorm.</div>
+            <div style={listingMiniValueStyle}>{dorms}</div>
+          </div>
+
+          <div style={listingMiniStatStyle}>
+            <div style={listingMiniLabelStyle}>Baños</div>
+            <div style={listingMiniValueStyle}>{baths}</div>
+          </div>
+
+          <div style={listingMiniStatStyle}>
+            <div style={listingMiniLabelStyle}>Parq.</div>
+            <div style={listingMiniValueStyle}>{parking}</div>
+          </div>
+        </div>
+
+        <div
+          style={{
+            marginTop: 14,
+            padding: 14,
+            borderRadius: 18,
+            background: "rgba(255,255,255,0.055)",
+            border: `1px solid ${UI.borderSoft}`,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 12,
+              color: "rgba(148,163,184,0.95)",
+              fontWeight: 900,
+            }}
+          >
+            Lectura rápida
+          </div>
+
+          <div className="hl-compact-quick-grid" style={{ marginTop: 8 }}>
+            <div>
+              <div style={listingQuickLabelStyle}>Entrada</div>
+              <div style={listingQuickValueStyle}>
+                {finance.entradaRequerida != null
+                  ? moneyUSD(finance.entradaRequerida)
+                  : "—"}
+              </div>
+            </div>
+
+            <div>
+              <div style={listingQuickLabelStyle}>Falta hoy</div>
+              <div style={listingQuickValueStyle}>
+                {finance.faltante != null ? moneyUSD(finance.faltante) : "—"}
+              </div>
+            </div>
+
+            <div>
+              <div style={listingQuickLabelStyle}>Cuota</div>
+              <div style={listingQuickValueStyle}>
+                {finance.cuotaHipoteca != null
+                  ? `${moneyUSD(finance.cuotaHipoteca)}/mes`
+                  : "—"}
+              </div>
+            </div>
+          </div>
+
+          <div
+            style={{
+              marginTop: 10,
+              fontSize: 12.5,
+              lineHeight: 1.35,
+              color: "rgba(203,213,225,0.88)",
+              fontWeight: 750,
+            }}
+          >
+            {finance.producto}
+          </div>
+        </div>
+
+        <div
+          style={{
+            marginTop: 12,
+            display: "flex",
+            gap: 8,
+            flexWrap: "wrap",
+          }}
+        >
+          {isSelected && selectedStatusMeta?.chip ? (
+            <Pill tone={selectedStatusMeta.chipTone}>
+              {selectedStatusMeta.chip}
+            </Pill>
+          ) : null}
+
+          {isSelected && selectedStatusMeta?.secondaryChip ? (
+            <Pill tone={selectedStatusMeta.secondaryTone}>
+              {selectedStatusMeta.secondaryChip}
+            </Pill>
+          ) : null}
+
+          {Array.isArray(property?.matchedProducts) &&
+          property.matchedProducts.length
+            ? [...new Set(property.matchedProducts)]
+                .slice(0, 2)
+                .map((prodId, chipIdx) => (
+                  <Pill
+                    key={`${getListingPropertyId(property)}-${prodId}-${chipIdx}`}
+                    tone="green"
+                  >
+                    {getPropertyProgramLabel(prodId)}
+                  </Pill>
+                ))
+            : null}
+
+          {goalValue != null && isClosestFallback ? (
+            <Pill>Meta {moneyUSD(goalValue)}</Pill>
+          ) : null}
+        </div>
+
+        <div
+          className="hl-compact-actions"
+          style={{ marginTop: 14 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <SecondaryButton onClick={onOpen}>Ver detalle</SecondaryButton>
+
+          {isSelected ? (
+            <PrimaryButton
+              onClick={() =>
+                selectedStatusMeta?.ctaTone === "alternatives"
+                  ? onChoose?.("alternatives")
+                  : onChoose?.("route")
+              }
+            >
+              {selectedStatusMeta?.ctaLabel || "Ver en Ruta"}
+            </PrimaryButton>
+          ) : (
+            <PrimaryButton onClick={() => onChoose?.("choose")}>
+              {selectedPropertyId ? "Elegir en su lugar" : "Elegir"}
+            </PrimaryButton>
+          )}
+        </div>
+      </div>
+    </article>
   );
 }
 
@@ -3072,147 +3596,50 @@ const normalizedProperty = {
                   );
 
                   return (
-                    <div key={propertyId}>
-                      <PropertyCard
-                        property={{
-                          ...p,
-                          id: propertyId,
-                          precio: propertyPrice,
-                          zona:
-                            p.zona ??
-                            p.ciudad ??
-                            p.city ??
-                            p._normalizedCity ??
-                            null,
-                          evaluacionHipoteca:
-                            p.evaluacionHipoteca ??
-                            p.evaluacionHipotecaHoy ??
-                            null,
-                          evaluacionHipotecaHoy:
-                            p.evaluacionHipotecaHoy ??
-                            p.evaluacionHipoteca ??
-                            null,
-                          evaluacionHipotecaFutura:
-                            p.evaluacionHipotecaFutura ?? null,
-                          evaluacionEntrada: p.evaluacionEntrada ?? null,
-                        }}
-                        onClick={() => navigate(`/property/${propertyId}`)}
-                      />
+                    <CompactMatchPropertyCard
+                      key={propertyId}
+                      property={{
+                        ...p,
+                        id: propertyId,
+                        precio: propertyPrice,
+                        zona:
+                          p.zona ??
+                          p.ciudad ??
+                          p.city ??
+                          p._normalizedCity ??
+                          null,
+                        evaluacionHipoteca:
+                          p.evaluacionHipoteca ??
+                          p.evaluacionHipotecaHoy ??
+                          null,
+                        evaluacionHipotecaHoy:
+                          p.evaluacionHipotecaHoy ??
+                          p.evaluacionHipoteca ??
+                          null,
+                        evaluacionHipotecaFutura:
+                          p.evaluacionHipotecaFutura ?? null,
+                        evaluacionEntrada: p.evaluacionEntrada ?? null,
+                      }}
+                      isSelected={isSelected}
+                      selectedStatusMeta={selectedStatusMeta}
+                      isClosestFallback={isClosestFallback}
+                      goalValue={goalValue}
+                      selectedPropertyId={selectedPropertyId}
+                      onOpen={() => navigate(`/property/${propertyId}`)}
+                      onChoose={(action) => {
+                        if (isSelected) {
+                          if (action === "alternatives") {
+                            navigate(mapMobilePathToWeb("/marketplace"));
+                            return;
+                          }
 
-                      <div
-                        style={{
-                          marginTop: 8,
-                          display: "flex",
-                          gap: 8,
-                          flexWrap: "wrap",
-                        }}
-                      >
-                        {isSelected ? (
-                          <>
-                            {selectedStatusMeta.chip ? (
-                              <Pill tone={selectedStatusMeta.chipTone}>
-                                {selectedStatusMeta.chip}
-                              </Pill>
-                            ) : null}
+                          navigate(mapMobilePathToWeb("/ruta"));
+                          return;
+                        }
 
-                            {selectedStatusMeta.secondaryChip ? (
-                              <Pill tone={selectedStatusMeta.secondaryTone}>
-                                {selectedStatusMeta.secondaryChip}
-                              </Pill>
-                            ) : null}
-                          </>
-                        ) : null}
-
-                        {isClosestFallback ? (
-                          <>
-                            <Pill tone="amber">
-                              Alternativa cercana principal
-                            </Pill>
-
-                            {goalValue != null ? (
-                              <Pill>
-                                <span
-                                  style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: 6,
-                                  }}
-                                >
-                                  <Target size={12} />
-                                  Meta {moneyUSD(goalValue)}
-                                </span>
-                              </Pill>
-                            ) : null}
-                          </>
-                        ) : null}
-
-                        {Array.isArray(p.matchedProducts) &&
-                        p.matchedProducts.length
-                          ? [...new Set(p.matchedProducts)]
-                              .slice(0, 2)
-                              .map((prodId, chipIdx) => (
-                                <Pill
-                                  key={`${propertyId}-${prodId}-${chipIdx}`}
-                                  tone="green"
-                                >
-                                  Compatible con{" "}
-                                  {getPropertyProgramLabel(prodId)}
-                                </Pill>
-                              ))
-                          : null}
-                      </div>
-
-                      <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-                        {isSelected ? (
-                          <>
-                            <SecondaryButton disabled style={{ opacity: 1 }}>
-                              {selectedPropertyStatus === "selected_viable_now"
-                                ? "Propiedad elegida"
-                                : selectedPropertyStatus ===
-                                  "selected_future_viable"
-                                ? "Propiedad elegida · ruta futura"
-                                : selectedPropertyStatus ===
-                                  "selected_near_route"
-                                ? "Propiedad elegida · revisar encaje"
-                                : selectedPropertyStatus ===
-                                  "selected_no_longer_viable"
-                                ? "Propiedad elegida · ya no calza hoy"
-                                : "Propiedad elegida"}
-                            </SecondaryButton>
-
-                            <PrimaryButton
-                              onClick={() =>
-                                selectedStatusMeta.ctaTone === "alternatives"
-                                  ? navigate(mapMobilePathToWeb("/marketplace"))
-                                  : navigate(mapMobilePathToWeb("/ruta"))
-                              }
-                            >
-                              {selectedStatusMeta.ctaLabel}
-                            </PrimaryButton>
-
-                            <SecondaryButton
-                              onClick={() => navigate(`/property/${propertyId}`)}
-                            >
-                              Ver detalle
-                            </SecondaryButton>
-                          </>
-                        ) : (
-                          <>
-                            <PrimaryButton onClick={() => handleChooseProperty(p)}>
-                              {selectedPropertyId
-                                ? "Elegir en su lugar"
-                                : "Elegir esta propiedad"}
-                            </PrimaryButton>
-
-                            <SecondaryButton
-                              onClick={() => navigate(`/property/${propertyId}`)}
-                            >
-                              Ver detalle
-                            </SecondaryButton>
-                          </>
-                        )}
-                      </div>
-                    </div>
+                        handleChooseProperty(p);
+                      }}
+                    />
                   );
                })}
 
