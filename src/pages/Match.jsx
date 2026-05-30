@@ -1789,17 +1789,20 @@ function MarketplaceResultsPane({
     >
       <style>
         {`
-          .hl-results-shell {
-            width: 100%;
-          }
+       .hl-results-shell {
+  width: 100%;
+  overflow: visible;
+}
 
-          .hl-results-panel {
-            width: 100%;
-            padding: 18px;
-            border-radius: 28px;
-            background: linear-gradient(180deg, rgba(15,23,42,0.94), rgba(7,16,36,0.78));
-            border: 1px solid rgba(255,255,255,0.10);
-            box-shadow: 0 18px 60px rgba(0,0,0,0.28);
+.hl-results-panel {
+  width: 100%;
+  padding: 18px;
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(15,23,42,0.94), rgba(7,16,36,0.78));
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: 0 18px 60px rgba(0,0,0,0.28);
+  overflow: visible;
+}
           }
 
           .hl-results-header {
@@ -1832,9 +1835,10 @@ function MarketplaceResultsPane({
             align-items: start;
           }
 
-          .hl-result-alert {
-            grid-column: 1 / -1;
-          }
+       .hl-result-alert,
+.hl-results-footer {
+  grid-column: 1 / -1;
+}
 
           .hl-results-list > div {
             min-width: 0;
@@ -1945,6 +1949,8 @@ export default function Match() {
 const [tab, setTab] = useState("props");
 const [zona, setZona] = useState("Quito");
 const [propertyMode, setPropertyMode] = useState("strict");
+const [visiblePropertyCount, setVisiblePropertyCount] = useState(12);
+
 
 function handleOpenMortgageDetail(route = mortgageDetailRoute) {
   const selectedRoute = buildMortgageRoutePayload(
@@ -2724,6 +2730,22 @@ const primaryMortgageSubtitle = useMarketplaceMortgageAsPrimary
     });
   }, [enrichedProps, selectedPropertyId]);
 
+
+useEffect(() => {
+  setVisiblePropertyCount(12);
+}, [zona, propertyMode, recommendationType, selectedPropertyId]);
+
+const visibleProps = useMemo(() => {
+  return orderedProps.slice(0, visiblePropertyCount);
+}, [orderedProps, visiblePropertyCount]);
+
+const hasMoreProps = visiblePropertyCount < orderedProps.length;
+
+const remainingProps = Math.max(
+  orderedProps.length - visiblePropertyCount,
+  0
+);
+
   const mortgageSummaryStatus = useMarketplaceMortgageAsPrimary
   ? useMarketplaceCurrentGoal
     ? "current"
@@ -3024,8 +3046,9 @@ const normalizedProperty = {
                 </div>
               ) : null}
 
-              {orderedProps.length ? (
-                orderedProps.map((p, idx) => {
+      {orderedProps.length ? (
+  <>
+    {visibleProps.map((p, idx) => {
                   const propertyId =
                     p.id || p._id || p._normalizedId || `prop-${idx}`;
 
@@ -3191,9 +3214,24 @@ const normalizedProperty = {
                       </div>
                     </div>
                   );
-                })
-              ) : (
-                <EmptyState
+               })}
+
+    {hasMoreProps ? (
+      <div className="hl-results-footer">
+        <SecondaryButton
+          onClick={() =>
+            setVisiblePropertyCount((current) =>
+              Math.min(current + 8, orderedProps.length)
+            )
+          }
+        >
+          Ver más viviendas ({remainingProps} restantes)
+        </SecondaryButton>
+      </div>
+    ) : null}
+  </>
+) : (
+  <EmptyState
                   title={
                     recommendationType === "inventory_fallback"
                       ? "No encontramos alternativas cercanas en esta zona"
