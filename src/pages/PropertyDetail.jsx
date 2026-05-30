@@ -11,10 +11,7 @@ import {
 import { moneyUSD } from "../lib/money";
 import { API_BASE } from "../lib/api";
 import { getCustomer } from "../lib/customerSession.js";
-import {
-  saveSelectedPropertyToBackend,
-  saveJourneyStateToBackend,
-} from "../lib/userAppState.js";
+
 
 const LS_SNAPSHOT = "hl_mobile_last_snapshot_v1";
 const LS_JOURNEY = "hl_mobile_journey_v1";
@@ -1626,25 +1623,24 @@ export default function PropertyDetail() {
     saveOwnedData(LS_SELECTED_PROPERTY, normalizedProperty);
     saveOwnedData(LS_JOURNEY, nextJourney);
 
-    try {
-      setSavingSelection(true);
+try {
+  setSavingSelection(true);
 
-      await saveSelectedPropertyToBackend(normalizedProperty);
-      await saveJourneyStateToBackend(nextJourney);
+  console.log("[HL] Propiedad seleccionada guardada localmente", {
+    propertyId,
+    selectedPropertyStatus,
+  });
 
-      console.log("[HL] Propiedad seleccionada guardada en backend", {
-        propertyId,
-        selectedPropertyStatus,
-      });
-    } catch (err) {
-      console.warn(
-        "[HL] No se pudo guardar propiedad seleccionada en backend:",
-        err?.message || err
-      );
-    } finally {
-      setSavingSelection(false);
-      navigate("/ruta");
-    }
+  try {
+    window.dispatchEvent(new Event("hl:user-app-state-hydrated"));
+    window.dispatchEvent(new Event("hl:selected-property-updated"));
+  } catch {
+    // no-op
+  }
+} finally {
+  setSavingSelection(false);
+  navigate("/financiamiento-propiedad");
+}
   }
 
   return (
