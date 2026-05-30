@@ -1784,6 +1784,7 @@ function MarketplaceResultsPane({
       className="hl-results-shell"
       style={{
         marginTop: 18,
+        width: "100%",
       }}
     >
       <style>
@@ -1792,27 +1793,38 @@ function MarketplaceResultsPane({
             width: 100%;
           }
 
-          .hl-results-layout {
-            display: grid;
-            grid-template-columns: 320px minmax(0, 1fr);
-            gap: 18px;
-            align-items: start;
-          }
-
-          .hl-results-rail {
-            position: sticky;
-            top: 14px;
-            z-index: 20;
-            padding: 16px;
+          .hl-results-panel {
+            width: 100%;
+            padding: 18px;
             border-radius: 28px;
-            background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(7,16,36,0.86));
+            background: linear-gradient(180deg, rgba(15,23,42,0.94), rgba(7,16,36,0.78));
             border: 1px solid rgba(255,255,255,0.10);
             box-shadow: 0 18px 60px rgba(0,0,0,0.28);
+          }
+
+          .hl-results-header {
+            position: sticky;
+            top: 12px;
+            z-index: 20;
+            padding: 16px;
+            border-radius: 24px;
+            background: rgba(7,16,36,0.94);
+            border: 1px solid rgba(255,255,255,0.10);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 14px 40px rgba(0,0,0,0.30);
+          }
+
+          .hl-results-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 14px;
+            flex-wrap: wrap;
           }
 
           .hl-results-list {
+            margin-top: 18px;
             min-width: 0;
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1829,28 +1841,22 @@ function MarketplaceResultsPane({
           }
 
           @media (max-width: 1100px) {
-            .hl-results-layout {
-              grid-template-columns: 1fr;
-            }
-
-            .hl-results-rail {
-              position: sticky;
-              top: 10px;
-            }
-
             .hl-results-list {
               grid-template-columns: 1fr;
             }
           }
 
           @media (max-width: 720px) {
-            .hl-results-shell {
-              margin-top: 16px;
-            }
-
-            .hl-results-rail {
+            .hl-results-panel {
               padding: 14px;
               border-radius: 24px;
+            }
+
+            .hl-results-header {
+              position: relative;
+              top: auto;
+              padding: 14px;
+              border-radius: 22px;
             }
 
             .hl-results-list {
@@ -1860,61 +1866,66 @@ function MarketplaceResultsPane({
         `}
       </style>
 
-      <div className="hl-results-layout">
-        <aside className="hl-results-rail">
-          <div
-            style={{
-              fontSize: 12,
-              color: "rgba(143,227,212,0.98)",
-              fontWeight: 950,
-              marginBottom: 6,
-            }}
-          >
-            Marketplace HabitaLibre
-          </div>
+      <div className="hl-results-panel">
+        <div className="hl-results-header">
+          <div className="hl-results-header-top">
+            <div style={{ minWidth: 0 }}>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "rgba(143,227,212,0.98)",
+                  fontWeight: 950,
+                  marginBottom: 6,
+                }}
+              >
+                Marketplace HabitaLibre
+              </div>
 
-          <div
-            style={{
-              fontSize: 22,
-              lineHeight: 1.08,
-              fontWeight: 980,
-              letterSpacing: -0.5,
-              color: "rgba(226,232,240,0.98)",
-            }}
-          >
-            {title}
-          </div>
+              <div
+                style={{
+                  fontSize: 22,
+                  lineHeight: 1.08,
+                  fontWeight: 980,
+                  letterSpacing: -0.5,
+                  color: "rgba(226,232,240,0.98)",
+                }}
+              >
+                {title}
+              </div>
 
-          <div
-            style={{
-              marginTop: 8,
-              fontSize: 13,
-              lineHeight: 1.42,
-              color: "rgba(148,163,184,0.95)",
-            }}
-          >
-            {subtitle}
-          </div>
+              <div
+                style={{
+                  marginTop: 8,
+                  fontSize: 13,
+                  lineHeight: 1.42,
+                  color: "rgba(148,163,184,0.95)",
+                  maxWidth: 680,
+                }}
+              >
+                {subtitle}
+              </div>
+            </div>
 
-          <div
-            style={{
-              marginTop: 14,
-              display: "flex",
-              gap: 8,
-              flexWrap: "wrap",
-            }}
-          >
-            <Pill tone="green">
-              {total === 1 ? "1 vivienda" : `${total} viviendas`}
-            </Pill>
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                flexWrap: "wrap",
+                justifyContent: "flex-end",
+              }}
+            >
+              <Pill tone="green">
+                {total === 1 ? "1 vivienda" : `${total} viviendas`}
+              </Pill>
 
-            <Pill>{zona}</Pill>
+              <Pill>{zona}</Pill>
 
-            <Pill>{modeLabel}</Pill>
+              <Pill>{modeLabel}</Pill>
+            </div>
           </div>
 
           <div style={{ marginTop: 14 }}>{filters}</div>
-        </aside>
+        </div>
 
         <div className="hl-results-list">{children}</div>
       </div>
