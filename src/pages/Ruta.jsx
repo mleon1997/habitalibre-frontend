@@ -1134,22 +1134,112 @@ const selectedPropertyStatusMeta = getSelectedPropertyStatusMeta(
   };
 
   return (
-    <HabitaShell maxWidth={760}>
-      <div style={{ paddingBottom: 24 }}>
+<HabitaShell maxWidth={760}>
+  <div className="hl-route-shell" style={{ paddingBottom: 24 }}>
+    <style>
+      {`
+        .hl-route-shell {
+          padding-bottom: 24px;
+        }
+
+        .hl-route-summary-head {
+          display: flex;
+          justify-content: space-between;
+          gap: 14px;
+          align-items: flex-start;
+        }
+
+        .hl-route-summary-chips {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          align-items: flex-end;
+          flex-shrink: 0;
+        }
+
+        .hl-route-next-content {
+          width: 100%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          min-width: 0;
+        }
+
+        .hl-route-next-copy {
+          min-width: 0;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .hl-route-next-eyebrow {
+          white-space: nowrap;
+        }
+
+        .hl-route-next-label {
+          min-width: 0;
+          white-space: normal;
+        }
+
+        .hl-route-next-arrow {
+          flex: 0 0 auto;
+        }
+
+        @media (max-width: 520px) {
+          .hl-route-shell {
+            padding-bottom: calc(150px + env(safe-area-inset-bottom));
+          }
+
+          .hl-route-summary-head {
+            flex-direction: column;
+            align-items: stretch;
+          }
+
+          .hl-route-summary-chips {
+            flex-direction: row;
+            align-items: flex-start;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+          }
+
+          .hl-route-next-content {
+            justify-content: space-between;
+            gap: 12px;
+            text-align: left;
+          }
+
+          .hl-route-next-copy {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 2px;
+          }
+
+          .hl-route-next-eyebrow {
+            font-size: 11px;
+            line-height: 1;
+            font-weight: 950;
+            opacity: 0.72;
+          }
+
+          .hl-route-next-label {
+            font-size: 15px;
+            line-height: 1.12;
+            font-weight: 980;
+            letter-spacing: -0.1px;
+            overflow-wrap: anywhere;
+          }
+        }
+      `}
+    </style>
         <Card
           style={{
             padding: "18px 18px 18px",
             boxShadow: "0 14px 36px rgba(0,0,0,0.22)",
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              gap: 14,
-              alignItems: "flex-start",
-            }}
-          >
+      <div className="hl-route-summary-head">
             <div style={{ minWidth: 0, flex: 1 }}>
               <div
                 style={{
@@ -1186,15 +1276,7 @@ const selectedPropertyStatusMeta = getSelectedPropertyStatusMeta(
               </div>
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 8,
-                alignItems: "flex-end",
-                flexShrink: 0,
-              }}
-            >
+         <div className="hl-route-summary-chips">
               <Chip tone={prob.tone}>
                 Probabilidad {prob.label}
                 {probPct != null ? ` · ${probPct}%` : ""}
@@ -1255,14 +1337,22 @@ const selectedPropertyStatusMeta = getSelectedPropertyStatusMeta(
             </div>
 
             <div style={{ marginTop: 14 }}>
-              <PrimaryButton onClick={goNext} style={{ padding: "14px 16px" }}>
-                <span
-                  style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
-                >
-                  Siguiente paso: {nextStepLabel}
-                  <ArrowRight size={16} />
-                </span>
-              </PrimaryButton>
+             <PrimaryButton
+  onClick={goNext}
+  style={{
+    padding: "14px 16px",
+    minHeight: 58,
+  }}
+>
+  <span className="hl-route-next-content">
+    <span className="hl-route-next-copy">
+      <span className="hl-route-next-eyebrow">Siguiente paso</span>
+      <span className="hl-route-next-label">{nextStepLabel}</span>
+    </span>
+
+    <ArrowRight className="hl-route-next-arrow" size={18} />
+  </span>
+</PrimaryButton>
             </div>
           </div>
         </Card>
