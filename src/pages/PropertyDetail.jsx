@@ -819,11 +819,32 @@ function NotFound({ onBack }) {
   );
 }
 
+function useViewportWidth() {
+  const [width, setWidth] = useState(() => {
+    if (typeof window === "undefined") return 390;
+    return window.innerWidth;
+  });
+
+  useEffect(() => {
+    function onResize() {
+      setWidth(window.innerWidth);
+    }
+
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  return width;
+}
+
+
 /* ---------------- page ---------------- */
 
 export default function PropertyDetail() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const viewportWidth = useViewportWidth();
+const isDesktop = viewportWidth >= 900;
 
   const [savingSelection, setSavingSelection] = useState(false);
   const [backendProperty, setBackendProperty] = useState(null);
@@ -1650,14 +1671,19 @@ try {
         background: UI.bg,
         color: "white",
         fontFamily: "system-ui",
-        paddingBottom: "calc(150px + env(safe-area-inset-bottom))",
+paddingBottom: isDesktop
+  ? 72
+  : "calc(150px + env(safe-area-inset-bottom))",
       }}
     >
-      <div
-        style={{
-          height: 300,
-          width: "100%",
-          background: property.imagen
+<div
+  style={{
+    height: isDesktop ? "clamp(260px, 30vw, 360px)" : 300,
+    width: isDesktop ? "min(calc(100% - 44px), 1180px)" : "100%",
+    margin: isDesktop ? "0 auto" : undefined,
+    borderRadius: isDesktop ? "0 0 28px 28px" : 0,
+    overflow: "hidden",
+    background: property.imagen
             ? `linear-gradient(rgba(0,0,0,0.16), rgba(7,16,36,0.52)), url(${property.imagen}) center/cover`
             : "linear-gradient(135deg, rgba(37,211,166,0.18), rgba(255,255,255,0.06))",
           position: "relative",
@@ -1697,7 +1723,20 @@ try {
         </button>
       </div>
 
-      <div style={{ marginTop: -36, padding: "0 22px" }}>
+<div
+  style={{
+    marginTop: isDesktop ? -42 : -36,
+    ...(isDesktop
+      ? {
+          width: "min(calc(100% - 44px), 1180px)",
+          marginLeft: "auto",
+          marginRight: "auto",
+        }
+      : {
+          padding: "0 22px",
+        }),
+  }}
+>
         <div
           style={{
             padding: 20,
@@ -2019,7 +2058,7 @@ try {
                 alt={heroTitle}
                 style={{
                   width: "100%",
-                  height: 170,
+height: isDesktop ? "clamp(220px, 24vw, 320px)" : 170,
                   objectFit: "cover",
                   borderRadius: 18,
                   border: `1px solid ${UI.borderSoft}`,
@@ -2041,8 +2080,7 @@ try {
                       alt={`${heroTitle} ${index + 2}`}
                       style={{
                         width: "100%",
-                        height: 78,
-                        objectFit: "cover",
+height: isDesktop ? "clamp(90px, 9vw, 130px)" : 78,                        objectFit: "cover",
                         borderRadius: 14,
                         border: `1px solid ${UI.borderSoft}`,
                       }}
