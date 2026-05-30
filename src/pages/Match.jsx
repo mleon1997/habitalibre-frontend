@@ -1285,7 +1285,7 @@ function SummaryCard({
   return (
     <div
       style={{
-        padding: 18,
+        padding: 20,
         borderRadius: 26,
         background:
           "linear-gradient(135deg, rgba(37,211,166,0.10), rgba(255,255,255,0.055))",
@@ -1786,8 +1786,8 @@ function PropertyResultsSection({
         marginTop: 18,
         padding: 18,
         borderRadius: 28,
-        background:
-          "linear-gradient(180deg, rgba(255,255,255,0.065), rgba(255,255,255,0.035))",
+  background:
+  "linear-gradient(180deg, rgba(15,23,42,0.92), rgba(7,16,36,0.74))",
         border: `1px solid ${UI.border}`,
         boxShadow: UI.shadowSoft,
       }}
@@ -1867,6 +1867,64 @@ function PropertyResultsSection({
         {children}
       </div>
     </section>
+  );
+}
+
+function PropertyResultItem({ children, index, isSelected }) {
+  return (
+    <article
+      style={{
+        padding: 14,
+        borderRadius: 26,
+        background: isSelected
+          ? "linear-gradient(180deg, rgba(37,211,166,0.10), rgba(255,255,255,0.04))"
+          : "rgba(7,16,36,0.58)",
+        border: isSelected
+          ? `1px solid ${UI.greenBorder}`
+          : `1px solid ${UI.borderSoft}`,
+        boxShadow: "0 16px 44px rgba(0,0,0,0.20)",
+      }}
+    >
+      <div
+        style={{
+          marginBottom: 12,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 10,
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontSize: 11,
+              color: "rgba(143,227,212,0.95)",
+              fontWeight: 950,
+              textTransform: "uppercase",
+              letterSpacing: 0.4,
+            }}
+          >
+            Opción {index + 1}
+          </div>
+
+          <div
+            style={{
+              marginTop: 3,
+              fontSize: 13,
+              color: "rgba(148,163,184,0.95)",
+              fontWeight: 800,
+            }}
+          >
+            Vivienda dentro de tu listado recomendado
+          </div>
+        </div>
+
+        {isSelected ? <Pill tone="green">Propiedad elegida</Pill> : null}
+      </div>
+
+      {children}
+    </article>
   );
 }
 
@@ -2979,8 +3037,12 @@ const normalizedProperty = {
                       isSelected
                     );
 
-                    return (
-                      <div key={propertyId}>
+                      return (
+  <PropertyResultItem
+    key={propertyId}
+    index={idx}
+    isSelected={isSelected}
+  >
                         <PropertyCard
                           property={{
                             ...p,
@@ -3117,9 +3179,9 @@ const normalizedProperty = {
                             </>
                           )}
                         </div>
-                      </div>
-                    );
-                  })
+                    </PropertyResultItem>
+    );
+  })
                 ) : (
                   <EmptyState
                     title={
