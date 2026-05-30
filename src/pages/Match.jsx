@@ -1658,26 +1658,28 @@ function FilterCard({
       ? "Te mostramos primero alternativas cercanas a tu escenario."
       : "Puedes ajustar zona y amplitud de resultados.";
 
-  return (
-    <div
-     style={{
-  marginTop: 0,
-  padding: 14,
-  borderRadius: 22,
-        background: "rgba(255,255,255,0.045)",
-        border: `1px solid ${UI.borderSoft}`,
-        boxShadow: "none",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 12,
-          alignItems: "flex-start",
-          flexWrap: "wrap",
-        }}
-      >
+return (
+  <div
+    className="hl-match-filter-card"
+    style={{
+      marginTop: 0,
+      padding: 14,
+      borderRadius: 22,
+      background: "rgba(255,255,255,0.045)",
+      border: `1px solid ${UI.borderSoft}`,
+      boxShadow: "none",
+    }}
+  >
+<div
+  className="hl-filter-head"
+  style={{
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    alignItems: "flex-start",
+    flexWrap: "wrap",
+  }}
+>
         <div>
           <div style={{ fontSize: 12, opacity: 0.82, fontWeight: 950 }}>
             Ajustar búsqueda
@@ -1696,12 +1698,14 @@ function FilterCard({
           </div>
         </div>
 
-        <Pill>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <SlidersHorizontal size={12} />
-            Filtros
-          </span>
-        </Pill>
+     <span className="hl-filter-chip">
+  <Pill>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+      <SlidersHorizontal size={12} />
+      Filtros
+    </span>
+  </Pill>
+</span>
       </div>
 
       <div style={{ marginTop: 13 }}>
@@ -1866,35 +1870,63 @@ function MarketplaceResultsPane({
             }
           }
 
-          @media (max-width: 720px) {
-            .hl-results-panel {
-              padding: 14px;
-              border-radius: 24px;
-            }
+       @media (max-width: 720px) {
+  .hl-results-panel {
+    padding: 10px;
+    border-radius: 24px;
+  }
 
-            .hl-results-header {
-              position: relative;
-              top: auto;
-              padding: 14px;
-              border-radius: 22px;
-            }
+  .hl-results-header {
+    position: relative;
+    top: auto;
+    padding: 14px;
+    border-radius: 22px;
+  }
 
-            .hl-results-list {
-              gap: 16px;
-            }
+  .hl-results-header-top {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
 
-            .hl-compact-metrics {
-              grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
+  .hl-results-title {
+    font-size: 26px !important;
+    line-height: 1.04 !important;
+    letter-spacing: -0.8px !important;
+  }
 
-            .hl-compact-quick-grid {
-              grid-template-columns: 1fr;
-            }
+  .hl-results-subtitle {
+    margin-top: 8px !important;
+    font-size: 14px !important;
+    line-height: 1.38 !important;
+    max-width: 100% !important;
+  }
 
-            .hl-compact-actions {
-              grid-template-columns: 1fr;
-            }
-          }
+  .hl-results-pills {
+    justify-content: flex-start !important;
+    width: 100%;
+    max-width: none;
+    margin-top: 2px;
+  }
+
+  .hl-results-list {
+    margin-top: 12px;
+    gap: 16px;
+  }
+
+  .hl-match-filter-card {
+    padding: 12px !important;
+    border-radius: 22px !important;
+  }
+
+  .hl-filter-head {
+    display: block !important;
+  }
+
+  .hl-filter-chip {
+    display: none !important;
+  }
+}
         `}
       </style>
 
@@ -1913,39 +1945,42 @@ function MarketplaceResultsPane({
                 Marketplace HabitaLibre
               </div>
 
-              <div
-                style={{
-                  fontSize: 22,
-                  lineHeight: 1.08,
-                  fontWeight: 980,
-                  letterSpacing: -0.5,
-                  color: "rgba(226,232,240,0.98)",
-                }}
-              >
-                {title}
-              </div>
+      <div
+  className="hl-results-title"
+  style={{
+    fontSize: 22,
+    lineHeight: 1.08,
+    fontWeight: 980,
+    letterSpacing: -0.5,
+    color: "rgba(226,232,240,0.98)",
+  }}
+>
+  {title}
+</div>
 
-              <div
-                style={{
-                  marginTop: 8,
-                  fontSize: 13,
-                  lineHeight: 1.42,
-                  color: "rgba(148,163,184,0.95)",
-                  maxWidth: 680,
-                }}
-              >
-                {subtitle}
-              </div>
+  <div
+  className="hl-results-subtitle"
+  style={{
+    marginTop: 8,
+    fontSize: 13,
+    lineHeight: 1.42,
+    color: "rgba(148,163,184,0.95)",
+    maxWidth: 680,
+  }}
+>
+  {subtitle}
+</div>
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                flexWrap: "wrap",
-                justifyContent: "flex-end",
-              }}
-            >
+      <div
+  className="hl-results-pills"
+  style={{
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+  }}
+>
               <Pill tone="green">
                 {total === 1 ? "1 vivienda" : `${total} viviendas`}
               </Pill>
