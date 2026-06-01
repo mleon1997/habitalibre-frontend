@@ -2,9 +2,15 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import HabitaShell from "../components/HabitaShell.jsx";
 import {
+  Bath,
+  BedDouble,
   Building2,
+  CarFront,
   Landmark,
+  MapPin,
+  Ruler,
   SlidersHorizontal,
+  WalletCards,
 } from "lucide-react";
 import { moneyUSD } from "../lib/money.js";
 import mockProperties from "../data/mockProperties.js";
@@ -2150,6 +2156,79 @@ const listingQuickValueStyle = {
   lineHeight: 1.1,
 };
 
+
+function ListingMetric({ Icon, label, value }) {
+  return (
+    <div style={listingMiniStatStyle}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          ...listingMiniLabelStyle,
+        }}
+      >
+        {Icon ? (
+          <Icon
+            size={14}
+            strokeWidth={2.25}
+            style={{
+              color: "rgba(148,163,184,0.96)",
+              flexShrink: 0,
+            }}
+          />
+        ) : null}
+
+        <span>{label}</span>
+      </div>
+
+      <div style={listingMiniValueStyle}>{value}</div>
+    </div>
+  );
+}
+
+function ListingQuickItem({ Icon, label, value, highlight = false }) {
+  return (
+    <div
+      style={{
+        minWidth: 0,
+        padding: "10px 0",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 7,
+          ...listingQuickLabelStyle,
+        }}
+      >
+        {Icon ? (
+          <Icon
+            size={14}
+            strokeWidth={2.25}
+            style={{
+              color: highlight ? "#25d3a6" : "rgba(148,163,184,0.96)",
+              flexShrink: 0,
+            }}
+          />
+        ) : null}
+
+        <span>{label}</span>
+      </div>
+
+      <div
+        style={{
+          ...listingQuickValueStyle,
+          color: highlight ? "#25d3a6" : listingQuickValueStyle.color,
+        }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
 function CompactMatchPropertyCard({
   property,
   isSelected,
@@ -2299,12 +2378,34 @@ function CompactMatchPropertyCard({
             <div
               style={{
                 marginTop: 7,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
                 fontSize: 13,
                 color: "rgba(148,163,184,0.95)",
                 fontWeight: 750,
+                minWidth: 0,
               }}
             >
-              {city}
+              <MapPin
+                size={14}
+                strokeWidth={2.25}
+                style={{
+                  color: "rgba(148,163,184,0.92)",
+                  flexShrink: 0,
+                }}
+              />
+
+              <span
+                style={{
+                  minWidth: 0,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {city}
+              </span>
             </div>
           </div>
 
@@ -2312,27 +2413,29 @@ function CompactMatchPropertyCard({
         </div>
 
         <div className="hl-compact-metrics" style={{ marginTop: 14 }}>
-          <div style={listingMiniStatStyle}>
-            <div style={listingMiniLabelStyle}>Área</div>
-            <div style={listingMiniValueStyle}>
-              {area !== "—" ? `${area} m²` : "—"}
-            </div>
-          </div>
+          <ListingMetric
+            Icon={Ruler}
+            label="Área"
+            value={area !== "—" ? `${area} m²` : "—"}
+          />
 
-          <div style={listingMiniStatStyle}>
-            <div style={listingMiniLabelStyle}>Dorm.</div>
-            <div style={listingMiniValueStyle}>{dorms}</div>
-          </div>
+          <ListingMetric
+            Icon={BedDouble}
+            label="Dorm."
+            value={dorms}
+          />
 
-          <div style={listingMiniStatStyle}>
-            <div style={listingMiniLabelStyle}>Baños</div>
-            <div style={listingMiniValueStyle}>{baths}</div>
-          </div>
+          <ListingMetric
+            Icon={Bath}
+            label="Baños"
+            value={baths}
+          />
 
-          <div style={listingMiniStatStyle}>
-            <div style={listingMiniLabelStyle}>Parq.</div>
-            <div style={listingMiniValueStyle}>{parking}</div>
-          </div>
+          <ListingMetric
+            Icon={CarFront}
+            label="Parq."
+            value={parking}
+          />
         </div>
 
         <div
@@ -2355,30 +2458,32 @@ function CompactMatchPropertyCard({
           </div>
 
           <div className="hl-compact-quick-grid" style={{ marginTop: 8 }}>
-            <div>
-              <div style={listingQuickLabelStyle}>Entrada</div>
-              <div style={listingQuickValueStyle}>
-                {finance.entradaRequerida != null
+            <ListingQuickItem
+              Icon={WalletCards}
+              label="Entrada"
+              value={
+                finance.entradaRequerida != null
                   ? moneyUSD(finance.entradaRequerida)
-                  : "—"}
-              </div>
-            </div>
+                  : "—"
+              }
+              highlight
+            />
 
-            <div>
-              <div style={listingQuickLabelStyle}>Falta hoy</div>
-              <div style={listingQuickValueStyle}>
-                {finance.faltante != null ? moneyUSD(finance.faltante) : "—"}
-              </div>
-            </div>
+            <ListingQuickItem
+              Icon={WalletCards}
+              label="Falta hoy"
+              value={finance.faltante != null ? moneyUSD(finance.faltante) : "—"}
+            />
 
-            <div>
-              <div style={listingQuickLabelStyle}>Cuota</div>
-              <div style={listingQuickValueStyle}>
-                {finance.cuotaHipoteca != null
+            <ListingQuickItem
+              Icon={Landmark}
+              label="Cuota"
+              value={
+                finance.cuotaHipoteca != null
                   ? `${moneyUSD(finance.cuotaHipoteca)}/mes`
-                  : "—"}
-              </div>
-            </div>
+                  : "—"
+              }
+            />
           </div>
 
           <div
