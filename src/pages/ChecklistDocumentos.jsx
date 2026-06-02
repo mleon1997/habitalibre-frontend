@@ -512,13 +512,17 @@ export default function ChecklistDocumentos() {
               gap: 10,
             }}
           >
-            <PrimaryButton onClick={() => navigate("/ruta")}>
-              Volver a mi ruta
-            </PrimaryButton>
+        <PrimaryButton onClick={() => navigate("/siguiente-paso")}>
+  {progress >= 60 ? "Continuar al siguiente paso" : "Revisar qué me falta"}
+</PrimaryButton>
 
-            <SecondaryButton onClick={() => navigate("/match")}>
-              Ver mi Match otra vez
-            </SecondaryButton>
+<SecondaryButton onClick={() => navigate("/ruta")}>
+  Volver a mi ruta
+</SecondaryButton>
+
+<SecondaryButton onClick={() => navigate("/match")}>
+  Ver mi Match otra vez
+</SecondaryButton>
           </div>
         </Card>
       </div>

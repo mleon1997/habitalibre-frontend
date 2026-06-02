@@ -595,6 +595,37 @@ export default function PropertyCard({ property, onClick }) {
 
   const steps = Array.isArray(plan?.steps) ? plan.steps : [];
 
+const handleCardClick = (event) => {
+  if (!onClick) return;
+
+  onClick(event);
+
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: "auto",
+    });
+
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+
+    const main = document.querySelector("main");
+    if (main && typeof main.scrollTo === "function") {
+      main.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: "auto",
+      });
+    }
+  };
+
+  scrollToTop();
+  requestAnimationFrame(scrollToTop);
+  setTimeout(scrollToTop, 80);
+};
+
+
   return (
     <Card
       soft
@@ -605,9 +636,9 @@ export default function PropertyCard({ property, onClick }) {
         borderRadius: 26,
       }}
     >
-      <button
-        type="button"
-        onClick={onClick}
+   <button
+  type="button"
+  onClick={handleCardClick}
         style={{
           width: "100%",
           border: "none",
