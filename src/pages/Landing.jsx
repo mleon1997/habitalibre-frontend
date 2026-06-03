@@ -97,7 +97,7 @@ export default function Landing({ onStart }) {
     <main className="min-h-screen bg-slate-950 text-slate-50">
      {/* NAVBAR */}
 <header className="border-b border-slate-800/70 bg-slate-950/88 backdrop-blur-xl sticky top-0 z-50">
-  <div className="mx-auto max-w-7xl px-5 md:px-8 h-[82px] flex items-center justify-between gap-7">
+<div className="mx-auto max-w-7xl px-5 md:px-8 h-[76px] flex items-center justify-between gap-8">
     {/* Logo HabitaLibre */}
     <button
       type="button"
@@ -134,108 +134,137 @@ export default function Landing({ onStart }) {
     </button>
 
     {/* NAV LINKS - DESKTOP */}
-    <nav className="hidden lg:flex items-center gap-6 text-sm">
-      <button
-        type="button"
-        onClick={() => navigate("/propiedades")}
-        className="text-slate-300 hover:text-white transition"
-      >
-        Propiedades
-      </button>
+<nav className="hidden lg:flex items-center gap-3 text-sm">
+  <button
+    type="button"
+    onClick={() => navigate("/propiedades")}
+    className="
+      rounded-full border border-slate-700/80
+      bg-slate-900/70 px-4 py-2
+      text-slate-100 hover:border-emerald-400/60
+      hover:bg-emerald-400/10 hover:text-emerald-200
+      transition whitespace-nowrap
+    "
+  >
+    Propiedades
+  </button>
 
-      <a
-        href="#como-funciona"
-        className="text-slate-400 hover:text-white transition"
-      >
-        Cómo funciona
-      </a>
+  <a
+    href="#como-funciona"
+    className="
+      rounded-full px-3.5 py-2
+      text-slate-400 hover:text-white
+      hover:bg-slate-900/70
+      transition whitespace-nowrap
+    "
+  >
+    Cómo funciona
+  </a>
 
-      <a
-        href="#beneficios"
-        className="text-slate-400 hover:text-white transition"
-      >
-        Beneficios
-      </a>
+  <a
+    href="#beneficios"
+    className="
+      rounded-full px-3.5 py-2
+      text-slate-400 hover:text-white
+      hover:bg-slate-900/70
+      transition whitespace-nowrap
+    "
+  >
+    Beneficios
+  </a>
 
-      <a
-        href="#faq"
-        className="text-slate-400 hover:text-white transition"
-      >
-        FAQ
-      </a>
-    </nav>
+  <a
+    href="#faq"
+    className="
+      rounded-full px-3.5 py-2
+      text-slate-400 hover:text-white
+      hover:bg-slate-900/70
+      transition whitespace-nowrap
+    "
+  >
+    FAQ
+  </a>
+</nav>
 
-    {/* SEARCH PILL - DESKTOP */}
-    <button
-      type="button"
-      onClick={() => navigate("/propiedades")}
-      className="
-        hidden xl:flex items-center gap-3
-        min-w-[270px] max-w-[330px]
-        rounded-full border border-slate-800
-        bg-slate-900/65 hover:bg-slate-900
-        px-4 py-2.5
-        text-left transition
-        shadow-[0_12px_30px_rgba(2,6,23,0.35)]
-      "
-    >
-      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-400/10 border border-emerald-400/30">
-        <span className="h-2 w-2 rounded-full bg-emerald-300" />
-      </span>
 
-      <span className="min-w-0">
-        <span className="block text-[12px] font-semibold text-slate-100 truncate">
-          Explorar propiedades
-        </span>
-        <span className="block text-[11px] text-slate-500 truncate">
-          Quito · Tababela · High Garden
-        </span>
-      </span>
-    </button>
 
     {/* ACTIONS - DESKTOP */}
     <div className="hidden md:flex items-center gap-3 shrink-0">
       <button
+  type="button"
+  onClick={() => navigate(token ? "/progreso" : "/login")}
+  className="
+    px-4 py-2 rounded-full
+    text-slate-300 hover:text-white
+    hover:bg-slate-900/80
+    transition text-sm whitespace-nowrap
+  "
+>
+  {token ? "Mi progreso" : "Iniciar sesión"}
+</button>
+<button
+  type="button"
+  onClick={() => handleStart("navbar_primary")}
+  className="
+    px-5 py-2.5 rounded-full
+    bg-emerald-400 hover:bg-emerald-300
+    text-slate-950 font-semibold text-sm
+    shadow-[0_16px_40px_rgba(16,185,129,0.32)]
+    transition active:scale-[.98] whitespace-nowrap
+  "
+>
+  Precalificar ahora
+</button>
+    </div>
+
+        {/* ACTIONS - MOBILE */}
+    <div className="md:hidden flex items-center gap-2 shrink-0">
+      <button
         type="button"
         onClick={() => navigate(token ? "/progreso" : "/login")}
         className="
-          px-4 py-2 rounded-full
-          text-slate-300 hover:text-white
-          hover:bg-slate-900/80
-          transition text-sm
+          hidden min-[430px]:inline-flex
+          px-3 py-2 rounded-full
+          text-slate-300 text-xs font-semibold
+          hover:text-white hover:bg-slate-900/80
+          transition active:scale-[.97]
+          whitespace-nowrap
         "
       >
-        {token ? "Mi progreso" : "Iniciar sesión"}
+        {token ? "Progreso" : "Entrar"}
       </button>
 
       <button
         type="button"
-        onClick={() => handleStart("navbar_primary")}
+        onClick={() => navigate("/propiedades")}
         className="
-          px-5 py-2.5 rounded-full
-          bg-emerald-400 hover:bg-emerald-300
-          text-slate-950 font-semibold text-sm
-          shadow-[0_16px_40px_rgba(16,185,129,0.32)]
-          transition active:scale-[.98]
+          px-3.5 py-2 rounded-full
+          border border-slate-700/80
+          bg-slate-900/70
+          text-slate-100 text-xs font-semibold
+          hover:border-emerald-400/60
+          hover:bg-emerald-400/10
+          transition active:scale-[.97]
+          whitespace-nowrap
         "
       >
-        Precalificar ahora
+        Propiedades
+      </button>
+
+      <button
+        type="button"
+        onClick={() => handleStart("navbar_mobile")}
+        className="
+          px-3.5 py-2 rounded-full
+          bg-emerald-400 text-slate-950 text-xs font-semibold
+          shadow-[0_12px_30px_rgba(16,185,129,0.45)]
+          active:scale-[.97] transition
+          whitespace-nowrap
+        "
+      >
+        Precalificar
       </button>
     </div>
-
-    {/* CTA MOBILE */}
-    <button
-      type="button"
-      onClick={() => handleStart("navbar_mobile")}
-      className="
-        md:hidden px-4 py-2 rounded-full
-        bg-emerald-400 text-slate-950 text-xs font-semibold
-        shadow-[0_12px_30px_rgba(16,185,129,0.55)]
-        active:scale-[.97] transition
-      "
-    >
-      Precalificar
-    </button>
   </div>
 </header>
 
@@ -246,8 +275,8 @@ export default function Landing({ onStart }) {
 
 <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_22%_38%,rgba(16,185,129,0.18),transparent_34%),radial-gradient(circle_at_72%_45%,rgba(59,130,246,0.16),transparent_38%)]" />
 
-        <div className="relative mx-auto max-w-7xl px-5 md:px-8 py-10 md:py-16 lg:py-20">
-          <div className="grid gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] items-center">
+<div className="relative mx-auto max-w-7xl px-5 md:px-8 py-8 md:py-10 lg:py-12">
+<div className="grid gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] items-start">
             {/* LEFT – copy principal */}
             <motion.div {...fadeUp}>
               {/* Marca HabitaLibre en el hero */}
@@ -352,24 +381,6 @@ export default function Landing({ onStart }) {
                 </button>
               </div>
 
-              {/* CTA secundario SOLO mobile */}
-              <div className="md:hidden">
-                <button
-                  type="button"
-                  onClick={() => handleMobileAccount("hero_mobile_secondary")}
-                  className="w-full inline-flex items-center justify-center px-5 py-2.5 rounded-2xl
-                    border border-emerald-400/35 bg-slate-950/30 text-slate-100 font-semibold text-sm
-                    shadow-[0_0_0_1px_rgba(16,185,129,0.12),0_18px_50px_rgba(2,6,23,0.55)]
-                    hover:border-emerald-300/60 hover:bg-emerald-500/10 hover:text-white
-                    transition active:scale-[.99]"
-                >
-                  {token ? "Ver mi progreso" : "Crear Cuenta/Iniciar Sesión"}
-                </button>
-
-                <p className="mt-2 text-[11px] text-slate-500 text-center">
-                  guarda tu plan
-                </p>
-              </div>
 
               <div className="flex flex-wrap gap-x-6 gap-y-2 text-[11px] text-slate-300/80 mt-4">
                 <div className="flex items-center gap-1.5">
@@ -400,7 +411,7 @@ export default function Landing({ onStart }) {
                 <img
                   src="/hero-habitalibre.jpg"
                   alt="Pareja explorando vivienda propia"
-                  className="h-56 md:h-64 w-full object-cover"
+className="h-48 md:h-56 w-full object-cover"
                   style={{ objectPosition: "center 45%" }}
                 />
 
@@ -415,7 +426,7 @@ export default function Landing({ onStart }) {
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-slate-900/78 border border-white/10 rounded-3xl p-6 shadow-[0_28px_80px_rgba(2,6,23,0.75)] backdrop-blur-md">
                 <div className="flex items-start justify-between text-xs mb-4">
                   <div>
