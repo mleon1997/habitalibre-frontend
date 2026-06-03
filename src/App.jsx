@@ -57,7 +57,8 @@ import AdminProperties from "./pages/AdminProperties.jsx";
 import PoliticaPrivacidad from "./pages/PoliticaPrivacidad.jsx";
 import TerminosUso from "./pages/TerminosUso.jsx";
 import PoliticaCookies from "./pages/PoliticaCookies.jsx";
-
+import PublicProperties from "./pages/PublicProperties.jsx";
+import PublicPropertyDetail from "./pages/PublicPropertyDetail.jsx";
 function AppMobileLayout() {
   return (
     <div className="min-h-screen bg-[#060B14] text-slate-50">
@@ -197,7 +198,8 @@ export default function App() {
         {/* Website público + preview app */}
         <Route element={<AppLayoutShell />}>
           <Route path="/" element={<Landing />} />
-
+          <Route path="/propiedades" element={<PublicProperties />} />
+<Route path="/propiedades/:slug" element={<PublicPropertyDetail />} />
           <Route path="/precalificar" element={<SimuladorPage />} />
           <Route path="/simulador" element={<SimuladorPage />} />
           <Route path="/simular" element={<Navigate to="/precalificar" replace />} />

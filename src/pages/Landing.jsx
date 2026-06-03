@@ -14,8 +14,9 @@ import {
   PresentationChartLineIcon,
   BuildingOffice2Icon,
   LockClosedIcon,
-  Bars3Icon,
+    Bars3Icon,
   ChartBarIcon,
+  MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 
 import HIcon from "../assets/HICON.png";
@@ -24,7 +25,7 @@ import { trackEvent, trackPageView } from "../lib/analytics";
 import { useNavigate } from "react-router-dom";
 import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
 import WhatsAppFab from "../components/WhatsAppFab.jsx";
-
+import PublicPropertiesSection from "../components/PublicPropertiesSection.jsx";
 
 export default function Landing({ onStart }) {
   const [activeLegalSection, setActiveLegalSection] = useState(null);
@@ -94,98 +95,169 @@ export default function Landing({ onStart }) {
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50">
-      {/* NAVBAR */}
-      <header className="border-b border-slate-800/70 bg-slate-950/90 backdrop-blur sticky top-0 z-50">
-        <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
-          {/* Logo HabitaLibre */}
-          <div className="flex items-center gap-3">
-            <div
-              className="
-                h-12 w-12 md:h-14 md:w-14
-                rounded-2xl bg-slate-900/90 
-                border border-emerald-400/60
-                shadow-[0_0_25px_rgba(16,185,129,0.4)]
-                flex items-center justify-center overflow-hidden
-              "
-            >
-              <img
-                src={HIcon}
-                alt="HabitaLibre"
-                className="h-7 w-7 md:h-8 md:w-8 object-contain"
-              />
-            </div>
+     {/* NAVBAR */}
+<header className="border-b border-slate-800/70 bg-slate-950/88 backdrop-blur-xl sticky top-0 z-50">
+  <div className="mx-auto max-w-7xl px-5 md:px-8 h-[82px] flex items-center justify-between gap-7">
+    {/* Logo HabitaLibre */}
+    <button
+      type="button"
+      onClick={() => navigate("/")}
+      className="flex items-center gap-3.5 text-left shrink-0 group"
+    >
+      <div
+        className="
+          h-11 w-11
+          rounded-2xl bg-slate-900/90
+          border border-emerald-400/45
+          shadow-[0_0_18px_rgba(16,185,129,0.22)]
+          flex items-center justify-center overflow-hidden
+          group-hover:border-emerald-300/80
+          group-hover:shadow-[0_0_22px_rgba(16,185,129,0.32)]
+          transition
+        "
+      >
+        <img
+          src={HIcon}
+          alt="HabitaLibre"
+          className="h-7 w-7 object-contain"
+        />
+      </div>
 
-            <div className="leading-tight">
-              <div className="font-bold text-lg md:text-xl text-white tracking-tight">
-                HabitaLibre
-              </div>
-              <div className="text-[11px] md:text-xs text-emerald-300/90">
-                Hipoteca exprés · VIS · VIP · BIESS
-              </div>
-            </div>
-          </div>
-
-          {/* NAV LINKS - DESKTOP */}
-          <nav className="hidden md:flex items-center gap-8 text-sm">
-            <a href="#como-funciona" className="text-slate-300 hover:text-slate-50">
-              Cómo funciona
-            </a>
-
-            <a href="#beneficios" className="text-slate-300 hover:text-slate-50">
-              Beneficios
-            </a>
-
-            <a href="#nosotros" className="text-slate-300 hover:text-slate-50">
-              Nosotros
-            </a>
-
-            <a href="#testimonios" className="text-slate-300 hover:text-slate-50">
-              Testimonios
-            </a>
-
-            {/* 👤 LOGIN / PROGRESO */}
-            <button
-              onClick={() => navigate(token ? "/progreso" : "/login")}
-              className="text-slate-200 hover:text-white transition text-sm"
-            >
-              {token ? "Mi progreso" : "Iniciar sesión"}
-            </button>
-
-            {/* CTA PRINCIPAL */}
-            <button
-              onClick={() => handleStart("navbar_primary")}
-              className="px-5 py-2.5 rounded-full bg-blue-500 hover:bg-blue-400
-               text-slate-950 font-semibold text-sm shadow-lg transition"
-            >
-              Iniciar precalificación
-            </button>
-          </nav>
-
-          {/* CTA MOBILE */}
-          <button
-            onClick={() => handleStart("navbar_mobile")}
-            className="md:hidden px-4 py-2 rounded-full bg-emerald-400 text-slate-950 text-xs font-semibold shadow-[0_12px_30px_rgba(16,185,129,0.55)] active:scale-[.97] transition"
-          >
-            Precalificar ahora
-          </button>
+      <div className="leading-tight">
+        <div className="font-bold text-[19px] md:text-xl text-white tracking-tight">
+          HabitaLibre
         </div>
-      </header>
+        <div className="mt-0.5 text-[11px] md:text-xs text-emerald-300/75 whitespace-nowrap">
+          Hipoteca exprés · VIS · VIP · BIESS
+        </div>
+      </div>
+    </button>
 
-      {/* HERO */}
-      <section className="relative overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.12),transparent_55%),_radial-gradient(circle_at_bottom,_rgba(37,99,235,0.25),transparent_60%)]" />
-        <div className="relative mx-auto max-w-6xl px-4 py-10 md:py-16 lg:py-20">
-          <div className="grid gap-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] items-center">
+    {/* NAV LINKS - DESKTOP */}
+    <nav className="hidden lg:flex items-center gap-6 text-sm">
+      <button
+        type="button"
+        onClick={() => navigate("/propiedades")}
+        className="text-slate-300 hover:text-white transition"
+      >
+        Propiedades
+      </button>
+
+      <a
+        href="#como-funciona"
+        className="text-slate-400 hover:text-white transition"
+      >
+        Cómo funciona
+      </a>
+
+      <a
+        href="#beneficios"
+        className="text-slate-400 hover:text-white transition"
+      >
+        Beneficios
+      </a>
+
+      <a
+        href="#faq"
+        className="text-slate-400 hover:text-white transition"
+      >
+        FAQ
+      </a>
+    </nav>
+
+    {/* SEARCH PILL - DESKTOP */}
+    <button
+      type="button"
+      onClick={() => navigate("/propiedades")}
+      className="
+        hidden xl:flex items-center gap-3
+        min-w-[270px] max-w-[330px]
+        rounded-full border border-slate-800
+        bg-slate-900/65 hover:bg-slate-900
+        px-4 py-2.5
+        text-left transition
+        shadow-[0_12px_30px_rgba(2,6,23,0.35)]
+      "
+    >
+      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-400/10 border border-emerald-400/30">
+        <span className="h-2 w-2 rounded-full bg-emerald-300" />
+      </span>
+
+      <span className="min-w-0">
+        <span className="block text-[12px] font-semibold text-slate-100 truncate">
+          Explorar propiedades
+        </span>
+        <span className="block text-[11px] text-slate-500 truncate">
+          Quito · Tababela · High Garden
+        </span>
+      </span>
+    </button>
+
+    {/* ACTIONS - DESKTOP */}
+    <div className="hidden md:flex items-center gap-3 shrink-0">
+      <button
+        type="button"
+        onClick={() => navigate(token ? "/progreso" : "/login")}
+        className="
+          px-4 py-2 rounded-full
+          text-slate-300 hover:text-white
+          hover:bg-slate-900/80
+          transition text-sm
+        "
+      >
+        {token ? "Mi progreso" : "Iniciar sesión"}
+      </button>
+
+      <button
+        type="button"
+        onClick={() => handleStart("navbar_primary")}
+        className="
+          px-5 py-2.5 rounded-full
+          bg-emerald-400 hover:bg-emerald-300
+          text-slate-950 font-semibold text-sm
+          shadow-[0_16px_40px_rgba(16,185,129,0.32)]
+          transition active:scale-[.98]
+        "
+      >
+        Precalificar ahora
+      </button>
+    </div>
+
+    {/* CTA MOBILE */}
+    <button
+      type="button"
+      onClick={() => handleStart("navbar_mobile")}
+      className="
+        md:hidden px-4 py-2 rounded-full
+        bg-emerald-400 text-slate-950 text-xs font-semibold
+        shadow-[0_12px_30px_rgba(16,185,129,0.55)]
+        active:scale-[.97] transition
+      "
+    >
+      Precalificar
+    </button>
+  </div>
+</header>
+
+       {/* HERO */}
+      <section className="relative isolate overflow-hidden border-b border-slate-800/70">
+        {/* Premium fintech background */}
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_18%_32%,rgba(16,185,129,0.18),transparent_34%),radial-gradient(circle_at_78%_38%,rgba(59,130,246,0.18),transparent_36%),linear-gradient(135deg,#020617_0%,#0f172a_45%,#020617_100%)]" />
+
+<div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_22%_38%,rgba(16,185,129,0.18),transparent_34%),radial-gradient(circle_at_72%_45%,rgba(59,130,246,0.16),transparent_38%)]" />
+
+        <div className="relative mx-auto max-w-7xl px-5 md:px-8 py-10 md:py-16 lg:py-20">
+          <div className="grid gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] items-center">
             {/* LEFT – copy principal */}
             <motion.div {...fadeUp}>
               {/* Marca HabitaLibre en el hero */}
-              <div className="inline-flex items-center gap-3 rounded-full bg-slate-900/80 border border-slate-800/80 px-3.5 py-1.5 mb-4 shadow-[0_14px_40px_rgba(15,23,42,0.85)]">
+              <div className="inline-flex items-center gap-3 rounded-full bg-slate-950/55 border border-white/10 px-3.5 py-1.5 mb-4 shadow-[0_18px_50px_rgba(2,6,23,0.65)] backdrop-blur-md">
                 <div
                   className="
                     h-9 w-9 md:h-10 md:w-10
                     rounded-2xl bg-slate-950
                     border border-emerald-400/60
-                    shadow-[0_0_20px_rgba(16,185,129,0.5)]
+                    shadow-[0_0_20px_rgba(16,185,129,0.35)]
                     flex items-center justify-center overflow-hidden
                   "
                 >
@@ -195,33 +267,65 @@ export default function Landing({ onStart }) {
                     className="h-7 w-7 md:h-8 md:w-8 object-contain"
                   />
                 </div>
+
                 <span className="text-[11px] font-semibold tracking-[0.18em] text-slate-200">
                   HABITALIBRE
                 </span>
+
                 <span className="hidden sm:inline text-[11px] text-slate-400">
-                  Precalificación hipotecaria digital en Ecuador
+                  Propiedades reales + match hipotecario
                 </span>
               </div>
 
-              <p className="text-[11px] tracking-[0.2em] uppercase text-slate-400 mb-3">
+              <p className="text-[11px] tracking-[0.2em] uppercase text-slate-300/80 mb-3">
                 ● Sin afectar tu buró · resultado en menos de 2 minutos
               </p>
 
-              <h1 className="text-3xl md:text-5xl font-semibold tracking-tight text-slate-50 mb-4">
-                Tu camino fácil a la
-                <br />
-                vivienda propia{" "}
-                <span role="img" aria-label="house">
-                  🏡
-                </span>
+              <h1 className="text-4xl md:text-6xl font-semibold tracking-tight text-slate-50 mb-4 max-w-3xl">
+                Encuentra vivienda y descubre si puedes comprarla
               </h1>
 
-              <p className="text-sm md:text-[15px] text-slate-300 max-w-xl mb-6">
-                En menos de 2 minutos ves cuánto podrías comprar hoy y con qué
-                tipo de crédito avanzar (VIS, VIP, BIESS o banca privada).
-                Recibes un resumen claro en tu correo, sin ir al banco, sin
-                papeleo y sin consultas a tu buró.
+              <p className="text-sm md:text-[16px] text-slate-300 max-w-2xl mb-6 leading-7">
+                Explora propiedades reales y usa HabitaLibre para estimar tu rango de compra,
+                tu entrada necesaria y la ruta hipotecaria que más sentido tiene para ti:
+                VIS, VIP, BIESS o banca privada.
               </p>
+
+              {/* Zillow-like search bar */}
+              <div className="mb-5 max-w-2xl rounded-[28px] border border-white/15 bg-white p-2 shadow-[0_28px_80px_rgba(2,6,23,0.55)]">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="relative flex-1">
+                    <MagnifyingGlassIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+
+                    <input
+                      type="text"
+                      placeholder="Busca por ciudad, sector o proyecto..."
+                      className="w-full rounded-2xl bg-white py-3.5 pl-11 pr-4 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          trackEvent("hero_property_search_enter", {
+                            source: "landing_hero",
+                          });
+                          navigate("/propiedades");
+                        }
+                      }}
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trackEvent("hero_property_search_click", {
+                        source: "landing_hero",
+                      });
+                      navigate("/propiedades");
+                    }}
+                    className="rounded-2xl bg-slate-950 px-5 py-3.5 text-sm font-semibold text-white hover:bg-slate-800 transition"
+                  >
+                    Buscar propiedades
+                  </button>
+                </div>
+              </div>
 
               {/* CTA buttons */}
               <div className="flex flex-wrap gap-3 mb-4">
@@ -235,9 +339,11 @@ export default function Landing({ onStart }) {
 
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center px-4 py-2.5 rounded-full border border-slate-600/80 text-slate-200 text-sm hover:border-slate-400 hover:text-slate-50 transition"
+                  className="inline-flex items-center justify-center px-4 py-2.5 rounded-full border border-white/20 bg-slate-950/35 text-slate-200 text-sm hover:border-white/35 hover:text-slate-50 transition backdrop-blur-sm"
                   onClick={() => {
-                    trackEvent("cta_ver_ejemplo_resultado_click", { source: "hero" });
+                    trackEvent("cta_ver_ejemplo_resultado_click", {
+                      source: "hero",
+                    });
                     const el = document.getElementById("preview");
                     if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
                   }}
@@ -246,67 +352,110 @@ export default function Landing({ onStart }) {
                 </button>
               </div>
 
-              {/* ✅ CTA secundario SOLO mobile */}
-<div className="md:hidden">
-  <button
-    type="button"
-    onClick={() => handleMobileAccount("hero_mobile_secondary")}
-    className="w-full inline-flex items-center justify-center px-5 py-2.5 rounded-2xl
-      border border-emerald-400/35 bg-slate-950/30 text-slate-100 font-semibold text-sm
-      shadow-[0_0_0_1px_rgba(16,185,129,0.12),0_18px_50px_rgba(2,6,23,0.55)]
-      hover:border-emerald-300/60 hover:bg-emerald-500/10 hover:text-white
-      transition active:scale-[.99]"
-  >
-    {token ? "Ver mi progreso" : "Crear Cuenta/Iniciar Sesión"}
-  </button>
+              {/* CTA secundario SOLO mobile */}
+              <div className="md:hidden">
+                <button
+                  type="button"
+                  onClick={() => handleMobileAccount("hero_mobile_secondary")}
+                  className="w-full inline-flex items-center justify-center px-5 py-2.5 rounded-2xl
+                    border border-emerald-400/35 bg-slate-950/30 text-slate-100 font-semibold text-sm
+                    shadow-[0_0_0_1px_rgba(16,185,129,0.12),0_18px_50px_rgba(2,6,23,0.55)]
+                    hover:border-emerald-300/60 hover:bg-emerald-500/10 hover:text-white
+                    transition active:scale-[.99]"
+                >
+                  {token ? "Ver mi progreso" : "Crear Cuenta/Iniciar Sesión"}
+                </button>
 
-  <p className="mt-2 text-[11px] text-slate-500 text-center">
-    guarda tu plan
-  </p>
-</div>
+                <p className="mt-2 text-[11px] text-slate-500 text-center">
+                  guarda tu plan
+                </p>
+              </div>
 
-              <div className="flex flex-wrap gap-x-6 gap-y-2 text-[11px] text-slate-400 mt-4">
+              <div className="flex flex-wrap gap-x-6 gap-y-2 text-[11px] text-slate-300/80 mt-4">
                 <div className="flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                   Datos cifrados
                 </div>
+
                 <div className="flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
-                  Enfoque VIS / VIP / BIESS
+                  Propiedades reales
                 </div>
+
                 <div className="flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
-                  Asesoría sin costo
+                  Match hipotecario
                 </div>
               </div>
             </motion.div>
 
             {/* RIGHT – result card */}
-            <motion.div id="preview" {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }}>
-              <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 shadow-[0_24px_60px_rgba(15,23,42,0.9)] backdrop-blur-sm">
+            <motion.div
+              id="preview"
+              {...fadeUp}
+              transition={{ ...fadeUp.transition, delay: 0.1 }}
+            >
+
+                            <div className="relative mb-4 overflow-hidden rounded-[2rem] border border-white/10 bg-slate-900 shadow-[0_28px_80px_rgba(2,6,23,0.65)]">
+                <img
+                  src="/hero-habitalibre.jpg"
+                  alt="Pareja explorando vivienda propia"
+                  className="h-56 md:h-64 w-full object-cover"
+                  style={{ objectPosition: "center 45%" }}
+                />
+
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-slate-950/10 to-transparent" />
+
+                <div className="absolute left-4 bottom-4 right-4">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/35 bg-slate-950/70 px-3 py-1.5 backdrop-blur-md">
+                    <span className="h-2 w-2 rounded-full bg-emerald-300" />
+                    <span className="text-[11px] font-semibold text-emerald-200">
+                      Propiedades reales · Match hipotecario
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-slate-900/78 border border-white/10 rounded-3xl p-6 shadow-[0_28px_80px_rgba(2,6,23,0.75)] backdrop-blur-md">
                 <div className="flex items-start justify-between text-xs mb-4">
                   <div>
                     <div className="inline-flex items-center gap-2 rounded-full bg-slate-900 border border-slate-700/70 px-2.5 py-1 mb-2">
                       <div className="h-4 w-4 rounded-lg bg-slate-950 flex items-center justify-center border border-emerald-400/60 overflow-hidden">
-                        <img src={HLogo} alt="HabitaLibre" className="h-3.5 w-3.5 object-contain" />
+                        <img
+                          src={HLogo}
+                          alt="HabitaLibre"
+                          className="h-3.5 w-3.5 object-contain"
+                        />
                       </div>
+
                       <span className="text-[11px] text-teal-300 font-medium">
                         Precalificación HabitaLibre
                       </span>
                     </div>
-                    <p className="text-slate-400 text-[11px]">Vista previa de tu resultado</p>
+
+                    <p className="text-slate-400 text-[11px]">
+                      Vista previa de tu resultado
+                    </p>
+
                     <p className="text-slate-500 mt-0.5 text-[11px]">
                       Ejemplo con ingresos de $1.600 y deudas moderadas
                     </p>
                   </div>
+
                   <span className="px-3 py-1 rounded-full bg-emerald-900/40 text-emerald-300 border border-emerald-500/40 text-[11px]">
                     No afecta tu buró
                   </span>
                 </div>
 
                 <div className="mb-5">
-                  <p className="text-slate-400 text-[11px] mb-1">Capacidad estimada de compra</p>
-                  <p className="text-3xl md:text-4xl font-bold tracking-tight">$ 98.500</p>
+                  <p className="text-slate-400 text-[11px] mb-1">
+                    Capacidad estimada de compra
+                  </p>
+
+                  <p className="text-3xl md:text-4xl font-bold tracking-tight">
+                    $ 98.500
+                  </p>
+
                   <p className="text-[11px] text-slate-500 mt-1">
                     Monto referencial de vivienda según tus datos declarados.
                   </p>
@@ -314,16 +463,24 @@ export default function Landing({ onStart }) {
 
                 <div className="grid grid-cols-2 gap-4 text-sm mb-4">
                   <div className="bg-slate-900 border border-slate-700/70 rounded-2xl p-4">
-                    <p className="text-slate-400 text-[11px] mb-1">Cuota estimada</p>
+                    <p className="text-slate-400 text-[11px] mb-1">
+                      Cuota estimada
+                    </p>
+
                     <p className="font-semibold text-[17px]">$ 480 / mes</p>
+
                     <p className="text-[11px] text-slate-500 mt-1">
                       Incluye capital + intereses · Plazo 20 años.
                     </p>
                   </div>
 
                   <div className="bg-slate-900 border border-slate-700/70 rounded-2xl p-4">
-                    <p className="text-slate-400 text-[11px] mb-1">Producto tentativo</p>
+                    <p className="text-slate-400 text-[11px] mb-1">
+                      Producto tentativo
+                    </p>
+
                     <p className="font-semibold text-[15px]">VIS / VIP</p>
+
                     <p className="text-[11px] text-slate-500 mt-1">
                       Ajustamos según si calificas a subsidio o BIESS.
                     </p>
@@ -332,19 +489,33 @@ export default function Landing({ onStart }) {
 
                 <div className="grid grid-cols-3 gap-3 text-[11px] mb-5">
                   <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
-                    <p className="text-slate-400 text-[10px] mb-0.5">Tasa referencial</p>
+                    <p className="text-slate-400 text-[10px] mb-0.5">
+                      Tasa referencial
+                    </p>
                     <p className="text-slate-100 font-semibold text-sm">4,87%*</p>
-                    <p className="text-slate-500 text-[9px] mt-0.5">Varía por banco y producto.</p>
+                    <p className="text-slate-500 text-[9px] mt-0.5">
+                      Varía por banco y producto.
+                    </p>
                   </div>
+
                   <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
-                    <p className="text-slate-400 text-[10px] mb-0.5">Plazo estimado</p>
+                    <p className="text-slate-400 text-[10px] mb-0.5">
+                      Plazo estimado
+                    </p>
                     <p className="text-slate-100 font-semibold text-sm">20 años</p>
-                    <p className="text-slate-500 text-[9px] mt-0.5">Buscamos balance entre cuota y costo total.</p>
+                    <p className="text-slate-500 text-[9px] mt-0.5">
+                      Buscamos balance entre cuota y costo total.
+                    </p>
                   </div>
+
                   <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
-                    <p className="text-slate-400 text-[10px] mb-0.5">Score HabitaLibre</p>
+                    <p className="text-slate-400 text-[10px] mb-0.5">
+                      Score HabitaLibre
+                    </p>
                     <p className="text-slate-100 font-semibold text-sm">82 / 100</p>
-                    <p className="text-emerald-400 text-[9px] mt-0.5">Perfil sólido para iniciar tu proceso.</p>
+                    <p className="text-emerald-400 text-[9px] mt-0.5">
+                      Perfil sólido para iniciar tu proceso.
+                    </p>
                   </div>
                 </div>
 
@@ -352,11 +523,14 @@ export default function Landing({ onStart }) {
                   <div className="mt-0.5 h-6 w-6 rounded-full bg-emerald-500/10 border border-emerald-500/50 flex items-center justify-center text-[13px] text-emerald-300">
                     i
                   </div>
+
                   <div className="text-[11px] leading-snug text-slate-200">
                     <span className="font-semibold text-emerald-300">Ejemplo:</span>{" "}
-                    si reduces tus otras deudas en <span className="font-semibold">$ 150/mes</span>, tu
-                    capacidad podría subir hasta aprox. <span className="font-semibold">$ 112.000</span>. En el
-                    reporte real te mostramos estos escenarios con tus propios datos.
+                    si reduces tus otras deudas en{" "}
+                    <span className="font-semibold">$ 150/mes</span>, tu capacidad
+                    podría subir hasta aprox.{" "}
+                    <span className="font-semibold">$ 112.000</span>. En el reporte
+                    real te mostramos estos escenarios con tus propios datos.
                   </div>
                 </div>
 
@@ -367,6 +541,7 @@ export default function Landing({ onStart }) {
                   <div className="h-5 w-5 rounded-lg bg-slate-950 flex items-center justify-center border border-emerald-400/60 overflow-hidden">
                     <img src={HLogo} alt="" className="h-4 w-4 object-contain" />
                   </div>
+
                   <span>Ver mi capacidad real</span>
                 </button>
 
@@ -375,8 +550,9 @@ export default function Landing({ onStart }) {
                 </p>
 
                 <p className="text-[9px] text-slate-500 mt-3 leading-snug">
-                  *Tasa y condiciones referenciales. Tu resultado real se calcula con tus datos y puede variar según
-                  entidad financiera, producto y regulación vigente en Ecuador.
+                  *Tasa y condiciones referenciales. Tu resultado real se calcula
+                  con tus datos y puede variar según entidad financiera, producto
+                  y regulación vigente en Ecuador.
                 </p>
               </div>
             </motion.div>
@@ -385,6 +561,9 @@ export default function Landing({ onStart }) {
       </section>
 
       {/* CÓMO FUNCIONA */}
+
+      <PublicPropertiesSection />
+
       <motion.section
         id="como-funciona"
         className="border-t border-slate-800 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-950 scroll-mt-20"

@@ -175,12 +175,161 @@ function SliderField({
   );
 }
 
-export default function WizardHL({ mode = "quick", onboarding = false, afinando = false }) {
-  const navigate = useNavigate();
+export default function WizardHL({
+  mode = "quick",
+  onboarding = false,
+  afinando = false,
+  propertyContext = null,
+  propertyId = "",
+  propertySlug = "",
+}) {
+const navigate = useNavigate();
   const { openLead, openLeadNow, setLeadResult } = useLeadCapture();
   const { isAuthed, user } = useCustomerAuth();
 
   const isJourneyMode = String(mode || "").toLowerCase() === "journey";
+
+  const hasPropertyContext = Boolean(
+    propertyContext?.id || propertyContext?.slug || propertyId || propertySlug
+  );
+
+const selectedProperty = useMemo(() => {
+  if (!hasPropertyContext) return null;
+
+  const p = propertyContext || {};
+  const price = Number(p.precio || p.price || 0);
+
+  const entradaReferencial =
+    Number(p.entradaReferencial || 0) ||
+    Number(p.entradaMinima || 0) ||
+    Number(p.entradaRequerida || 0) ||
+    (price > 0 ? Math.round(price * 0.1) : 0);
+
+  const mesesHastaEntrega = Number(p.mesesHastaEntrega || 0);
+
+  return {
+    id: p.id || propertyId || "",
+    slug: p.slug || propertySlug || p.id || propertyId || "",
+    titulo: p.titulo || p.name || "Propiedad seleccionada",
+    proyecto: p.proyecto || p.project || "",
+    precio: price,
+    precioLabel:
+      p.precioLabel ||
+      (price
+        ? `$${price.toLocaleString("en-US", {
+            maximumFractionDigits: 0,
+          })}`
+        : ""),
+    ciudad: p.ciudad || "",
+    sector: p.sector || "",
+    m2: Number(p.m2Construccion || p.m2 || p.area || 0),
+    dormitorios: p.dormitorios ?? p.bedrooms ?? null,
+    banos: p.banos ?? p.bathrooms ?? null,
+    parqueaderos: p.parqueaderos ?? p.parking ?? null,
+    imagen: p.imagen || p.imageUrl || p.image || "",
+
+    // ✅ Datos para evaluar entrada durante obra
+    entradaReferencial,
+    entradaMinima: p.entradaMinima || p.entradaRequerida || entradaReferencial,
+    entradaRequerida: p.entradaRequerida || p.entradaMinima || entradaReferencial,
+    porcentajeEntrada: Number(p.porcentajeEntrada || 0.1),
+    fechaEntrega: p.fechaEntrega || null,
+    mesesHastaEntrega,
+    esProyectoEnConstruccion:
+      Boolean(p.esProyectoEnConstruccion) || mesesHastaEntrega > 0,
+    tipoVivienda: p.tipoVivienda || p.tipoInmueble || null,
+    estadoProyecto: p.estadoProyecto || p.estadoComercial || null,
+  };
+}, [hasPropertyContext, propertyContext, propertyId, propertySlug]);
+
+  function pickCapacityFromResult(result) {
+    const candidates = [
+      result?.capacidadCompra,
+      result?.capacidadCompraEstimada,
+      result?.capacidadMaximaCompra,
+      result?.montoMaximoVivienda,
+      result?.valorViviendaMaximo,
+      result?.maxValorVivienda,
+      result?.resumen?.capacidadCompra,
+      result?.resumen?.capacidadCompraEstimada,
+      result?.quick?.capacidadCompra,
+      result?.perfil?.capacidadCompra,
+      result?.perfil?.capacidadCompraEstimada,
+      result?.metadata?.capacidadCompra,
+      result?.output?.capacidadCompra,
+    ];
+
+    for (const value of candidates) {
+      const n = Number(value);
+      if (Number.isFinite(n) && n > 0) return n;
+    }
+
+    return null;
+  }
+
+  function buildPropertyFit(result, entradaPayload) {
+    if (!selectedProperty?.precio) return null;
+
+    const propertyPrice = Number(selectedProperty.precio || 0);
+    const estimatedCapacity = pickCapacityFromResult(result);
+
+    if (!estimatedCapacity) {
+      return {
+        status: "sin_capacidad_detectada",
+        label: "Resultado pendiente de comparación",
+        propertyPrice,
+        propertyPriceLabel: selectedProperty.precioLabel,
+        estimatedCapacity: null,
+        gap: null,
+        message:
+          "Calculamos tu precalificación, pero no encontramos un campo de capacidad estimada para compararlo automáticamente con esta propiedad.",
+      };
+    }
+
+    const gap = estimatedCapacity - propertyPrice;
+    const gapAbs = Math.abs(gap);
+    const ratio = estimatedCapacity / propertyPrice;
+
+    if (ratio >= 1) {
+      return {
+        status: "dentro_de_rango",
+        label: "Esta propiedad parece estar dentro de tu rango estimado",
+        propertyPrice,
+        propertyPriceLabel: selectedProperty.precioLabel,
+        estimatedCapacity,
+        gap,
+        gapAbs,
+        message:
+          "Según tus datos declarados, esta propiedad parece estar dentro de tu capacidad estimada.",
+      };
+    }
+
+    if (ratio >= 0.9) {
+      return {
+        status: "cerca",
+        label: "Estás cerca de esta propiedad",
+        propertyPrice,
+        propertyPriceLabel: selectedProperty.precioLabel,
+        estimatedCapacity,
+        gap,
+        gapAbs,
+        message:
+          "Esta propiedad está cerca de tu capacidad estimada. Podrías necesitar más entrada, menor deuda o una mejor ruta de financiamiento.",
+      };
+    }
+
+    return {
+      status: "fuera_de_rango",
+      label: "Esta propiedad está por encima de tu capacidad estimada actual",
+      propertyPrice,
+      propertyPriceLabel: selectedProperty.precioLabel,
+      estimatedCapacity,
+      gap,
+      gapAbs,
+      message:
+        "Según tus datos declarados, esta propiedad estaría por encima de tu capacidad estimada actual.",
+    };
+  }
 
   const [step, setStep] = useState(1);
 
@@ -202,6 +351,35 @@ export default function WizardHL({ mode = "quick", onboarding = false, afinando 
 
   const [valor, setValor] = useState("90000");
   const [entrada, setEntrada] = useState("15000");
+  const [capacidadEntradaMensual, setCapacidadEntradaMensual] = useState("0");
+  const didApplyPropertyDefaultsRef = useRef(false);
+
+  useEffect(() => {
+    if (didApplyPropertyDefaultsRef.current) return;
+    if (!selectedProperty?.precio) return;
+    if (afinando) return;
+
+    didApplyPropertyDefaultsRef.current = true;
+
+    const propertyPrice = Number(selectedProperty.precio || 0);
+    const estimatedDownPayment = Math.round(propertyPrice * 0.1);
+
+    setValor(String(propertyPrice));
+
+    // Solo ajustamos entrada si estaba en el default anterior o vacío.
+    setEntrada((current) => {
+      const currentNumber = Number(current || 0);
+      if (!currentNumber || currentNumber === 15000) {
+        return String(estimatedDownPayment);
+      }
+      return current;
+    });
+
+    if (selectedProperty?.tipoInmueble !== "usada") {
+      setTipoVivienda("por_estrenar");
+    }
+  }, [selectedProperty, afinando]);
+
 
   const [afiliadoIESS, setAfiliadoIESS] = useState("no");
   const [aportesTotales, setAportesTotales] = useState("0");
@@ -242,6 +420,30 @@ export default function WizardHL({ mode = "quick", onboarding = false, afinando 
     return Math.round((e / v) * 100);
   }, [valor, entrada]);
 
+  const mesesHastaEntrega = Number(selectedProperty?.mesesHastaEntrega || 0);
+
+const entradaReferencialProyecto =
+  Number(selectedProperty?.entradaReferencial || 0) ||
+  Number(selectedProperty?.entradaMinima || 0) ||
+  Number(selectedProperty?.entradaRequerida || 0) ||
+  Math.round(toNum(valor) * 0.1);
+
+const shouldAskPlanEntrada =
+  hasPropertyContext &&
+  selectedProperty &&
+  (selectedProperty.esProyectoEnConstruccion || mesesHastaEntrega > 0);
+
+const entradaProyectada = useMemo(() => {
+  return (
+    toNum(entrada) +
+    toNum(capacidadEntradaMensual) * Math.max(mesesHastaEntrega, 0)
+  );
+}, [entrada, capacidadEntradaMensual, mesesHastaEntrega]);
+
+const cumpleEntradaReferencial =
+  entradaReferencialProyecto > 0 &&
+  entradaProyectada >= entradaReferencialProyecto;
+
   // ✅ Hidratar automático cuando vienes desde "Afinar"
   const didHydrateRef = useRef(false);
   useEffect(() => {
@@ -272,6 +474,10 @@ export default function WizardHL({ mode = "quick", onboarding = false, afinando 
 
     if (savedEntrada.valorVivienda != null) setValor(String(savedEntrada.valorVivienda));
     if (savedEntrada.entradaDisponible != null) setEntrada(String(savedEntrada.entradaDisponible));
+
+if (savedEntrada.capacidadEntradaMensual != null) {
+  setCapacidadEntradaMensual(String(savedEntrada.capacidadEntradaMensual));
+}
 
     if (savedEntrada.afiliadoIess != null) setAfiliadoIESS(savedEntrada.afiliadoIess ? "sí" : "no");
     if (savedEntrada.iessAportesTotales != null) setAportesTotales(String(savedEntrada.iessAportesTotales));
@@ -343,8 +549,34 @@ export default function WizardHL({ mode = "quick", onboarding = false, afinando 
       iessAportesTotales: toNum(aportesTotales),
       iessAportesConsecutivos: toNum(aportesConsecutivos),
 
-      tiempoCompra: horizonteCompra || null,
-      origen: isJourneyMode ? "journey" : "simulador",
+ tiempoCompra: horizonteCompra || null,
+
+// ✅ Solo afecta el property flow. En quick win normal queda en 0.
+capacidadEntradaMensual: shouldAskPlanEntrada
+  ? toNum(capacidadEntradaMensual)
+  : 0,
+
+origen: isJourneyMode
+  ? "journey"
+  : hasPropertyContext
+    ? "simulador_propiedad"
+    : "simulador",
+
+selectedProperty: selectedProperty || null,
+selectedPropertyId: selectedProperty?.id || propertyId || null,
+selectedPropertySlug: selectedProperty?.slug || propertySlug || null,
+selectedPropertyPrice: selectedProperty?.precio || null,
+
+context: {
+  source: hasPropertyContext
+    ? "property_detail"
+    : isJourneyMode
+      ? "journey"
+      : "quick_win",
+  selectedProperty: selectedProperty || null,
+  propertyId: selectedProperty?.id || propertyId || null,
+  propertySlug: selectedProperty?.slug || propertySlug || null,
+},
     };
   }
 
@@ -397,11 +629,12 @@ async function handleCalcular() {
   const shouldShowLeadModal = !isJourneyMode;
 
   if (shouldShowLeadModal) {
-    const initial = {
-      __loading: true,
-      __entrada: entradaPayload,
-      perfilInput: entradaPayload,
-    };
+ const initial = {
+  __loading: true,
+  __entrada: entradaPayload,
+  perfilInput: entradaPayload,
+  __propertyContext: selectedProperty || null,
+};
 
     if (typeof openLeadNow === "function") {
       openLeadNow(initial, entradaPayload);
@@ -459,13 +692,36 @@ async function handleCalcular() {
           })
         );
       } catch {}
+const backendSelectedProperty =
+  result?.output?.selectedProperty ||
+  result?.output?.propertyContext ||
+  result?.selectedProperty ||
+  result?.propertyContext ||
+  selectedProperty ||
+  null;
 
-      const merged = {
-        ...result,
-        __loading: false,
-        __entrada: entradaPayload,
-        perfilInput: entradaPayload,
-      };
+const backendPropertyFit =
+  result?.output?.propertyFit ||
+  result?.output?.resultadoPropiedad ||
+  result?.propertyFit ||
+  result?.resultadoPropiedad ||
+  null;
+
+const merged = {
+  ...result,
+  __loading: false,
+  __entrada: entradaPayload,
+  perfilInput: entradaPayload,
+
+  // ✅ Contexto opcional de propiedad
+  __propertyContext: backendSelectedProperty,
+  propertyContext: backendSelectedProperty,
+  selectedProperty: backendSelectedProperty,
+
+  // ✅ Fuente oficial: backend
+  propertyFit: backendPropertyFit,
+  resultadoPropiedad: backendPropertyFit,
+};
 
       /**
        * Si el modal ya estaba abierto en loading, solo actualizamos resultado.
@@ -589,10 +845,16 @@ async function handleCalcular() {
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold tracking-tight">
-            {isJourneyMode ? "Camino HabitaLibre" : "Precalificador HabitaLibre"}
+{isJourneyMode
+  ? "Camino HabitaLibre"
+  : hasPropertyContext
+    ? "¿Esta propiedad está a tu alcance?"
+    : "Precalificador HabitaLibre"}
           </h2>
           <p className="text-[11px] text-slate-400">
-            Completa los pasos y te mostramos un resultado claro en menos de 2 minutos.
+{hasPropertyContext
+  ? "Responde unas preguntas y descubre si esta propiedad está dentro de tu capacidad estimada."
+  : "Completa los pasos y te mostramos un resultado claro en menos de 2 minutos."}
           </p>
 
           {afinando && isJourneyMode ? (
@@ -867,6 +1129,93 @@ async function handleCalcular() {
             />
           </div>
 
+{shouldAskPlanEntrada && (
+  <div className="mb-5 rounded-3xl border border-emerald-500/25 bg-emerald-500/10 p-4">
+    <div className="mb-3">
+      <h4 className="text-sm font-semibold text-emerald-100">
+        Plan de entrada hasta la entrega
+      </h4>
+      <p className="mt-1 text-[11px] text-slate-300 leading-relaxed">
+        Esta propiedad parece ser un proyecto con entrega futura. Además de tu
+        entrada actual, podemos estimar si podrías completar la entrada durante
+        la obra.
+      </p>
+    </div>
+
+    <SliderField
+      label="¿Cuánto podrías abonar mensualmente a la entrada?"
+      helper={
+        mesesHastaEntrega > 0
+          ? `Usaremos ${mesesHastaEntrega} meses hasta la entrega estimada.`
+          : "Usaremos este dato para proyectar tu entrada acumulada."
+      }
+      min={0}
+      max={5000}
+      step={50}
+      value={capacidadEntradaMensual}
+      onChange={setCapacidadEntradaMensual}
+      format={(v) =>
+        `$${Number(v || 0).toLocaleString("en-US", {
+          maximumFractionDigits: 0,
+        })}`
+      }
+    />
+
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px]">
+      <div className="rounded-2xl border border-slate-700/70 bg-slate-950/40 px-3 py-2">
+        <p className="text-slate-400">Entrada actual</p>
+        <p className="text-slate-50 font-semibold">
+          ${toNum(entrada).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+        </p>
+      </div>
+
+      <div className="rounded-2xl border border-slate-700/70 bg-slate-950/40 px-3 py-2">
+        <p className="text-slate-400">Abono proyectado</p>
+        <p className="text-slate-50 font-semibold">
+          $
+          {(toNum(capacidadEntradaMensual) * Math.max(mesesHastaEntrega, 0)).toLocaleString(
+            "en-US",
+            { maximumFractionDigits: 0 }
+          )}
+        </p>
+      </div>
+
+      <div className="rounded-2xl border border-slate-700/70 bg-slate-950/40 px-3 py-2">
+        <p className="text-slate-400">Entrada proyectada</p>
+        <p className="text-slate-50 font-semibold">
+          ${entradaProyectada.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+        </p>
+      </div>
+
+      <div className="rounded-2xl border border-slate-700/70 bg-slate-950/40 px-3 py-2">
+        <p className="text-slate-400">Entrada ref.</p>
+        <p
+          className={[
+            "font-semibold",
+            cumpleEntradaReferencial ? "text-emerald-300" : "text-amber-300",
+          ].join(" ")}
+        >
+          $
+          {entradaReferencialProyecto.toLocaleString("en-US", {
+            maximumFractionDigits: 0,
+          })}
+        </p>
+      </div>
+    </div>
+
+    <p
+      className={[
+        "mt-3 text-[11px] leading-relaxed",
+        cumpleEntradaReferencial ? "text-emerald-200" : "text-slate-400",
+      ].join(" ")}
+    >
+      {cumpleEntradaReferencial
+        ? "Con este ritmo de abono, podrías llegar a la entrada referencial antes de la entrega."
+        : "Con este ritmo de abono, todavía podrías necesitar más entrada, más tiempo o una propiedad de menor precio."}
+    </p>
+  </div>
+)}
+
           {toNum(entrada) > toNum(valor) && (
             <p className="mb-3 text-[11px] text-amber-300">
               Tu entrada es mayor que el valor de la vivienda. Puedes reducirla o ajustar el valor objetivo.
@@ -976,7 +1325,9 @@ async function handleCalcular() {
           <h3 className="mb-3 text-sm font-semibold text-slate-100">✅ Listo para ver tu resultado</h3>
 
           <p className="text-[11px] text-slate-400 mb-3">
-            Revisaremos tu capacidad de pago, tipo de crédito (VIS/VIP/BIESS/privado) y te mostraremos un resumen claro.
+{hasPropertyContext
+  ? "Revisaremos tu capacidad de pago y la compararemos con la propiedad seleccionada."
+  : "Revisaremos tu capacidad de pago, tipo de crédito (VIS/VIP/BIESS/privado) y te mostraremos un resumen claro."}
           </p>
 
           <div className="mb-3 text-[11px] text-slate-500">
@@ -1007,7 +1358,11 @@ async function handleCalcular() {
             }
             right={
               <button className="btn-primary btn-sm w-full md:w-auto" onClick={handleCalcular} disabled={loading}>
-                {loading ? "Analizando…" : "Ver resultados"}
+{loading
+  ? "Analizando…"
+  : hasPropertyContext
+    ? "Ver si está a mi alcance"
+    : "Ver resultados"}
               </button>
             }
           />

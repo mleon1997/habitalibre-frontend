@@ -35,6 +35,58 @@ const mapTipoCompraNumero = (raw) => {
   return null;
 };
 
+const readStoredSelectedProperty = () => {
+  try {
+    const raw = localStorage.getItem("hl_selected_public_property");
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+const pickSelectedProperty = (result, inputs) => {
+  const candidates = [
+    result?.selectedProperty,
+    result?.propertyContext,
+    result?.__propertyContext,
+    result?.__entrada?.selectedProperty,
+    result?.perfilInput?.selectedProperty,
+    inputs?.selectedProperty,
+    inputs?.propertyContext,
+    readStoredSelectedProperty(),
+  ];
+
+  for (const item of candidates) {
+    if (item && typeof item === "object" && (item.id || item.slug || item.titulo)) {
+      return {
+        id: item.id || item.propertyId || null,
+        slug: item.slug || item.propertySlug || item.id || null,
+        titulo: item.titulo || item.name || item.title || "Propiedad seleccionada",
+        proyecto: item.proyecto || item.project || null,
+        precio: toNum(item.precio || item.price),
+        precioLabel: item.precioLabel || null,
+        ciudad: item.ciudad || null,
+        sector: item.sector || null,
+        m2: toNum(item.m2 || item.m2Construccion || item.area),
+        dormitorios: toNum(item.dormitorios || item.bedrooms),
+        banos: toNum(item.banos || item.bathrooms),
+        parqueaderos: toNum(item.parqueaderos || item.parking),
+        imagen: item.imagen || item.imageUrl || item.image || null,
+      };
+    }
+  }
+
+  return null;
+};
+
+const pickPropertyFit = (result) => {
+  const fit = result?.propertyFit || result?.resultadoPropiedad || null;
+  return fit && typeof fit === "object" ? fit : null;
+};
+
 export default function LeadModalBare() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -158,28 +210,51 @@ export default function LeadModalBare() {
 
       const edad = toNum(inputs?.edad);
 
-      const tipoIngreso =
-        String(inputs?.tipoIngreso ?? inputs?.tipo_ingreso ?? "").trim() ||
-        null;
+const tipoIngreso =
+  String(inputs?.tipoIngreso ?? inputs?.tipo_ingreso ?? "").trim() ||
+  null;
 
-      const resp = await crearLeadDesdeSimulador({
+const selectedProperty = pickSelectedProperty(result, inputs);
+const propertyFit = pickPropertyFit(result);
+
+const resp = await crearLeadDesdeSimulador({
         contacto: { ...payloadContacto },
-        precalif: {
-          ...(inputs || {}),
-          afiliadoIess,
-          aniosEstabilidad,
-          ingresoNetoMensual: ingresoIndividual,
-          ingresoPareja,
-          otrasDeudasMensuales: deudas,
-          ciudadCompra,
-          tipoCompra,
-          tipoCompraNumero,
-          valorVivienda,
-          entradaDisponible,
-          edad,
-          tipoIngreso,
-        },
-        resultado: result,
+precalif: {
+  ...(inputs || {}),
+  afiliadoIess,
+  aniosEstabilidad,
+  ingresoNetoMensual: ingresoIndividual,
+  ingresoPareja,
+  otrasDeudasMensuales: deudas,
+  ciudadCompra,
+  tipoCompra,
+  tipoCompraNumero,
+  valorVivienda,
+  entradaDisponible,
+  edad,
+  tipoIngreso,
+
+  // ✅ Contexto opcional: propiedad seleccionada
+  selectedPropertyId: selectedProperty?.id || inputs?.selectedPropertyId || null,
+  selectedPropertySlug:
+    selectedProperty?.slug || inputs?.selectedPropertySlug || null,
+  selectedPropertyTitle: selectedProperty?.titulo || null,
+  selectedPropertyProject: selectedProperty?.proyecto || null,
+  selectedPropertyPrice: selectedProperty?.precio || null,
+  selectedPropertyCity: selectedProperty?.ciudad || null,
+  selectedPropertySector: selectedProperty?.sector || null,
+},
+
+resultado: {
+  ...(result || {}),
+
+  // ✅ Se guarda junto al resultado para CRM, correo o pantalla de gracias futura
+  selectedProperty: selectedProperty || result?.selectedProperty || null,
+  propertyContext: selectedProperty || result?.propertyContext || null,
+  propertyFit: propertyFit || result?.propertyFit || null,
+  resultadoPropiedad:
+    propertyFit || result?.resultadoPropiedad || result?.propertyFit || null,
+},
       });
 
       return resp;
