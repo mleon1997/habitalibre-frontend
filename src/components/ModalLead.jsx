@@ -412,6 +412,96 @@ function PropertyResultCard({ selectedProperty, propertyFit }) {
   );
 }
 
+function NextStepPropertyCard({
+  selectedProperty,
+  propertyFit,
+  onClose,
+}) {
+  if (!selectedProperty) return null;
+
+  const title =
+    selectedProperty?.titulo || selectedProperty?.name || "esta propiedad";
+
+  const propertySlug = selectedProperty?.slug || selectedProperty?.id || "";
+  const propertyPath = propertySlug
+    ? `/propiedades/${encodeURIComponent(propertySlug)}`
+    : "/propiedades";
+
+  const status = propertyFit?.status || "";
+
+  const isStrongFit = [
+    "dentro_de_rango",
+    "entrada_y_credito_viables",
+    "alcanzable_con_plan_entrada",
+  ].includes(status);
+
+  const isNearFit = [
+    "cerca",
+    "cerca_con_plan_entrada",
+    "cumple_entrada_pero_requiere_mejorar_capacidad",
+    "cumple_entrada_pero_credito_corto",
+  ].includes(status);
+
+  const titleCopy = isStrongFit
+    ? "Un asesor se comunicará contigo para coordinar el siguiente paso"
+    : isNearFit
+      ? "Un asesor revisará tu caso y te ayudará a validar el siguiente paso"
+      : "Un asesor revisará tu caso y podrá sugerirte opciones más compatibles";
+
+  const bodyCopy = isStrongFit
+    ? `Tu resultado indica que ${title} podría estar dentro de tu rango estimado. Ya tenemos tus datos; un asesor HabitaLibre podrá ayudarte a validar la entrada, revisar la ruta hipotecaria y coordinar una visita si aplica.`
+    : isNearFit
+      ? `Tu resultado muestra que ${title} podría ser trabajable, pero conviene revisar entrada, deudas o capacidad de crédito antes de avanzar. Ya tenemos tus datos para que un asesor pueda orientarte.`
+      : `Si ${title} todavía está fuera de tu rango, podemos ayudarte a encontrar alternativas similares o armar un plan para acercarte. Ya tenemos tus datos para darte seguimiento.`;
+
+  return (
+    <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <div className="flex items-start gap-3">
+        <div className="mt-1 h-9 w-9 shrink-0 rounded-2xl bg-emerald-500/10 border border-emerald-300 flex items-center justify-center">
+          <span className="text-lg">🏡</span>
+        </div>
+
+        <div className="flex-1">
+          <p className="text-[11px] uppercase tracking-[0.16em] font-semibold text-emerald-700">
+            Siguiente paso recomendado
+          </p>
+
+          <h4 className="mt-1 text-base font-semibold text-slate-900">
+            {titleCopy}
+          </h4>
+
+          <p className="mt-2 text-sm text-slate-600 leading-6">
+            {bodyCopy}
+          </p>
+
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <Link
+              to={propertyPath}
+              onClick={onClose}
+              className="btn-secondary text-center"
+            >
+              Ver propiedad
+            </Link>
+
+            <Link
+              to="/propiedades"
+              onClick={onClose}
+              className="btn-secondary text-center"
+            >
+              Ver más opciones
+            </Link>
+          </div>
+
+          <p className="mt-3 text-[11px] text-slate-500 leading-relaxed">
+            Esta acción no compromete tu compra ni constituye aprobación de crédito.
+            Un asesor se comunicará contigo usando los datos que acabas de dejar.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
@@ -563,19 +653,55 @@ function Panel({ open, dataResultado, onClose, onLeadSaved, onSubmitLead }) {
             selectedProperty={selectedProperty}
             propertyFit={propertyFit}
           />
+          {hasPropertyFlow ? (
+            <>
+              <NextStepPropertyCard
+                selectedProperty={selectedProperty}
+                propertyFit={propertyFit}
+                onClose={onClose}
+              />
 
-          <p className="text-slate-500 text-xs mt-3">
-            Revisa también promociones, notificaciones o spam por si llega ahí.
-          </p>
+              <p className="text-slate-500 text-xs mt-3">
+                También te enviaremos el resumen a tu correo. Revisa promociones,
+                notificaciones o spam por si llega ahí.
+              </p>
 
-          <div className="mt-6 flex gap-3">
-            <button onClick={onLeadSaved} className="btn-primary" type="button">
-              Continuar
-            </button>
-            <button onClick={onClose} className="btn-secondary" type="button">
-              Cerrar
-            </button>
-          </div>
+              <div className="mt-5 flex gap-3">
+                <button
+                  onClick={onClose}
+                  className="btn-primary"
+                  type="button"
+                >
+                  Entendido
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-slate-500 text-xs mt-3">
+                Revisa también promociones, notificaciones o spam por si llega ahí.
+              </p>
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  onClick={onLeadSaved}
+                  className="btn-primary"
+                  type="button"
+                >
+                  Continuar
+                </button>
+
+                <button
+                  onClick={onClose}
+                  className="btn-secondary"
+                  type="button"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </>
+          )}
+          
         </div>
       ) : (
         <>
