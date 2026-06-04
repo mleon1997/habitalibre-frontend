@@ -1,6 +1,7 @@
 // src/main.jsx
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { HelmetProvider } from "react-helmet-async";
 
 import "@fontsource/plus-jakarta-sans/400.css";
 import "@fontsource/plus-jakarta-sans/600.css";
@@ -61,10 +62,12 @@ ensureCorrectEntryForNativeApp();
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <CustomerAuthProvider>
-      <LeadCaptureProvider>
-        <App />
-      </LeadCaptureProvider>
-    </CustomerAuthProvider>
+    <HelmetProvider>
+      <CustomerAuthProvider>
+        <LeadCaptureProvider>
+          <App />
+        </LeadCaptureProvider>
+      </CustomerAuthProvider>
+    </HelmetProvider>
   </React.StrictMode>
 );
