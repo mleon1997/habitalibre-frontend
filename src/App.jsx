@@ -172,22 +172,29 @@ function AppJourneySafe() {
 
 export default function App() {
   return (
-    <Router>
-      <CustomerAuthListener />
-      <AdminAuthListener />
-      <LeadModalBare />
+   <Router>
+  <RouteSEOGuard />
 
-      <Routes>
-        {/* Journey / simulación */}
-        <Route path="/app" element={<AppMobileLayout />}>
-          <Route index element={<AppJourneySafe />} />
-          <Route path="precalificar" element={<AppJourneySafe />} />
-        </Route>
-<RouteSEOGuard />
-<Route
-  path="/journey"
-  element={<Navigate to="/app?mode=journey" replace />}
-/>
+  <CustomerAuthListener />
+  <AdminAuthListener />
+  <LeadModalBare />
+
+  <Routes>
+    {/* Journey / simulación */}
+    <Route path="/app" element={<AppMobileLayout />}>
+      <Route index element={<AppJourneySafe />} />
+      <Route path="precalificar" element={<AppJourneySafe />} />
+    </Route>
+
+    <Route
+      path="/journey"
+      element={<Navigate to="/app?mode=journey" replace />}
+    />
+
+    <Route
+      path="/journey/full"
+      element={<Navigate to="/app?mode=journey&afinando=1&force=1" replace />}
+    />
 
 <Route
   path="/journey/full"
