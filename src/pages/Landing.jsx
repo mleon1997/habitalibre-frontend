@@ -95,9 +95,98 @@ export default function Landing({ onStart }) {
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50">
-     {/* NAVBAR */}
-<header className="border-b border-slate-800/70 bg-slate-950/88 backdrop-blur-xl sticky top-0 z-50">
-<div className="mx-auto max-w-7xl px-5 md:px-8 h-[76px] flex items-center justify-between gap-8">
+{/* NAVBAR */}
+<header className="border-b border-slate-800/70 bg-slate-950/92 backdrop-blur-xl sticky top-0 z-50">
+  {/* MOBILE NAV */}
+  <div className="md:hidden">
+    <div className="mx-auto px-4 pt-4 pb-3">
+      <div className="flex items-center justify-between gap-3">
+        {/* Logo mobile */}
+        <button
+          type="button"
+          onClick={() => navigate("/")}
+          className="flex items-center gap-3 text-left min-w-0"
+        >
+          <div
+            className="
+              h-11 w-11 shrink-0
+              rounded-2xl bg-slate-900/90
+              border border-emerald-400/45
+              shadow-[0_0_18px_rgba(16,185,129,0.22)]
+              flex items-center justify-center overflow-hidden
+            "
+          >
+            <img
+              src={HIcon}
+              alt="HabitaLibre"
+              className="h-7 w-7 object-contain"
+            />
+          </div>
+
+          <div className="leading-tight min-w-0">
+            <div className="font-bold text-[19px] text-white tracking-tight truncate">
+              HabitaLibre
+            </div>
+            <div className="mt-0.5 text-[11px] text-emerald-300/75 truncate">
+              Hipoteca exprés · VIS · VIP · BIESS
+            </div>
+          </div>
+        </button>
+
+        {/* Login mobile */}
+        <button
+          type="button"
+          onClick={() => navigate(token ? "/progreso" : "/login")}
+          className="
+            shrink-0 px-3 py-2 rounded-full
+            text-slate-200 text-xs font-semibold
+            hover:text-white hover:bg-slate-900/80
+            transition active:scale-[.97]
+            whitespace-nowrap
+          "
+        >
+          {token ? "Progreso" : "Entrar"}
+        </button>
+      </div>
+
+      {/* Mobile second row */}
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => navigate("/propiedades")}
+          className="
+            w-full px-3.5 py-2.5 rounded-full
+            border border-slate-700/80
+            bg-slate-900/70
+            text-slate-100 text-xs font-semibold
+            hover:border-emerald-400/60
+            hover:bg-emerald-400/10
+            transition active:scale-[.97]
+            whitespace-nowrap
+          "
+        >
+          Propiedades
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleStart("navbar_mobile")}
+          className="
+            w-full px-3.5 py-2.5 rounded-full
+            bg-emerald-400 text-slate-950 text-xs font-semibold
+            shadow-[0_12px_30px_rgba(16,185,129,0.45)]
+            active:scale-[.97] transition
+            whitespace-nowrap
+          "
+        >
+          Precalificar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  {/* DESKTOP NAV */}
+  <div className="hidden md:flex mx-auto max-w-7xl px-5 md:px-8 h-[76px] items-center justify-between gap-8">
     {/* Logo HabitaLibre */}
     <button
       type="button"
@@ -134,135 +223,85 @@ export default function Landing({ onStart }) {
     </button>
 
     {/* NAV LINKS - DESKTOP */}
-<nav className="hidden lg:flex items-center gap-3 text-sm">
-  <button
-    type="button"
-    onClick={() => navigate("/propiedades")}
-    className="
-      rounded-full border border-slate-700/80
-      bg-slate-900/70 px-4 py-2
-      text-slate-100 hover:border-emerald-400/60
-      hover:bg-emerald-400/10 hover:text-emerald-200
-      transition whitespace-nowrap
-    "
-  >
-    Propiedades
-  </button>
-
-  <a
-    href="#como-funciona"
-    className="
-      rounded-full px-3.5 py-2
-      text-slate-400 hover:text-white
-      hover:bg-slate-900/70
-      transition whitespace-nowrap
-    "
-  >
-    Cómo funciona
-  </a>
-
-  <a
-    href="#beneficios"
-    className="
-      rounded-full px-3.5 py-2
-      text-slate-400 hover:text-white
-      hover:bg-slate-900/70
-      transition whitespace-nowrap
-    "
-  >
-    Beneficios
-  </a>
-
-  <a
-    href="#faq"
-    className="
-      rounded-full px-3.5 py-2
-      text-slate-400 hover:text-white
-      hover:bg-slate-900/70
-      transition whitespace-nowrap
-    "
-  >
-    FAQ
-  </a>
-</nav>
-
-
-
-    {/* ACTIONS - DESKTOP */}
-    <div className="hidden md:flex items-center gap-3 shrink-0">
-      <button
-  type="button"
-  onClick={() => navigate(token ? "/progreso" : "/login")}
-  className="
-    px-4 py-2 rounded-full
-    text-slate-300 hover:text-white
-    hover:bg-slate-900/80
-    transition text-sm whitespace-nowrap
-  "
->
-  {token ? "Mi progreso" : "Iniciar sesión"}
-</button>
-<button
-  type="button"
-  onClick={() => handleStart("navbar_primary")}
-  className="
-    px-5 py-2.5 rounded-full
-    bg-emerald-400 hover:bg-emerald-300
-    text-slate-950 font-semibold text-sm
-    shadow-[0_16px_40px_rgba(16,185,129,0.32)]
-    transition active:scale-[.98] whitespace-nowrap
-  "
->
-  Precalificar ahora
-</button>
-    </div>
-
-        {/* ACTIONS - MOBILE */}
-    <div className="md:hidden flex items-center gap-2 shrink-0">
-      <button
-        type="button"
-        onClick={() => navigate(token ? "/progreso" : "/login")}
-        className="
-          hidden min-[430px]:inline-flex
-          px-3 py-2 rounded-full
-          text-slate-300 text-xs font-semibold
-          hover:text-white hover:bg-slate-900/80
-          transition active:scale-[.97]
-          whitespace-nowrap
-        "
-      >
-        {token ? "Progreso" : "Entrar"}
-      </button>
-
+    <nav className="hidden lg:flex items-center gap-3 text-sm">
       <button
         type="button"
         onClick={() => navigate("/propiedades")}
         className="
-          px-3.5 py-2 rounded-full
-          border border-slate-700/80
-          bg-slate-900/70
-          text-slate-100 text-xs font-semibold
-          hover:border-emerald-400/60
-          hover:bg-emerald-400/10
-          transition active:scale-[.97]
-          whitespace-nowrap
+          rounded-full border border-slate-700/80
+          bg-slate-900/70 px-4 py-2
+          text-slate-100 hover:border-emerald-400/60
+          hover:bg-emerald-400/10 hover:text-emerald-200
+          transition whitespace-nowrap
         "
       >
         Propiedades
       </button>
 
-      <button
-        type="button"
-        onClick={() => handleStart("navbar_mobile")}
+      <a
+        href="#como-funciona"
         className="
-          px-3.5 py-2 rounded-full
-          bg-emerald-400 text-slate-950 text-xs font-semibold
-          shadow-[0_12px_30px_rgba(16,185,129,0.45)]
-          active:scale-[.97] transition
-          whitespace-nowrap
+          rounded-full px-3.5 py-2
+          text-slate-400 hover:text-white
+          hover:bg-slate-900/70
+          transition whitespace-nowrap
         "
       >
-        Precalificar
+        Cómo funciona
+      </a>
+
+      <a
+        href="#beneficios"
+        className="
+          rounded-full px-3.5 py-2
+          text-slate-400 hover:text-white
+          hover:bg-slate-900/70
+          transition whitespace-nowrap
+        "
+      >
+        Beneficios
+      </a>
+
+      <a
+        href="#faq"
+        className="
+          rounded-full px-3.5 py-2
+          text-slate-400 hover:text-white
+          hover:bg-slate-900/70
+          transition whitespace-nowrap
+        "
+      >
+        FAQ
+      </a>
+    </nav>
+
+    {/* ACTIONS - DESKTOP */}
+    <div className="hidden md:flex items-center gap-3 shrink-0">
+      <button
+        type="button"
+        onClick={() => navigate(token ? "/progreso" : "/login")}
+        className="
+          px-4 py-2 rounded-full
+          text-slate-300 hover:text-white
+          hover:bg-slate-900/80
+          transition text-sm whitespace-nowrap
+        "
+      >
+        {token ? "Mi progreso" : "Iniciar sesión"}
+      </button>
+
+      <button
+        type="button"
+        onClick={() => handleStart("navbar_primary")}
+        className="
+          px-5 py-2.5 rounded-full
+          bg-emerald-400 hover:bg-emerald-300
+          text-slate-950 font-semibold text-sm
+          shadow-[0_16px_40px_rgba(16,185,129,0.32)]
+          transition active:scale-[.98] whitespace-nowrap
+        "
+      >
+        Precalificar ahora
       </button>
     </div>
   </div>
