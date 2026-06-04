@@ -66,24 +66,22 @@ function redirectLegacyHashRoutesForWeb() {
 
     const hash = String(window.location.hash || "");
 
-    const legacyMap = {
-      "#/privacidad": "/privacidad",
-      "#/terminos": "/terminos",
-      "#/cookies": "/cookies",
-      "#/propiedades": "/propiedades",
-      "#/precalificar": "/precalificar",
-      "#/login": "/login",
-    };
+    // Solo migra rutas legacy tipo #/admin, #/propiedades, #/terminos, etc.
+    if (!hash.startsWith("#/")) return;
 
-    const cleanPath = legacyMap[hash];
+    const cleanPath = hash.slice(1); // "#/admin/leads" -> "/admin/leads"
 
-    if (cleanPath && window.location.pathname !== cleanPath) {
-      window.history.replaceState(null, "", cleanPath);
-    }
+    if (!cleanPath || cleanPath === "/") return;
+
+    const nextUrl = `${window.location.origin}${cleanPath}`;
+
+    window.location.replace(nextUrl);
   } catch {
     // no-op
   }
 }
+
+redirectLegacyHashRoutesForWeb();
 
 redirectLegacyHashRoutesForWeb();
 
