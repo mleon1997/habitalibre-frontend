@@ -4,7 +4,8 @@ import React from "react";
 import "./App.css";
 import AdminHome from "./pages/AdminHome.jsx";
 import {
-  HashRouter as Router,
+  BrowserRouter,
+  HashRouter,
   Routes,
   Route,
   Navigate,
@@ -170,6 +171,26 @@ function AppJourneySafe() {
   );
 }
 
+function isNativeCapacitor() {
+  try {
+    const C = window?.Capacitor;
+
+    if (typeof C?.isNativePlatform === "function") {
+      return C.isNativePlatform() === true;
+    }
+
+    if (typeof C?.getPlatform === "function") {
+      return C.getPlatform() !== "web";
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+const Router = isNativeCapacitor() ? HashRouter : BrowserRouter;
+
 export default function App() {
   return (
    <Router>
@@ -189,11 +210,6 @@ export default function App() {
     <Route
       path="/journey"
       element={<Navigate to="/app?mode=journey" replace />}
-    />
-
-    <Route
-      path="/journey/full"
-      element={<Navigate to="/app?mode=journey&afinando=1&force=1" replace />}
     />
 
 <Route
