@@ -1498,27 +1498,30 @@ className="h-48 md:h-56 w-full object-cover"
           </p>
 
           <div className="flex justify-center gap-6 mt-2 text-[11px]">
-            <button
-              onClick={() => openLegal("politica")}
-              className="text-slate-400 hover:text-slate-200 transition underline-offset-4 hover:underline"
-            >
-              Política de Privacidad
-            </button>
+  <button
+    type="button"
+    onClick={() => navigate("/privacidad")}
+    className="text-slate-400 hover:text-slate-200 transition underline-offset-4 hover:underline"
+  >
+    Política de Privacidad
+  </button>
 
-            <button
-              onClick={() => openLegal("terminos")}
-              className="text-slate-400 hover:text-slate-200 transition underline-offset-4 hover:underline"
-            >
-              Términos de Uso
-            </button>
+  <button
+    type="button"
+    onClick={() => navigate("/terminos")}
+    className="text-slate-400 hover:text-slate-200 transition underline-offset-4 hover:underline"
+  >
+    Términos de Uso
+  </button>
 
-            <a
-              href="#/cookies"
-              className="text-slate-400 hover:text-slate-200 transition underline-offset-4 hover:underline"
-            >
-              Cookies
-            </a>
-          </div>
+  <button
+    type="button"
+    onClick={() => navigate("/cookies")}
+    className="text-slate-400 hover:text-slate-200 transition underline-offset-4 hover:underline"
+  >
+    Cookies
+  </button>
+</div>
         </div>
       </footer>
 
@@ -1586,8 +1589,8 @@ className="h-48 md:h-56 w-full object-cover"
                 <p className="text-[11px] text-slate-500">
                   Puedes solicitar la eliminación de tus datos en cualquier momento. Lee
                   la versión completa en nuestra{" "}
-                  <a
-                    href="#/privacidad"
+               <a
+  href="/privacidad"
                     target="_blank"
                     rel="noreferrer"
                     className="underline underline-offset-2 text-slate-300 hover:text-slate-100"
@@ -1663,8 +1666,8 @@ className="h-48 md:h-56 w-full object-cover"
                   Última actualización: 27 de noviembre de 2025.
                   <br />
                   Puedes leer la versión completa en nuestros{" "}
-                  <a
-                    href="#/terminos"
+                <a
+  href="/terminos"
                     className="underline underline-offset-2 text-slate-300 hover:text-slate-100"
                   >
                     Términos de Uso completos

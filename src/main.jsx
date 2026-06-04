@@ -60,6 +60,33 @@ function ensureCorrectEntryForNativeApp() {
 
 ensureCorrectEntryForNativeApp();
 
+function redirectLegacyHashRoutesForWeb() {
+  try {
+    if (isNativeCapacitor()) return;
+
+    const hash = String(window.location.hash || "");
+
+    const legacyMap = {
+      "#/privacidad": "/privacidad",
+      "#/terminos": "/terminos",
+      "#/cookies": "/cookies",
+      "#/propiedades": "/propiedades",
+      "#/precalificar": "/precalificar",
+      "#/login": "/login",
+    };
+
+    const cleanPath = legacyMap[hash];
+
+    if (cleanPath && window.location.pathname !== cleanPath) {
+      window.history.replaceState(null, "", cleanPath);
+    }
+  } catch {
+    // no-op
+  }
+}
+
+redirectLegacyHashRoutesForWeb();
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <HelmetProvider>
