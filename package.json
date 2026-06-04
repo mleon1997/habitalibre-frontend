@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "dev:fallback": "node node_modules/vite/bin/vite.js",
     "build:fallback": "node node_modules/vite/bin/vite.js build",
+     "postbuild": "node scripts/generate-sitemap.mjs",
     "preview:fallback": "node node_modules/vite/bin/vite.js preview"
   },
   "dependencies": {

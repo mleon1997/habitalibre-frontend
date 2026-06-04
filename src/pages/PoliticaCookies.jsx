@@ -187,7 +187,7 @@ export default function PoliticaCookies() {
                 cómo protegemos tus datos personales, cuáles son tus derechos y
                 cómo ejercerlos, te invitamos a revisar nuestra{" "}
                 <a
-                  href="#/privacidad"
+                  href="/privacidad"
                   className="underline underline-offset-2 text-emerald-300 hover:text-emerald-200"
                 >
                   Política de Privacidad

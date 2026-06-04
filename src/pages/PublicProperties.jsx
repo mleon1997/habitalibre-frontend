@@ -281,12 +281,12 @@ const breadcrumbSchema = useMemo(() => getPropertiesBreadcrumbSchema(), []);
 
 return (
   <>
-    <SEO
-      title="Propiedades en Ecuador | Simula si puedes comprarlas con HabitaLibre"
-      description="Explora propiedades reales disponibles en HabitaLibre y simula en 2 minutos si están dentro de tu capacidad de compra con rutas VIS, VIP, BIESS o banca privada."
-      schema={[propertiesPageSchema, breadcrumbSchema]}
-      disableCanonical
-    />
+<SEO
+  title="Propiedades en venta para comprar con crédito hipotecario | HabitaLibre"
+  description="Explora casas y departamentos disponibles y simula si puedes comprarlos según tu ingreso, entrada, deudas y rutas VIS, VIP, BIESS o banca privada."
+  path="/propiedades"
+  schema={[propertiesPageSchema, breadcrumbSchema]}
+/>
 
     <main className="min-h-screen bg-slate-950 text-slate-50">
       <section className="border-b border-slate-800 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.14),transparent_55%),radial-gradient(circle_at_bottom,_rgba(37,99,235,0.18),transparent_60%)]">
