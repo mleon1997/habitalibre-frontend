@@ -13,7 +13,7 @@ Disallow: /ruta
 Disallow: /caso
 Disallow: /siguiente-paso
 Disallow: /api
-Disallow: /private
+Disallow: /private/
 Disallow: /404
 
 # Sitemap oficial

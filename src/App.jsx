@@ -53,7 +53,7 @@ import Admin from "./pages/Admin.jsx";
 import AdminLeads from "./pages/AdminLeads.jsx";
 import AdminUsers from "./pages/AdminUsers.jsx";
 import AdminProperties from "./pages/AdminProperties.jsx";
-
+import RouteSEOGuard from "./components/RouteSEOGuard.jsx";
 import PoliticaPrivacidad from "./pages/PoliticaPrivacidad.jsx";
 import TerminosUso from "./pages/TerminosUso.jsx";
 import PoliticaCookies from "./pages/PoliticaCookies.jsx";
@@ -183,7 +183,7 @@ export default function App() {
           <Route index element={<AppJourneySafe />} />
           <Route path="precalificar" element={<AppJourneySafe />} />
         </Route>
-
+<RouteSEOGuard />
 <Route
   path="/journey"
   element={<Navigate to="/app?mode=journey" replace />}

@@ -16,6 +16,10 @@ import {
 
 import { getPublicPropertyBySlug } from "../lib/publicPropertiesApi";
 import { trackEvent, trackPageView } from "../lib/analytics";
+import SEO from "../components/SEO.jsx";
+import { SITE_URL } from "../seo/seoConfig.js";
+
+
 
 function getPropertyImage(property) {
   return (
@@ -172,6 +176,128 @@ function getCreditLabels(property) {
     .slice(0, 4);
 }
 
+function cleanText(value = "", maxLength = 155) {
+  const text = String(value || "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!text) return "";
+
+  if (text.length <= maxLength) return text;
+
+  return `${text.slice(0, maxLength - 1).trim()}…`;
+}
+
+function getPropertySEOTitle(property) {
+  if (!property) {
+    return "Propiedad en HabitaLibre | Simula tu crédito hipotecario";
+  }
+
+  if (property.seoTitle) return property.seoTitle;
+
+  const price = property.precioLabel || formatMoney(property.precio);
+  const location = [property.sector, property.ciudad].filter(Boolean).join(", ");
+
+  return cleanText(
+    `${property.titulo || "Propiedad"}${location ? ` en ${location}` : ""}${
+      price && price !== "—" ? ` desde ${price}` : ""
+    } | HabitaLibre`,
+    62
+  );
+}
+
+function getPropertySEODescription(property) {
+  if (!property) {
+    return "Explora propiedades reales en HabitaLibre y simula si están dentro de tu capacidad de compra.";
+  }
+
+  if (property.seoDescription) {
+    return cleanText(property.seoDescription, 155);
+  }
+
+  const price = property.precioLabel || formatMoney(property.precio);
+  const location = [property.sector, property.ciudad].filter(Boolean).join(", ");
+  const credits = getCreditLabels(property).join(", ");
+
+  return cleanText(
+    `Explora ${property.titulo || "esta propiedad"}${
+      location ? ` en ${location}` : ""
+    }${price && price !== "—" ? ` desde ${price}` : ""}. Simula si calificas con rutas ${credits} usando HabitaLibre.`,
+    155
+  );
+}
+
+function getPropertySchema(property) {
+  if (!property) return null;
+
+  const image = getPropertyImage(property);
+  const location = [property.sector, property.ciudad].filter(Boolean).join(", ");
+  const price = Number(property.precio || 0);
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "RealEstateListing",
+    name: property.titulo || "Propiedad HabitaLibre",
+    description:
+      property.publicDescription ||
+      property.descripcion ||
+      getPropertySEODescription(property),
+    url: `${SITE_URL}/#/propiedades/${property.slug || ""}`,
+    image: image || undefined,
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: property.ciudad || undefined,
+      addressRegion: property.sector || undefined,
+      addressCountry: "EC",
+    },
+    offers:
+      price > 0
+        ? {
+            "@type": "Offer",
+            price,
+            priceCurrency: "USD",
+            availability: "https://schema.org/InStock",
+          }
+        : undefined,
+    floorSize: getArea(property)
+      ? {
+          "@type": "QuantitativeValue",
+          value: getArea(property),
+          unitCode: "MTK",
+        }
+      : undefined,
+  };
+}
+
+function getBreadcrumbSchema(property) {
+  if (!property) return null;
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Inicio",
+        item: `${SITE_URL}/`,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Propiedades",
+        item: `${SITE_URL}/#/propiedades`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: property.titulo || "Propiedad",
+        item: `${SITE_URL}/#/propiedades/${property.slug || ""}`,
+      },
+    ],
+  };
+}
+
 function PropertyHeroImage({ property }) {
   const image = getPropertyImage(property);
   const [hasError, setHasError] = useState(false);
@@ -239,9 +365,6 @@ export default function PublicPropertyDetail() {
           project: data?.proyecto,
         });
 
-        if (data?.seoTitle) {
-          document.title = data.seoTitle;
-        }
       } catch (error) {
         console.error("[PublicPropertyDetail] Error:", error);
 
@@ -263,6 +386,16 @@ export default function PublicPropertyDetail() {
   const gallery = useMemo(() => getGallery(property), [property]);
   const credits = useMemo(() => getCreditLabels(property), [property]);
   const area = useMemo(() => getArea(property), [property]);
+
+const seoTitle = useMemo(() => getPropertySEOTitle(property), [property]);
+const seoDescription = useMemo(
+  () => getPropertySEODescription(property),
+  [property]
+);
+const seoImage = useMemo(() => getPropertyImage(property), [property]);
+const propertySchema = useMemo(() => getPropertySchema(property), [property]);
+const breadcrumbSchema = useMemo(() => getBreadcrumbSchema(property), [property]);
+
 
   const handleStartForProperty = (source = "public_property_detail") => {
     if (!property) return;
@@ -326,9 +459,18 @@ export default function PublicPropertyDetail() {
 navigate(`/precalificar?${params.toString()}`);
   };
 
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-slate-950 text-slate-50">
+if (loading) {
+ return (
+  <>
+    <SEO
+      title={seoTitle}
+      description={seoDescription}
+      image={seoImage}
+      schema={[propertySchema, breadcrumbSchema]}
+      disableCanonical
+    />
+
+    <main className="min-h-screen bg-slate-950 text-slate-50">
         <div className="mx-auto max-w-6xl px-4 py-10">
           <div className="h-6 w-36 rounded bg-slate-800 animate-pulse mb-8" />
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
@@ -348,11 +490,19 @@ navigate(`/precalificar?${params.toString()}`);
           </div>
         </div>
       </main>
-    );
+  </>
+);
   }
+if (loadError || !property) {
+  return (
+    <>
+      <SEO
+        title="Propiedad no encontrada | HabitaLibre"
+        description="No encontramos esta propiedad. Explora otras viviendas disponibles en HabitaLibre."
+        noindex
+        disableCanonical
+      />
 
-  if (loadError || !property) {
-    return (
       <main className="min-h-screen bg-slate-950 text-slate-50">
         <div className="mx-auto max-w-3xl px-4 py-16 text-center">
           <SparklesIcon className="mx-auto h-9 w-9 text-emerald-300 mb-4" />
@@ -374,7 +524,8 @@ navigate(`/precalificar?${params.toString()}`);
           </button>
         </div>
       </main>
-    );
+    </>
+  );
   }
 
   return (
