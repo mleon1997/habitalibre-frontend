@@ -13,6 +13,8 @@ import {
 
 import { getPublicProperties } from "../lib/publicPropertiesApi";
 import { trackEvent, trackPageView } from "../lib/analytics";
+import SEO from "../components/SEO.jsx";
+import { SITE_URL } from "../seo/seoConfig.js";
 
 function getPropertyImage(property) {
   return (
@@ -48,6 +50,81 @@ function getCreditLabels(property) {
     })
     .slice(0, 3);
 }
+
+function cleanText(value = "", maxLength = 155) {
+  const text = String(value || "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!text) return "";
+
+  if (text.length <= maxLength) return text;
+
+  return `${text.slice(0, maxLength - 1).trim()}…`;
+}
+
+function getPropertiesPageSchema(properties = []) {
+  const visibleProperties = Array.isArray(properties) ? properties.slice(0, 20) : [];
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: "Propiedades en Ecuador | HabitaLibre",
+    description:
+      "Explora propiedades reales disponibles en HabitaLibre y simula si están dentro de tu capacidad de compra.",
+    url: `${SITE_URL}/#/propiedades`,
+    inLanguage: "es-EC",
+    isPartOf: {
+      "@type": "WebSite",
+      name: "HabitaLibre",
+      url: SITE_URL,
+    },
+    mainEntity: {
+      "@type": "ItemList",
+      numberOfItems: visibleProperties.length,
+      itemListElement: visibleProperties.map((property, index) => {
+        const location = [property?.sector, property?.ciudad]
+          .filter(Boolean)
+          .join(", ");
+
+        return {
+          "@type": "ListItem",
+          position: index + 1,
+          url: `${SITE_URL}/#/propiedades/${property?.slug || property?.id || ""}`,
+          name: property?.titulo || `Propiedad ${index + 1}`,
+          description: cleanText(
+            property?.publicDescription ||
+              property?.descripcion ||
+              `${property?.titulo || "Propiedad"}${location ? ` en ${location}` : ""}`,
+            120
+          ),
+        };
+      }),
+    },
+  };
+}
+
+function getPropertiesBreadcrumbSchema() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Inicio",
+        item: `${SITE_URL}/`,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Propiedades",
+        item: `${SITE_URL}/#/propiedades`,
+      },
+    ],
+  };
+}
+
 
 function PropertyImage({ property }) {
   const image = getPropertyImage(property);
@@ -142,6 +219,13 @@ export default function PublicProperties() {
     return `${properties.length} propiedades disponibles`;
   }, [loading, properties.length]);
 
+  const propertiesPageSchema = useMemo(
+  () => getPropertiesPageSchema(properties),
+  [properties]
+);
+
+const breadcrumbSchema = useMemo(() => getPropertiesBreadcrumbSchema(), []);
+
   const handleStartForProperty = (property, source = "public_properties_page") => {
     if (!property) return;
 
@@ -195,7 +279,15 @@ export default function PublicProperties() {
     });
   };
 
-  return (
+return (
+  <>
+    <SEO
+      title="Propiedades en Ecuador | Simula si puedes comprarlas con HabitaLibre"
+      description="Explora propiedades reales disponibles en HabitaLibre y simula en 2 minutos si están dentro de tu capacidad de compra con rutas VIS, VIP, BIESS o banca privada."
+      schema={[propertiesPageSchema, breadcrumbSchema]}
+      disableCanonical
+    />
+
     <main className="min-h-screen bg-slate-950 text-slate-50">
       <section className="border-b border-slate-800 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.14),transparent_55%),radial-gradient(circle_at_bottom,_rgba(37,99,235,0.18),transparent_60%)]">
         <div className="mx-auto max-w-6xl px-4 py-10 md:py-14">
@@ -488,5 +580,6 @@ export default function PublicProperties() {
         )}
       </section>
     </main>
-  );
+  </>
+);
 }
