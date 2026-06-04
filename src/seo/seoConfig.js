@@ -1,4 +1,4 @@
-export const SITE_URL = "https://www.habitalibre.com";
+export const SITE_URL = "https://habitalibre.com";
 
 export const defaultSEO = {
   title: "HabitaLibre | Hipoteca exprés VIS, VIP y BIESS en Ecuador",
