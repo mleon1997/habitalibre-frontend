@@ -26,6 +26,70 @@ import { useNavigate } from "react-router-dom";
 import { useCustomerAuth } from "../context/CustomerAuthContext.jsx";
 import WhatsAppFab from "../components/WhatsAppFab.jsx";
 import PublicPropertiesSection from "../components/PublicPropertiesSection.jsx";
+import SEO from "../components/SEO.jsx";
+import { organizationSchema, websiteSchema } from "../seo/seoConfig.js";
+
+const landingPageSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  name: "HabitaLibre | Descubre cuánto puedes comprar antes de ir al banco",
+  url: "https://www.habitalibre.com/",
+  description:
+    "Simula en 2 minutos tu capacidad de compra, explora créditos VIS, VIP, BIESS y encuentra propiedades compatibles con tu perfil.",
+  inLanguage: "es-EC",
+  isPartOf: {
+    "@type": "WebSite",
+    name: "HabitaLibre",
+    url: "https://www.habitalibre.com",
+  },
+};
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    {
+      "@type": "Question",
+      name: "¿HabitaLibre afecta mi buró de crédito?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "No. La precalificación de HabitaLibre es referencial y se realiza sin consultar tu buró de crédito, por lo que no genera impactos negativos.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "¿Con qué tipos de crédito trabaja HabitaLibre?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "HabitaLibre ayuda a estimar opciones para créditos hipotecarios VIS, VIP, BIESS o banca privada tradicional en Ecuador.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "¿Tiene algún costo usar HabitaLibre?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "No. Usar HabitaLibre y obtener una precalificación referencial es gratuito.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "¿Qué información necesito para precalificarme?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Solo necesitas ingresar tu ingreso mensual, deudas vigentes, plazo aproximado del crédito y algunos datos básicos de contacto.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "¿La precalificación es una aprobación definitiva del banco?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "No. La precalificación de HabitaLibre es una estimación orientativa. La aprobación definitiva depende de cada entidad financiera.",
+      },
+    },
+  ],
+};
 
 export default function Landing({ onStart }) {
   const [activeLegalSection, setActiveLegalSection] = useState(null);
@@ -93,8 +157,18 @@ export default function Landing({ onStart }) {
     viewport: { once: true, amount: 0.3 },
   };
 
-  return (
+return (
+  <>
+    <SEO
+      title="HabitaLibre | Descubre cuánto puedes comprar antes de ir al banco"
+      description="Simula en 2 minutos tu capacidad de compra, explora créditos VIS, VIP, BIESS y encuentra propiedades compatibles con tu perfil."
+      path="/"
+      schema={[organizationSchema, websiteSchema, landingPageSchema, faqSchema]}
+    />
+
     <main className="min-h-screen bg-slate-950 text-slate-50">
+
+
 {/* NAVBAR */}
 <header className="border-b border-slate-800/70 bg-slate-950/92 backdrop-blur-xl sticky top-0 z-50">
   {/* MOBILE NAV */}
@@ -1606,5 +1680,6 @@ className="h-48 md:h-56 w-full object-cover"
       <WhatsAppFab />
 
     </main>
-  );
+  </>
+);
 }
