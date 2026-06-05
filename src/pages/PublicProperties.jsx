@@ -294,6 +294,76 @@ function getGeoContent({ ciudadLabel, sectorLabel, total = 0 }) {
   };
 }
 
+function getRelatedGeoLinks({ ciudadLabel, sectorLabel }) {
+  if (ciudadLabel === "Quito" && sectorLabel === "Tababela") {
+    return [
+      {
+        label: "Ver todas las propiedades en Quito",
+        to: "/propiedades/ciudad/quito",
+      },
+      {
+        label: "Ver propiedades en Centro Norte",
+        to: "/propiedades/ciudad/quito/centro-norte",
+      },
+      {
+        label: "Explorar todas las propiedades",
+        to: "/propiedades",
+      },
+    ];
+  }
+
+  if (ciudadLabel === "Quito" && sectorLabel === "Centro Norte") {
+    return [
+      {
+        label: "Ver todas las propiedades en Quito",
+        to: "/propiedades/ciudad/quito",
+      },
+      {
+        label: "Ver casas en Tababela",
+        to: "/propiedades/ciudad/quito/tababela",
+      },
+      {
+        label: "Explorar todas las propiedades",
+        to: "/propiedades",
+      },
+    ];
+  }
+
+  if (ciudadLabel === "Quito") {
+    return [
+      {
+        label: "Casas en Tababela",
+        to: "/propiedades/ciudad/quito/tababela",
+      },
+      {
+        label: "Propiedades en Centro Norte",
+        to: "/propiedades/ciudad/quito/centro-norte",
+      },
+      {
+        label: "Explorar todas las propiedades",
+        to: "/propiedades",
+      },
+    ];
+  }
+
+  return [
+    {
+      label: "Propiedades en Quito",
+      to: "/propiedades/ciudad/quito",
+    },
+    {
+      label: "Casas en Tababela",
+      to: "/propiedades/ciudad/quito/tababela",
+    },
+    {
+      label: "Propiedades en Centro Norte",
+      to: "/propiedades/ciudad/quito/centro-norte",
+    },
+  ];
+}
+
+
+
 
 function PropertyImage({ property }) {
   const image = getPropertyImage(property);
@@ -421,6 +491,11 @@ useEffect(() => {
       total: properties.length,
     }),
   [ciudadLabel, sectorLabel, properties.length]
+);
+
+const relatedGeoLinks = useMemo(
+  () => getRelatedGeoLinks({ ciudadLabel, sectorLabel }),
+  [ciudadLabel, sectorLabel]
 );
 
 const propertiesPageSchema = useMemo(
@@ -640,7 +715,31 @@ return (
           </div>
         </section>
 
+        <div className="mb-8 rounded-3xl border border-slate-800 bg-slate-900/60 p-4 md:p-5">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-100">
+                Explora zonas relacionadas
+              </p>
+              <p className="text-xs text-slate-500">
+                Compara otras ubicaciones y encuentra una propiedad que encaje con tu perfil.
+              </p>
+            </div>
 
+            <div className="flex flex-wrap gap-2">
+              {relatedGeoLinks.map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className="rounded-full border border-slate-700 px-4 py-2 text-xs font-semibold text-slate-300 hover:border-emerald-300 hover:text-emerald-200 transition"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+        
         <div className="mb-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-slate-100">{totalLabel}</p>
