@@ -206,6 +206,95 @@ function getPropertiesBreadcrumbSchema({ ciudadLabel, sectorLabel, path }) {
   };
 }
 
+function getGeoContent({ ciudadLabel, sectorLabel, total = 0 }) {
+  if (ciudadLabel === "Quito" && sectorLabel === "Tababela") {
+    return {
+      eyebrow: "Guía de compra en Tababela",
+      title: "Comprar casa en Tababela con una ruta hipotecaria clara",
+      body:
+        "Tababela se ha convertido en una zona atractiva para quienes buscan vivienda nueva cerca del aeropuerto, con proyectos residenciales en crecimiento y precios que pueden ser más accesibles que en zonas consolidadas de Quito. En HabitaLibre puedes explorar casas disponibles en Tababela y simular si están dentro de tu capacidad de compra antes de contactar al promotor o avanzar con un banco.",
+      bullets: [
+        "Ideal para comparar casas nuevas y proyectos en crecimiento.",
+        "Puedes estimar tu rango de compra antes de enamorarte de una propiedad.",
+        "HabitaLibre te ayuda a revisar rutas referenciales como VIS, VIP, BIESS o banca privada.",
+      ],
+      ctaLabel: "Simular mi capacidad para comprar en Tababela",
+    };
+  }
+
+  if (ciudadLabel === "Quito" && sectorLabel === "Centro Norte") {
+    return {
+      eyebrow: "Guía de compra en Centro Norte",
+      title: "Departamentos y estudios en Centro Norte de Quito",
+      body:
+        "El Centro Norte de Quito concentra zonas residenciales, corporativas y de alta conectividad. Para muchos compradores, puede ser una alternativa atractiva por cercanía a trabajo, servicios, transporte y vida urbana. En HabitaLibre puedes revisar propiedades disponibles en Centro Norte y estimar si una cuota hipotecaria podría encajar con tus ingresos, entrada y deudas.",
+      bullets: [
+        "Buena zona para comparar estudios y departamentos compactos.",
+        "Útil si buscas vivir cerca de servicios, oficinas y transporte.",
+        "Puedes revisar tu capacidad antes de contactar a un promotor.",
+      ],
+      ctaLabel: "Simular mi capacidad para comprar en Centro Norte",
+    };
+  }
+
+  if (ciudadLabel === "Quito") {
+    return {
+      eyebrow: "Guía de compra en Quito",
+      title: "Comprar vivienda en Quito empieza por conocer tu capacidad real",
+      body:
+        "Antes de elegir una casa o departamento en Quito, es clave entender cuánto podrías comprar, qué entrada necesitarías y qué ruta hipotecaria podría hacer sentido para tu perfil. HabitaLibre te permite explorar propiedades disponibles y simular tu capacidad de compra con información referencial antes de iniciar conversaciones con bancos o promotores.",
+      bullets: [
+        "Compara propiedades en diferentes sectores de Quito.",
+        "Calcula una referencia de cuota, entrada y monto de vivienda.",
+        "Explora alternativas según rutas VIS, VIP, BIESS o banca privada.",
+      ],
+      ctaLabel: "Simular mi capacidad para comprar en Quito",
+    };
+  }
+
+  if (ciudadLabel && sectorLabel) {
+    return {
+      eyebrow: `Guía de compra en ${sectorLabel}`,
+      title: `Propiedades en ${sectorLabel}, ${ciudadLabel}: revisa antes de decidir`,
+      body: `Comprar vivienda en ${sectorLabel}, ${ciudadLabel}, requiere entender no solo el precio de la propiedad, sino también tu capacidad de endeudamiento, entrada disponible y ruta hipotecaria posible. En HabitaLibre puedes explorar ${total || "las"} propiedades disponibles y simular si están dentro de tu rango de compra.`,
+      bullets: [
+        "Revisa propiedades disponibles por zona.",
+        "Evalúa si el precio encaja con tu perfil financiero.",
+        "Simula antes de contactar a un promotor o entidad financiera.",
+      ],
+      ctaLabel: `Simular mi capacidad en ${sectorLabel}`,
+    };
+  }
+
+  if (ciudadLabel) {
+    return {
+      eyebrow: `Guía de compra en ${ciudadLabel}`,
+      title: `Propiedades en ${ciudadLabel}: compara precio, cuota y capacidad`,
+      body: `Explorar propiedades en ${ciudadLabel} es más útil cuando también entiendes si podrías financiarlas. En HabitaLibre puedes revisar casas y departamentos disponibles, estimar tu rango de compra y tener una referencia inicial de rutas hipotecarias posibles según tu ingreso, deudas y entrada.`,
+      bullets: [
+        "Explora casas y departamentos disponibles por ciudad.",
+        "Calcula una referencia de cuánto podrías comprar.",
+        "Conecta la búsqueda inmobiliaria con tu capacidad hipotecaria.",
+      ],
+      ctaLabel: `Simular mi capacidad en ${ciudadLabel}`,
+    };
+  }
+
+  return {
+    eyebrow: "Cómo usar HabitaLibre",
+    title: "No solo busques propiedades: descubre si puedes comprarlas",
+    body:
+      "HabitaLibre combina propiedades reales con una simulación hipotecaria inicial para ayudarte a entender qué vivienda podría estar dentro de tu alcance. Primero explora opciones, luego simula tu capacidad y finalmente decide con más claridad qué propiedad tiene sentido para tu perfil.",
+    bullets: [
+      "Explora propiedades reales disponibles.",
+      "Simula tu capacidad de compra en pocos minutos.",
+      "Compara rutas referenciales como VIS, VIP, BIESS o banca privada.",
+    ],
+    ctaLabel: "Simular mi capacidad de compra",
+  };
+}
+
+
 function PropertyImage({ property }) {
   const image = getPropertyImage(property);
   const [hasError, setHasError] = useState(false);
@@ -253,6 +342,8 @@ const seo = useMemo(
   () => getGeoSEO({ ciudadLabel, sectorLabel }),
   [ciudadLabel, sectorLabel]
 );
+
+
 
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -321,6 +412,16 @@ useEffect(() => {
     if (properties.length === 1) return "1 propiedad disponible";
     return `${properties.length} propiedades disponibles`;
   }, [loading, properties.length]);
+
+  const geoContent = useMemo(
+  () =>
+    getGeoContent({
+      ciudadLabel,
+      sectorLabel,
+      total: properties.length,
+    }),
+  [ciudadLabel, sectorLabel, properties.length]
+);
 
 const propertiesPageSchema = useMemo(
   () => getPropertiesPageSchema(properties, seo, geoPath),
@@ -496,6 +597,49 @@ return (
             </button>
           </div>
         </div>
+
+        <section className="mb-8 rounded-3xl border border-emerald-400/20 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.12),transparent_40%),rgba(15,23,42,0.72)] p-5 md:p-6">
+          <div className="grid gap-5 md:grid-cols-[1.3fr_0.7fr] md:items-center">
+            <div>
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-300">
+                {geoContent.eyebrow}
+              </p>
+
+              <h2 className="mb-3 text-xl md:text-2xl font-semibold tracking-tight text-slate-50">
+                {geoContent.title}
+              </h2>
+
+              <p className="text-sm md:text-[15px] leading-7 text-slate-300">
+                {geoContent.body}
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-slate-700/70 bg-slate-950/45 p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                Antes de avanzar
+              </p>
+
+              <ul className="space-y-3">
+                {geoContent.bullets.map((item) => (
+                  <li key={item} className="flex gap-2 text-sm text-slate-300">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-300" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <button
+                type="button"
+                onClick={() => navigate("/precalificar")}
+                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-emerald-400 px-4 py-2.5 text-sm font-semibold text-slate-950 hover:bg-emerald-300 transition"
+              >
+                {geoContent.ctaLabel}
+                <ArrowRightIcon className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </section>
+
 
         <div className="mb-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
