@@ -221,7 +221,18 @@ export default function App() {
         {/* Website público + preview app */}
         <Route element={<AppLayoutShell />}>
           <Route path="/" element={<Landing />} />
-          <Route path="/propiedades" element={<PublicProperties />} />
+      <Route path="/propiedades" element={<PublicProperties />} />
+
+<Route
+  path="/propiedades/ciudad/:ciudad"
+  element={<PublicProperties />}
+/>
+
+<Route
+  path="/propiedades/ciudad/:ciudad/:sector"
+  element={<PublicProperties />}
+/>
+
 <Route path="/propiedades/:slug" element={<PublicPropertyDetail />} />
           <Route path="/precalificar" element={<SimuladorPage />} />
           <Route path="/simulador" element={<SimuladorPage />} />

@@ -11,6 +11,7 @@ export default function SEO({
   image,
   noindex = false,
   schema = [],
+  disableCanonical = false,
 }) {
   const finalTitle = title || defaultSEO.title;
   const finalDescription = description || defaultSEO.description;
@@ -24,8 +25,7 @@ export default function SEO({
       <title>{finalTitle}</title>
 
       <meta name="description" content={finalDescription} />
-      <link rel="canonical" href={canonicalUrl} />
-
+{!disableCanonical && <link rel="canonical" href={canonicalUrl} />}
       {noindex && <meta name="robots" content="noindex,nofollow" />}
 
       <meta property="og:type" content="website" />

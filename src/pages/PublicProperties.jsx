@@ -1,6 +1,6 @@
 // src/pages/PublicProperties.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -15,6 +15,66 @@ import { getPublicProperties } from "../lib/publicPropertiesApi";
 import { trackEvent, trackPageView } from "../lib/analytics";
 import SEO from "../components/SEO.jsx";
 import { SITE_URL } from "../seo/seoConfig.js";
+
+function toTitleCase(value = "") {
+  return String(value || "")
+    .replace(/-/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => {
+      const lower = word.toLowerCase();
+
+      if (["de", "del", "la", "el", "los", "las"].includes(lower)) {
+        return lower;
+      }
+
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join(" ");
+}
+
+function getGeoPath(ciudadParam, sectorParam) {
+  if (ciudadParam && sectorParam) {
+    return `/propiedades/ciudad/${ciudadParam}/${sectorParam}`;
+  }
+
+  if (ciudadParam) {
+    return `/propiedades/ciudad/${ciudadParam}`;
+  }
+
+  return "/propiedades";
+}
+
+function getGeoSEO({ ciudadLabel, sectorLabel }) {
+  if (ciudadLabel && sectorLabel) {
+    return {
+      title: `Propiedades en venta en ${sectorLabel}, ${ciudadLabel} | HabitaLibre`,
+      description: `Explora casas y departamentos en venta en ${sectorLabel}, ${ciudadLabel}, y simula si puedes comprarlos según tu ingreso, entrada, deudas y rutas hipotecarias.`,
+      heading: `Propiedades en ${sectorLabel}, ${ciudadLabel}`,
+      intro: `Mira viviendas disponibles en ${sectorLabel}, ${ciudadLabel}. Para saber si una propiedad está realmente a tu alcance, precalifícate en 2 minutos.`,
+    };
+  }
+
+  if (ciudadLabel) {
+    return {
+      title: `Propiedades en venta en ${ciudadLabel} | Casas y departamentos`,
+      description: `Explora casas y departamentos en venta en ${ciudadLabel} y simula si están dentro de tu capacidad de compra con rutas VIS, VIP, BIESS o banca privada.`,
+      heading: `Propiedades en venta en ${ciudadLabel}`,
+      intro: `Explora viviendas reales disponibles en ${ciudadLabel}. Luego simula tu capacidad de compra para saber qué propiedades podrían encajar con tu perfil.`,
+    };
+  }
+
+  return {
+    title: "Propiedades en venta para comprar con crédito hipotecario | HabitaLibre",
+    description:
+      "Explora casas y departamentos disponibles y simula si puedes comprarlos según tu ingreso, entrada, deudas y rutas VIS, VIP, BIESS o banca privada.",
+    heading: "Explora propiedades antes de precalificar",
+    intro:
+      "Mira viviendas reales disponibles en HabitaLibre. Para saber si una propiedad está realmente a tu alcance, precalifícate en 2 minutos y activamos tu match personalizado.",
+  };
+}
 
 function getPropertyImage(property) {
   return (
@@ -63,16 +123,17 @@ function cleanText(value = "", maxLength = 155) {
   return `${text.slice(0, maxLength - 1).trim()}…`;
 }
 
-function getPropertiesPageSchema(properties = []) {
+function getPropertiesPageSchema(properties = [], seo = {}, path = "/propiedades") {
   const visibleProperties = Array.isArray(properties) ? properties.slice(0, 20) : [];
 
   return {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    name: "Propiedades en Ecuador | HabitaLibre",
+    name: seo.title || "Propiedades en venta | HabitaLibre",
     description:
+      seo.description ||
       "Explora propiedades reales disponibles en HabitaLibre y simula si están dentro de tu capacidad de compra.",
-    url: `${SITE_URL}/#/propiedades`,
+    url: `${SITE_URL}${path}`,
     inLanguage: "es-EC",
     isPartOf: {
       "@type": "WebSite",
@@ -90,7 +151,7 @@ function getPropertiesPageSchema(properties = []) {
         return {
           "@type": "ListItem",
           position: index + 1,
-          url: `${SITE_URL}/#/propiedades/${property?.slug || property?.id || ""}`,
+          url: `${SITE_URL}/propiedades/${property?.slug || property?.id || ""}`,
           name: property?.titulo || `Propiedad ${index + 1}`,
           description: cleanText(
             property?.publicDescription ||
@@ -104,27 +165,46 @@ function getPropertiesPageSchema(properties = []) {
   };
 }
 
-function getPropertiesBreadcrumbSchema() {
+function getPropertiesBreadcrumbSchema({ ciudadLabel, sectorLabel, path }) {
+  const items = [
+    {
+      "@type": "ListItem",
+      position: 1,
+      name: "Inicio",
+      item: `${SITE_URL}/`,
+    },
+    {
+      "@type": "ListItem",
+      position: 2,
+      name: "Propiedades",
+      item: `${SITE_URL}/propiedades`,
+    },
+  ];
+
+  if (ciudadLabel) {
+    items.push({
+      "@type": "ListItem",
+      position: 3,
+      name: ciudadLabel,
+      item: `${SITE_URL}${sectorLabel ? `/propiedades/ciudad/${String(ciudadLabel).toLowerCase().replaceAll(" ", "-")}` : path}`,
+    });
+  }
+
+  if (sectorLabel) {
+    items.push({
+      "@type": "ListItem",
+      position: 4,
+      name: sectorLabel,
+      item: `${SITE_URL}${path}`,
+    });
+  }
+
   return {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Inicio",
-        item: `${SITE_URL}/`,
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: "Propiedades",
-        item: `${SITE_URL}/#/propiedades`,
-      },
-    ],
+    itemListElement: items,
   };
 }
-
 
 function PropertyImage({ property }) {
   const image = getPropertyImage(property);
@@ -159,15 +239,38 @@ function PropertyImage({ property }) {
 export default function PublicProperties() {
   const navigate = useNavigate();
 
+  const { ciudad: ciudadParam, sector: sectorParam } = useParams();
+
+const ciudadLabel = useMemo(() => toTitleCase(ciudadParam), [ciudadParam]);
+const sectorLabel = useMemo(() => toTitleCase(sectorParam), [sectorParam]);
+
+const geoPath = useMemo(
+  () => getGeoPath(ciudadParam, sectorParam),
+  [ciudadParam, sectorParam]
+);
+
+const seo = useMemo(
+  () => getGeoSEO({ ciudadLabel, sectorLabel }),
+  [ciudadLabel, sectorLabel]
+);
+
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
-  const [filters, setFilters] = useState({
-    ciudad: "",
-    sector: "",
-    maxPrecio: "",
-  });
+const [filters, setFilters] = useState({
+  ciudad: ciudadLabel || "",
+  sector: sectorLabel || "",
+  maxPrecio: "",
+});
+
+useEffect(() => {
+  setFilters((prev) => ({
+    ...prev,
+    ciudad: ciudadLabel || "",
+    sector: sectorLabel || "",
+  }));
+}, [ciudadLabel, sectorLabel]);
 
   useEffect(() => {
     trackPageView("public_properties");
@@ -219,12 +322,20 @@ export default function PublicProperties() {
     return `${properties.length} propiedades disponibles`;
   }, [loading, properties.length]);
 
-  const propertiesPageSchema = useMemo(
-  () => getPropertiesPageSchema(properties),
-  [properties]
+const propertiesPageSchema = useMemo(
+  () => getPropertiesPageSchema(properties, seo, geoPath),
+  [properties, seo, geoPath]
 );
 
-const breadcrumbSchema = useMemo(() => getPropertiesBreadcrumbSchema(), []);
+const breadcrumbSchema = useMemo(
+  () =>
+    getPropertiesBreadcrumbSchema({
+      ciudadLabel,
+      sectorLabel,
+      path: geoPath,
+    }),
+  [ciudadLabel, sectorLabel, geoPath]
+);
 
   const handleStartForProperty = (property, source = "public_properties_page") => {
     if (!property) return;
@@ -272,19 +383,24 @@ const breadcrumbSchema = useMemo(() => getPropertiesBreadcrumbSchema(), []);
   };
 
   const clearFilters = () => {
-    setFilters({
-      ciudad: "",
-      sector: "",
-      maxPrecio: "",
-    });
-  };
+  if (ciudadParam || sectorParam) {
+    navigate("/propiedades");
+    return;
+  }
+
+  setFilters({
+    ciudad: "",
+    sector: "",
+    maxPrecio: "",
+  });
+};
 
 return (
   <>
 <SEO
-  title="Propiedades en venta para comprar con crédito hipotecario | HabitaLibre"
-  description="Explora casas y departamentos disponibles y simula si puedes comprarlos según tu ingreso, entrada, deudas y rutas VIS, VIP, BIESS o banca privada."
-  path="/propiedades"
+  title={seo.title}
+  description={seo.description}
+  path={geoPath}
   schema={[propertiesPageSchema, breadcrumbSchema]}
 />
 
@@ -306,14 +422,12 @@ return (
           </div>
 
           <h1 className="text-3xl md:text-5xl font-semibold tracking-tight text-slate-50 mb-4 max-w-3xl">
-            Explora propiedades antes de precalificar
-          </h1>
+  {seo.heading}
+</h1>
 
-          <p className="text-sm md:text-base text-slate-400 max-w-2xl">
-            Mira viviendas reales disponibles en HabitaLibre. Para saber si una
-            propiedad está realmente a tu alcance, precalifícate en 2 minutos y
-            activamos tu match personalizado.
-          </p>
+<p className="text-sm md:text-base text-slate-400 max-w-2xl">
+  {seo.intro}
+</p>
         </div>
       </section>
 
