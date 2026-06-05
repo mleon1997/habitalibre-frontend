@@ -4,8 +4,11 @@ import fs from "fs";
 import path from "path";
 
 const SITE_URL = "https://habitalibre.com";
-const BACKEND_URL =
+
+const RAW_BACKEND_URL =
   process.env.VITE_API_URL || "https://habitalibre-backend.onrender.com";
+
+const BACKEND_URL = RAW_BACKEND_URL.replace(/\/+$/, "").replace(/\/api$/, "");
 
 const staticRoutes = [
   {
@@ -58,6 +61,16 @@ function escapeXml(value = "") {
     .replaceAll("'", "&apos;");
 }
 
+function slugify(value = "") {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 function urlEntry({ loc, changefreq = "weekly", priority = "0.80", lastmod }) {
   return `  <url>
     <loc>${escapeXml(`${SITE_URL}${loc}`)}</loc>
@@ -96,8 +109,46 @@ async function getPublicProperties() {
   }
 }
 
+function buildGeoRoutes(properties = []) {
+  const cityMap = new Map();
+  const sectorMap = new Map();
+
+  properties.forEach((property) => {
+    const citySlug = slugify(property?.ciudad);
+    const sectorSlug = slugify(property?.sector);
+
+    if (citySlug) {
+      cityMap.set(citySlug, (cityMap.get(citySlug) || 0) + 1);
+    }
+
+    if (citySlug && sectorSlug) {
+      const key = `${citySlug}/${sectorSlug}`;
+      sectorMap.set(key, (sectorMap.get(key) || 0) + 1);
+    }
+  });
+
+  const cityRoutes = [...cityMap.entries()].map(([citySlug]) => ({
+    loc: `/propiedades/ciudad/${citySlug}`,
+    changefreq: "weekly",
+    priority: "0.82",
+  }));
+
+  const sectorRoutes = [...sectorMap.entries()]
+    // Evitamos páginas muy delgadas de sector si solo tienen 1 propiedad.
+    .filter(([, count]) => count >= 2)
+    .map(([key]) => ({
+      loc: `/propiedades/ciudad/${key}`,
+      changefreq: "weekly",
+      priority: "0.80",
+    }));
+
+  return [...cityRoutes, ...sectorRoutes];
+}
+
 async function main() {
   const properties = await getPublicProperties();
+
+  const geoRoutes = buildGeoRoutes(properties);
 
   const propertyRoutes = properties
     .map((property) => {
@@ -117,7 +168,7 @@ async function main() {
     })
     .filter(Boolean);
 
-  const allRoutes = [...staticRoutes, ...propertyRoutes];
+  const allRoutes = [...staticRoutes, ...geoRoutes, ...propertyRoutes];
 
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -132,7 +183,9 @@ ${allRoutes.map(urlEntry).join("\n\n")}
 
   console.log(`✅ Sitemap generado: ${outputPath}`);
   console.log(`✅ Rutas estáticas: ${staticRoutes.length}`);
+  console.log(`✅ Rutas ciudad/sector incluidas: ${geoRoutes.length}`);
   console.log(`✅ Propiedades incluidas: ${propertyRoutes.length}`);
+  console.log(`✅ Total URLs: ${allRoutes.length}`);
 }
 
 main();
