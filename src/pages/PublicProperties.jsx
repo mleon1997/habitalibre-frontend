@@ -363,7 +363,102 @@ function getRelatedGeoLinks({ ciudadLabel, sectorLabel }) {
 }
 
 
+function getGeoFAQ({ ciudadLabel, sectorLabel }) {
+  if (ciudadLabel === "Quito" && sectorLabel === "Tababela") {
+    return [
+      {
+        question: "¿Qué tipo de propiedades puedo encontrar en Tababela?",
+        answer:
+          "En Tababela puedes encontrar principalmente casas y proyectos residenciales nuevos. En HabitaLibre puedes revisar las propiedades disponibles y simular si podrían estar dentro de tu capacidad de compra.",
+      },
+      {
+        question: "¿Puedo comprar una casa en Tababela con crédito hipotecario?",
+        answer:
+          "Depende de tu ingreso, deudas, entrada disponible y del tipo de propiedad. HabitaLibre te da una simulación referencial para entender si una propiedad podría encajar con rutas como VIS, VIP, BIESS o banca privada.",
+      },
+      {
+        question: "¿Por qué simular antes de contactar al promotor?",
+        answer:
+          "Porque te ayuda a entender tu rango real de compra, la cuota estimada y la entrada que podrías necesitar antes de avanzar con una propiedad específica.",
+      },
+    ];
+  }
 
+  if (ciudadLabel === "Quito" && sectorLabel === "Centro Norte") {
+    return [
+      {
+        question: "¿Qué propiedades hay en Centro Norte de Quito?",
+        answer:
+          "En Centro Norte puedes encontrar estudios, departamentos y propiedades compactas cerca de servicios, oficinas y zonas de alta conectividad.",
+      },
+      {
+        question: "¿Cómo sé si puedo comprar un departamento en Centro Norte?",
+        answer:
+          "Puedes simular tu capacidad de compra en HabitaLibre usando datos como ingreso, deudas y entrada disponible para obtener una referencia inicial.",
+      },
+      {
+        question: "¿La simulación de HabitaLibre reemplaza una aprobación bancaria?",
+        answer:
+          "No. La simulación es referencial y educativa. La aprobación final siempre depende del análisis de la entidad financiera.",
+      },
+    ];
+  }
+
+  if (ciudadLabel === "Quito") {
+    return [
+      {
+        question: "¿Cómo encontrar propiedades en venta en Quito?",
+        answer:
+          "Puedes explorar casas y departamentos disponibles en HabitaLibre y filtrar por sector, precio y ciudad para comparar opciones.",
+      },
+      {
+        question: "¿Cómo saber cuánto puedo comprar en Quito?",
+        answer:
+          "HabitaLibre te permite simular una capacidad de compra referencial usando tu ingreso, deudas y entrada disponible.",
+      },
+      {
+        question: "¿Qué rutas hipotecarias puedo comparar?",
+        answer:
+          "Según el tipo de vivienda y tu perfil, puedes revisar referencias asociadas a VIS, VIP, BIESS o banca privada.",
+      },
+    ];
+  }
+
+  return [
+    {
+      question: "¿Cómo funciona HabitaLibre?",
+      answer:
+        "HabitaLibre combina propiedades disponibles con una simulación hipotecaria inicial para ayudarte a entender qué vivienda podría estar dentro de tu alcance.",
+    },
+    {
+      question: "¿La simulación afecta mi buró de crédito?",
+      answer:
+        "No. La simulación es informativa y no realiza una consulta formal al buró de crédito.",
+    },
+    {
+      question: "¿HabitaLibre aprueba créditos hipotecarios?",
+      answer:
+        "No. HabitaLibre no es banco ni prestamista. La plataforma entrega estimaciones referenciales para orientar tu búsqueda.",
+    },
+  ];
+}
+
+function getFAQSchema(faqs = []) {
+  if (!Array.isArray(faqs) || faqs.length === 0) return null;
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.answer,
+      },
+    })),
+  };
+}
 
 function PropertyImage({ property }) {
   const image = getPropertyImage(property);
@@ -498,6 +593,13 @@ const relatedGeoLinks = useMemo(
   [ciudadLabel, sectorLabel]
 );
 
+const geoFAQs = useMemo(
+  () => getGeoFAQ({ ciudadLabel, sectorLabel }),
+  [ciudadLabel, sectorLabel]
+);
+
+const faqSchema = useMemo(() => getFAQSchema(geoFAQs), [geoFAQs]);
+
 const propertiesPageSchema = useMemo(
   () => getPropertiesPageSchema(properties, seo, geoPath),
   [properties, seo, geoPath]
@@ -577,7 +679,7 @@ return (
   title={seo.title}
   description={seo.description}
   path={geoPath}
-  schema={[propertiesPageSchema, breadcrumbSchema]}
+  schema={[propertiesPageSchema, breadcrumbSchema, faqSchema]}
 />
 
     <main className="min-h-screen bg-slate-950 text-slate-50">
@@ -739,6 +841,40 @@ return (
             </div>
           </div>
         </div>
+
+                <section className="mb-8 rounded-3xl border border-slate-800 bg-slate-900/60 p-5 md:p-6">
+          <div className="mb-5">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-300">
+              Preguntas frecuentes
+            </p>
+
+            <h2 className="text-xl md:text-2xl font-semibold tracking-tight text-slate-50">
+              Dudas comunes antes de comprar
+              {sectorLabel
+                ? ` en ${sectorLabel}`
+                : ciudadLabel
+                ? ` en ${ciudadLabel}`
+                : ""}
+            </h2>
+          </div>
+
+          <div className="grid gap-3">
+            {geoFAQs.map((item) => (
+              <details
+                key={item.question}
+                className="group rounded-2xl border border-slate-800 bg-slate-950/45 p-4"
+              >
+                <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">
+                  {item.question}
+                </summary>
+
+                <p className="mt-3 text-sm leading-6 text-slate-400">
+                  {item.answer}
+                </p>
+              </details>
+            ))}
+          </div>
+        </section>
         
         <div className="mb-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
